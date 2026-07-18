@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Finance Dashboard | EduGlobal CRM</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-fixed": "#e3dfff",
+                    "surface-dim": "#d7dae1",
+                    "on-error": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "tertiary-container": "#23282f",
+                    "on-secondary-container": "#d3d0ff",
+                    "inverse-on-surface": "#eef1f8",
+                    "secondary": "#2d00de",
+                    "on-primary-fixed-variant": "#3b456c",
+                    "surface-variant": "#dfe2e9",
+                    "primary-fixed": "#dde1ff",
+                    "on-primary-fixed": "#0e193e",
+                    "on-primary": "#ffffff",
+                    "primary": "#050f36",
+                    "on-tertiary-fixed": "#171c23",
+                    "primary-container": "#1b254b",
+                    "secondary-container": "#4631ff",
+                    "error-container": "#ffdad6",
+                    "tertiary-fixed": "#dee2ec",
+                    "surface-container-highest": "#dfe2e9",
+                    "primary-fixed-dim": "#bbc4f4",
+                    "outline": "#76767f",
+                    "error": "#ba1a1a",
+                    "inverse-primary": "#bbc4f4",
+                    "surface-tint": "#535c86",
+                    "on-surface": "#181c21",
+                    "inverse-surface": "#2d3136",
+                    "surface-container-high": "#e5e8ef",
+                    "on-secondary-fixed-variant": "#2f00e5",
+                    "tertiary": "#0f131a",
+                    "outline-variant": "#c6c5cf",
+                    "surface-container-low": "#f1f4fb",
+                    "on-surface-variant": "#45464e",
+                    "on-tertiary": "#ffffff",
+                    "on-background": "#181c21",
+                    "secondary-fixed-dim": "#c3c0ff",
+                    "on-secondary-fixed": "#100069",
+                    "surface-container-lowest": "#ffffff",
+                    "background": "#f7f9ff",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-fixed-variant": "#42474f",
+                    "on-primary-container": "#838db9",
+                    "on-tertiary-container": "#8a8f98",
+                    "tertiary-fixed-dim": "#c2c7d0",
+                    "surface-container": "#ebeef5",
+                    "surface": "#f7f9ff",
+                    "surface-bright": "#f7f9ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "sidebar-collapsed": "80px",
+                    "stack-sm": "8px",
+                    "unit": "4px",
+                    "stack-md": "16px",
+                    "stack-lg": "24px",
+                    "container-margin": "32px",
+                    "sidebar-width": "280px"
+            },
+            "fontFamily": {
+                    "body-md": ["Plus Jakarta Sans"],
+                    "button": ["Plus Jakarta Sans"],
+                    "title-sm": ["Plus Jakarta Sans"],
+                    "label-caps": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "display-lg": ["Plus Jakarta Sans"],
+                    "display-lg-mobile": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "26px", "fontWeight": "400"}],
+                    "button": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "title-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "display-lg-mobile": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .sidebar-active {
+            border-left: 4px solid #4631ff;
+            background-color: rgba(223, 226, 233, 0.1);
+            color: #e3dfff;
+            font-weight: 700;
+        }
+        .zebra-row:hover {
+            background-color: #f4f7fe;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid #e9edf7;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f4fb; }
+        ::-webkit-scrollbar-thumb { background: #c6c5cf; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="w-sidebar-width h-screen fixed left-0 top-0 bg-primary dark:bg-primary-container shadow-md flex flex-col py-stack-lg z-50">
+<div class="px-gutter mb-10">
+<h1 class="font-headline-md text-headline-md font-bold text-surface-container-lowest">EduGlobal CRM</h1>
+<p class="font-body-sm text-body-sm text-on-primary-container/60">Global Hub</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center px-gutter py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">stress_management</span>
+<span class="font-body-md text-body-md">Consultancy</span>
+</a>
+<a class="flex items-center px-gutter py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">assignment_turned_in</span>
+<span class="font-body-md text-body-md">Admissions</span>
+</a>
+<a class="flex items-center px-gutter py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">desk</span>
+<span class="font-body-md text-body-md">Reception</span>
+</a>
+<a class="flex items-center px-gutter py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">badge</span>
+<span class="font-body-md text-body-md">Human Resources</span>
+</a>
+<!-- Active Tab: Finance -->
+<a class="flex items-center px-gutter py-3 border-l-4 border-secondary-container bg-surface-container-highest/10 text-secondary-fixed font-bold transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span class="font-body-md text-body-md">Finance</span>
+</a>
+<a class="flex items-center px-gutter py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="font-body-md text-body-md">Admin Panel</span>
+</a>
+</nav>
+<div class="mt-auto px-gutter space-y-1 border-t border-on-primary-container/10 pt-6">
+<button class="w-full bg-secondary-container text-white py-3 rounded-lg font-button text-button shadow-lg active:scale-95 transition-transform mb-6">
+                New Application
+            </button>
+<a class="flex items-center py-2 text-on-primary-container/70 font-medium hover:text-secondary-fixed" href="#">
+<span class="material-symbols-outlined mr-3">settings</span>
+<span class="font-body-sm text-body-sm">Settings</span>
+</a>
+<a class="flex items-center py-2 text-on-primary-container/70 font-medium hover:text-secondary-fixed" href="#">
+<span class="material-symbols-outlined mr-3">help</span>
+<span class="font-body-sm text-body-sm">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 ml-sidebar-width min-h-screen flex flex-col relative overflow-hidden">
+<!-- TopNavBar -->
+<header class="h-16 fixed top-0 right-0 left-sidebar-width bg-surface dark:bg-surface-bright border-b border-outline-variant flex justify-between items-center px-gutter z-40">
+<div class="flex items-center bg-surface-container-low px-4 py-2 rounded-full w-96 border border-outline-variant/30">
+<span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm w-full outline-none" placeholder="Search invoices, students, or receipts..." type="text"/>
+</div>
+<div class="flex items-center space-x-6">
+<nav class="hidden lg:flex space-x-8 mr-4">
+<a class="text-on-surface-variant font-medium hover:text-secondary-container transition-colors font-body-sm text-body-sm" href="#">Dashboard</a>
+<a class="text-secondary font-bold border-b-2 border-secondary pb-1 font-body-sm text-body-sm" href="#">Reports</a>
+<a class="text-on-surface-variant font-medium hover:text-secondary-container transition-colors font-body-sm text-body-sm" href="#">Calendar</a>
+</nav>
+<div class="flex items-center space-x-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">history</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">apps</button>
+<div class="h-8 w-8 rounded-full bg-primary-fixed overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a female financial controller in a crisp white blazer, looking confidently at the camera against a soft-focus office background. The lighting is clean and balanced, reflecting the high-performance corporate atmosphere. The overall aesthetic is professional, minimalist, and authoritative, matching the EduGlobal CRM brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCopsxaE-A9MgHLovO1YJ_6YCY6J19Z76Ri3dHnBKUBdTYHnv7y5KbiGr28NnRNwRKFNBh7hqk7aRGnjAAsEh7DLakIaigCupdJxFRN_0jlhmXMrrZaROyiK0Fe8u_u8_BFF5o6HcbhyUwhmbxo4GpeuiEqq4Mpo2tyy7MBnaU_5q27lciTixm-gIxtHJd5NYNMklkFcc3Y3IFHX5CYlN0QblGdJHBHt_Mx0HgCMK7yxEsX5oGBMf_HpA"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="pt-24 px-container-margin pb-stack-lg w-full max-w-7xl mx-auto">
+<!-- Page Header -->
+<div class="flex justify-between items-end mb-8">
+<div>
+<p class="font-label-caps text-label-caps text-secondary-container mb-1">FINANCIAL LEDGER</p>
+<h2 class="font-display-lg text-display-lg text-primary">Invoicing &amp; Payments</h2>
+</div>
+<div class="flex space-x-3">
+<button class="flex items-center px-4 py-2 border border-outline-variant rounded-lg bg-surface-container-lowest font-button text-button hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined mr-2">download</span> Export CSV
+                    </button>
+<button class="flex items-center px-5 py-2 bg-secondary-container text-white rounded-lg font-button text-button shadow-md hover:shadow-lg active:scale-95 transition-all">
+<span class="material-symbols-outlined mr-2">add</span> Create New Invoice
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-stack-lg mb-stack-lg">
+<div class="glass-card p-6 rounded-xl shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-secondary-container/10 rounded-lg text-secondary-container">
+<span class="material-symbols-outlined">payments</span>
+</div>
+<span class="text-xs font-bold text-success-600 bg-green-100 px-2 py-1 rounded-full">+12.5%</span>
+</div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">TOTAL COLLECTED</p>
+<p class="text-2xl font-bold text-primary mt-1">$1,284,500</p>
+</div>
+<div class="glass-card p-6 rounded-xl shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-error-container/10 rounded-lg text-error">
+<span class="material-symbols-outlined">pending_actions</span>
+</div>
+<span class="text-xs font-bold text-error bg-error-container px-2 py-1 rounded-full">Alert</span>
+</div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">OUTSTANDING</p>
+<p class="text-2xl font-bold text-primary mt-1">$245,300</p>
+</div>
+<div class="glass-card p-6 rounded-xl shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-tertiary-fixed/30 rounded-lg text-primary">
+<span class="material-symbols-outlined">account_balance</span>
+</div>
+</div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">COMMISSIONS (PENDING)</p>
+<p class="text-2xl font-bold text-primary mt-1">$42,180</p>
+</div>
+<div class="glass-card p-6 rounded-xl shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary-fixed/30 rounded-lg text-primary">
+<span class="material-symbols-outlined">receipt_long</span>
+</div>
+</div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">INVOICES SENT (MONTH)</p>
+<p class="text-2xl font-bold text-primary mt-1">342</p>
+</div>
+</div>
+<!-- Table Controls & Filters -->
+<div class="glass-card rounded-xl shadow-sm overflow-hidden mb-stack-lg">
+<div class="p-4 border-b border-outline-variant flex flex-wrap items-center justify-between gap-4">
+<div class="flex space-x-2">
+<button class="px-4 py-1.5 rounded-full text-xs font-bold bg-primary text-white">All Payments</button>
+<button class="px-4 py-1.5 rounded-full text-xs font-bold text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors">Overdue</button>
+<button class="px-4 py-1.5 rounded-full text-xs font-bold text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors">Pending Approval</button>
+<button class="px-4 py-1.5 rounded-full text-xs font-bold text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors">Commissions</button>
+</div>
+<div class="flex items-center space-x-2">
+<span class="text-xs font-medium text-on-surface-variant">Sort by:</span>
+<select class="text-xs font-bold bg-transparent border-none focus:ring-0 cursor-pointer">
+<option>Latest First</option>
+<option>Amount (High-Low)</option>
+<option>Due Date</option>
+</select>
+</div>
+</div>
+<!-- Ledger Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low">
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">STUDENT / APPLICANT</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">INVOICE ID</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">CATEGORY</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">AMOUNT</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">DUE DATE</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">STATUS</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant text-center">ACTION</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/30">
+<!-- Row 1 -->
+<tr class="zebra-row transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center">
+<div class="w-8 h-8 rounded bg-secondary-fixed flex items-center justify-center text-secondary font-bold text-xs mr-3">AM</div>
+<div>
+<p class="font-body-md text-body-md font-semibold text-primary">Alex Mercer</p>
+<p class="text-[11px] text-on-surface-variant">University of Toronto - Intake '24</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">INV-2024-0891</td>
+<td class="px-6 py-4 font-body-sm text-body-sm">Tuition Deposit</td>
+<td class="px-6 py-4 font-body-sm text-body-sm font-bold text-primary">$12,400.00</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">Oct 12, 2023</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+<span class="w-1.5 h-1.5 rounded-full bg-green-500 mr-2"></span> Paid
+                                    </span>
+</td>
+<td class="px-6 py-4 text-center">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-secondary-container">more_vert</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="zebra-row transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center">
+<div class="w-8 h-8 rounded bg-primary-fixed flex items-center justify-center text-primary font-bold text-xs mr-3">SP</div>
+<div>
+<p class="font-body-md text-body-md font-semibold text-primary">Sarah Phillips</p>
+<p class="text-[11px] text-on-surface-variant">Monash University - Semester 1</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">INV-2024-0902</td>
+<td class="px-6 py-4 font-body-sm text-body-sm">Visa Service Fee</td>
+<td class="px-6 py-4 font-body-sm text-body-sm font-bold text-primary">$850.00</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-error font-semibold">Oct 01, 2023</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+<span class="w-1.5 h-1.5 rounded-full bg-red-500 mr-2"></span> Overdue
+                                    </span>
+</td>
+<td class="px-6 py-4 text-center">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-secondary-container">more_vert</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="zebra-row transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center">
+<div class="w-8 h-8 rounded bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold text-xs mr-3">JK</div>
+<div>
+<p class="font-body-md text-body-md font-semibold text-primary">Jin Kim</p>
+<p class="text-[11px] text-on-surface-variant">King's College London</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">INV-2024-0915</td>
+<td class="px-6 py-4 font-body-sm text-body-sm">Consultancy Commission</td>
+<td class="px-6 py-4 font-body-sm text-body-sm font-bold text-primary">$2,100.00</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">Oct 15, 2023</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+<span class="w-1.5 h-1.5 rounded-full bg-blue-500 mr-2"></span> Pending
+                                    </span>
+</td>
+<td class="px-6 py-4 text-center">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-secondary-container">more_vert</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="zebra-row transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center">
+<div class="w-8 h-8 rounded bg-secondary-fixed flex items-center justify-center text-secondary font-bold text-xs mr-3">LW</div>
+<div>
+<p class="font-body-md text-body-md font-semibold text-primary">Liam Walker</p>
+<p class="text-[11px] text-on-surface-variant">UBC Vancouver - Fall Batch</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">INV-2024-0933</td>
+<td class="px-6 py-4 font-body-sm text-body-sm">Tuition Deposit</td>
+<td class="px-6 py-4 font-body-sm text-body-sm font-bold text-primary">$15,750.00</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">Oct 20, 2023</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+<span class="w-1.5 h-1.5 rounded-full bg-green-500 mr-2"></span> Paid
+                                    </span>
+</td>
+<td class="px-6 py-4 text-center">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-secondary-container">more_vert</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-4 border-t border-outline-variant flex justify-between items-center bg-surface-container-low/50">
+<p class="text-xs text-on-surface-variant">Showing 1 to 10 of 245 entries</p>
+<div class="flex space-x-1">
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant hover:bg-white transition-colors"><span class="material-symbols-outlined text-sm">chevron_left</span></button>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-secondary-container bg-secondary-container text-white text-xs font-bold">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant hover:bg-white text-xs transition-colors">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant hover:bg-white text-xs transition-colors">3</button>
+<button class="w-8 h-8 flex items-center justify-center rounded border border-outline-variant hover:bg-white transition-colors"><span class="material-symbols-outlined text-sm">chevron_right</span></button>
+</div>
+</div>
+</div>
+<!-- Asymmetric Bottom Content -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-stack-lg">
+<!-- Commission Tracking -->
+<div class="lg:col-span-2 glass-card rounded-xl p-6">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-title-sm text-title-sm text-primary">University Commission Tracking</h3>
+<a class="text-xs font-bold text-secondary-container hover:underline" href="#">View All Pipeline</a>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-3 bg-surface-container-lowest rounded-lg border border-outline-variant/30">
+<div class="flex items-center">
+<div class="w-10 h-10 rounded bg-blue-50 flex items-center justify-center mr-4">
+<span class="material-symbols-outlined text-blue-600">account_balance</span>
+</div>
+<div>
+<p class="font-body-sm text-body-sm font-bold text-primary">University of Sydney</p>
+<p class="text-[11px] text-on-surface-variant">Batch: Q3 Settlement</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-body-sm text-body-sm font-bold text-primary">$18,400.00</p>
+<p class="text-[11px] text-green-600 font-bold">Invoiced</p>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 bg-surface-container-lowest rounded-lg border border-outline-variant/30">
+<div class="flex items-center">
+<div class="w-10 h-10 rounded bg-indigo-50 flex items-center justify-center mr-4">
+<span class="material-symbols-outlined text-indigo-600">account_balance</span>
+</div>
+<div>
+<p class="font-body-sm text-body-sm font-bold text-primary">Arizona State University</p>
+<p class="text-[11px] text-on-surface-variant">Batch: Enrollment Verification</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-body-sm text-body-sm font-bold text-primary">$9,250.00</p>
+<p class="text-[11px] text-on-surface-variant italic">Awaiting Proof</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Reports Visualization -->
+<div class="glass-card rounded-xl p-6 bg-primary text-white">
+<h3 class="font-title-sm text-title-sm mb-2">Revenue Growth</h3>
+<p class="text-xs text-on-primary-container/60 mb-6">Last 6 Months Trend</p>
+<div class="flex items-end space-x-3 h-32 mb-6">
+<div class="flex-1 bg-secondary-fixed/20 rounded-t-sm h-[40%] transition-all hover:bg-secondary-fixed/40"></div>
+<div class="flex-1 bg-secondary-fixed/20 rounded-t-sm h-[55%] transition-all hover:bg-secondary-fixed/40"></div>
+<div class="flex-1 bg-secondary-fixed/20 rounded-t-sm h-[45%] transition-all hover:bg-secondary-fixed/40"></div>
+<div class="flex-1 bg-secondary-fixed/20 rounded-t-sm h-[70%] transition-all hover:bg-secondary-fixed/40"></div>
+<div class="flex-1 bg-secondary-fixed/20 rounded-t-sm h-[85%] transition-all hover:bg-secondary-fixed/40"></div>
+<div class="flex-1 bg-secondary-container rounded-t-sm h-[95%] shadow-[0_-4px_10px_rgba(70,49,255,0.4)]"></div>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between items-center text-xs">
+<span class="text-on-primary-container/60">Highest Month</span>
+<span class="font-bold">May: $240K</span>
+</div>
+<div class="h-1 bg-white/10 rounded-full">
+<div class="h-1 bg-secondary-container w-[75%] rounded-full"></div>
+</div>
+<button class="w-full py-2 bg-white/10 rounded font-button text-button hover:bg-white/20 transition-colors">
+                            Detailed Analytics
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Micro-interaction Scripts -->
+<script>
+        // Simple search highlighting simulation
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('border-secondary-container');
+            searchInput.parentElement.classList.add('ring-2');
+            searchInput.parentElement.classList.add('ring-secondary-container/10');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('border-secondary-container');
+            searchInput.parentElement.classList.remove('ring-2');
+            searchInput.parentElement.classList.remove('ring-secondary-container/10');
+        });
+
+        // Toggle Active Sidebar states (Demo only)
+        const navLinks = document.querySelectorAll('aside nav a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                // In a real app, this would be handled by a router
+                // e.preventDefault(); 
+            });
+        });
+    </script>
+</body></html>

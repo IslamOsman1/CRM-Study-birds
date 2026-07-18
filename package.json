@@ -1,0 +1,15 @@
+{
+  "name": "eduglobal-crm",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Full-stack educational consultancy CRM inspired by Odoo",
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "dev": "concurrently \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "build": "npm --prefix client run build",
+    "start": "npm --prefix server start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

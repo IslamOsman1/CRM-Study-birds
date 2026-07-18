@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduGlobal CRM | Sales Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-fixed": "#e3dfff",
+                    "surface-dim": "#d7dae1",
+                    "on-error": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "tertiary-container": "#23282f",
+                    "on-secondary-container": "#d3d0ff",
+                    "inverse-on-surface": "#eef1f8",
+                    "secondary": "#2d00de",
+                    "on-primary-fixed-variant": "#3b456c",
+                    "surface-variant": "#dfe2e9",
+                    "primary-fixed": "#dde1ff",
+                    "on-primary-fixed": "#0e193e",
+                    "on-primary": "#ffffff",
+                    "primary": "#050f36",
+                    "on-tertiary-fixed": "#171c23",
+                    "primary-container": "#1b254b",
+                    "secondary-container": "#4631ff",
+                    "error-container": "#ffdad6",
+                    "tertiary-fixed": "#dee2ec",
+                    "surface-container-highest": "#dfe2e9",
+                    "primary-fixed-dim": "#bbc4f4",
+                    "outline": "#76767f",
+                    "error": "#ba1a1a",
+                    "inverse-primary": "#bbc4f4",
+                    "surface-tint": "#535c86",
+                    "on-surface": "#181c21",
+                    "inverse-surface": "#2d3136",
+                    "surface-container-high": "#e5e8ef",
+                    "on-secondary-fixed-variant": "#2f00e5",
+                    "tertiary": "#0f131a",
+                    "outline-variant": "#c6c5cf",
+                    "surface-container-low": "#f1f4fb",
+                    "on-surface-variant": "#45464e",
+                    "on-tertiary": "#ffffff",
+                    "on-background": "#181c21",
+                    "secondary-fixed-dim": "#c3c0ff",
+                    "on-secondary-fixed": "#100069",
+                    "surface-container-lowest": "#ffffff",
+                    "background": "#f7f9ff",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-fixed-variant": "#42474f",
+                    "on-primary-container": "#838db9",
+                    "on-tertiary-container": "#8a8f98",
+                    "tertiary-fixed-dim": "#c2c7d0",
+                    "surface-container": "#ebeef5",
+                    "surface": "#f7f9ff",
+                    "surface-bright": "#f7f9ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "sidebar-collapsed": "80px",
+                    "stack-sm": "8px",
+                    "unit": "4px",
+                    "stack-md": "16px",
+                    "stack-lg": "24px",
+                    "container-margin": "32px",
+                    "sidebar-width": "280px"
+            },
+            "fontFamily": {
+                    "body-md": ["Plus Jakarta Sans"],
+                    "button": ["Plus Jakarta Sans"],
+                    "title-sm": ["Plus Jakarta Sans"],
+                    "label-caps": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "display-lg": ["Plus Jakarta Sans"],
+                    "display-lg-mobile": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "26px", "fontWeight": "400"}],
+                    "button": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                    "title-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "display-lg-mobile": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+      body {
+        background-color: #f7f9ff;
+        color: #181c21;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+      }
+      .kanban-column {
+        min-height: calc(100vh - 180px);
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #dfe2e9;
+        border-radius: 10px;
+      }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+    </style>
+</head>
+<body class="flex overflow-hidden">
+<!-- SideNavBar Component -->
+<aside class="w-sidebar-width h-screen fixed left-0 top-0 bg-primary dark:bg-primary-container shadow-md flex flex-col py-stack-lg z-50">
+<!-- Brand Header -->
+<div class="px-6 mb-10">
+<h1 class="font-headline-md text-headline-md font-bold text-surface-container-lowest tracking-tight">EduGlobal CRM</h1>
+<p class="text-on-primary-container/60 font-body-sm text-body-sm mt-1">Global Hub</p>
+</div>
+<!-- Navigation Tabs -->
+<nav class="flex-grow space-y-1">
+<!-- Active Tab: Consultancy (Closest match for Sales/Leads Dashboard) -->
+<a class="group flex items-center px-6 py-3 border-l-4 border-secondary-container bg-surface-container-highest/10 text-secondary-fixed font-bold duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">stress_management</span>
+<span class="font-body-md text-body-md">Consultancy</span>
+</a>
+<a class="group flex items-center px-6 py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">assignment_turned_in</span>
+<span class="font-body-md text-body-md">Admissions</span>
+</a>
+<a class="group flex items-center px-6 py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">desk</span>
+<span class="font-body-md text-body-md">Reception</span>
+</a>
+<a class="group flex items-center px-6 py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">badge</span>
+<span class="font-body-md text-body-md">Human Resources</span>
+</a>
+<a class="group flex items-center px-6 py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">payments</span>
+<span class="font-body-md text-body-md">Finance</span>
+</a>
+<a class="group flex items-center px-6 py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="font-body-md text-body-md">Admin Panel</span>
+</a>
+</nav>
+<!-- CTA & Footer -->
+<div class="px-6 mt-auto space-y-4">
+<button class="w-full bg-secondary-container text-white py-3 rounded-lg font-button text-button shadow-lg hover:brightness-110 active:scale-95 transition-all">
+                New Application
+            </button>
+<div class="pt-6 border-t border-on-primary-container/10 space-y-1">
+<a class="flex items-center text-on-primary-container/70 font-medium hover:text-secondary-fixed py-2" href="#">
+<span class="material-symbols-outlined mr-3">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+<a class="flex items-center text-on-primary-container/70 font-medium hover:text-secondary-fixed py-2" href="#">
+<span class="material-symbols-outlined mr-3">help</span>
+<span class="font-body-md text-body-md">Support</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<main class="flex-grow ml-sidebar-width h-screen overflow-hidden flex flex-col">
+<!-- TopNavBar Component -->
+<header class="h-16 flex justify-between items-center px-gutter w-full bg-surface dark:bg-surface-bright border-b border-outline-variant z-40">
+<div class="flex items-center gap-8">
+<!-- Search Bar -->
+<div class="relative w-80">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full text-body-sm font-body-sm focus:ring-2 focus:ring-secondary-container" placeholder="Search leads, students or countries..." type="text"/>
+</div>
+<!-- Nav Links -->
+<nav class="hidden lg:flex gap-6">
+<a class="text-secondary font-bold border-b-2 border-secondary pb-1 font-body-sm text-body-sm" href="#">Dashboard</a>
+<a class="text-on-surface-variant font-medium hover:text-secondary-container transition-colors font-body-sm text-body-sm" href="#">Reports</a>
+<a class="text-on-surface-variant font-medium hover:text-secondary-container transition-colors font-body-sm text-body-sm" href="#">Calendar</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 pr-4 border-r border-outline-variant">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors cursor-pointer active:scale-95">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors cursor-pointer active:scale-95">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors cursor-pointer active:scale-95">
+<span class="material-symbols-outlined">apps</span>
+</button>
+</div>
+<button class="bg-primary text-white px-4 py-2 rounded-lg font-button text-button hover:bg-primary/90 transition-colors active:scale-95">
+                    Create New
+                </button>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-secondary-fixed ml-2 cursor-pointer">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of an educational consultant in a bright, modern office setting. The consultant is a woman in her late 30s with a warm, confident expression. The lighting is soft and airy, fitting a minimalist corporate aesthetic with a clean white and light blue background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCiHMObVxpvizChUxQtHIB9JCra3gj0ynYCgv_sftIByaNwUIoUEwmJimET0WzwxkMNf1D-hjES164hfJJTk0_maqHIkE_pnFQokDqldovT7Mj65_19we9FCRD7ZB9d-3FH3yIVamqyGT68Iee2UYsS1R_KEf95aGywcgB2NWa8CR-ve8rF3_Fu2xu2xBBZItyUftzI3VSkN-v5m572SYXVDX6FEIGIc5LTyedNRZOepPHuGF8ewHPtNA"/>
+</div>
+</div>
+</header>
+<!-- Dashboard Workspace -->
+<div class="flex-grow overflow-hidden flex flex-col p-8 space-y-6">
+<!-- Header section -->
+<div class="flex justify-between items-end">
+<div>
+<h2 class="font-headline-md text-headline-md text-primary">Sales Pipeline</h2>
+<p class="text-on-surface-variant font-body-sm text-body-sm">Tracking 24 active prospective students across 4 stages.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-sm font-button hover:bg-surface-container hover:shadow-sm transition-all">
+<span class="material-symbols-outlined text-sm mr-2">filter_list</span> Filter
+                    </button>
+<button class="flex items-center px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-sm font-button hover:bg-surface-container hover:shadow-sm transition-all">
+<span class="material-symbols-outlined text-sm mr-2">group</span> Group By
+                    </button>
+</div>
+</div>
+<!-- Kanban Pipeline Board -->
+<div class="flex-grow overflow-x-auto pb-4 custom-scrollbar">
+<div class="flex gap-6 min-w-max h-full">
+<!-- Column: Initial Inquiry -->
+<div class="w-80 flex flex-col gap-4">
+<div class="flex justify-between items-center px-2">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">Initial Inquiry (8)</h3>
+<button class="p-1 hover:bg-surface-container-high rounded text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">more_horiz</span>
+</button>
+</div>
+<div class="flex-grow bg-surface-container-low rounded-xl p-3 space-y-4 kanban-column">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing">
+<div class="flex justify-between items-start mb-2">
+<span class="bg-secondary-fixed text-on-secondary-fixed text-[10px] font-bold px-2 py-0.5 rounded-full">HOT LEAD</span>
+<span class="text-primary font-bold text-body-sm">Score: 92</span>
+</div>
+<h4 class="font-title-sm text-title-sm text-primary mb-1">Arjun Mehta</h4>
+<p class="text-on-surface-variant text-body-sm mb-3">United Kingdom • MSc Data Science</p>
+<div class="flex justify-between items-center border-t border-outline-variant/30 pt-3">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full border-2 border-white bg-secondary-container"></div>
+</div>
+<span class="text-[11px] text-on-surface-variant/60 font-medium">Updated 2h ago</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-grab">
+<div class="flex justify-between items-start mb-2">
+<span class="bg-surface-container-highest text-on-surface-variant text-[10px] font-bold px-2 py-0.5 rounded-full">WARM</span>
+<span class="text-primary font-bold text-body-sm">Score: 65</span>
+</div>
+<h4 class="font-title-sm text-title-sm text-primary mb-1">Sofia Rossi</h4>
+<p class="text-on-surface-variant text-body-sm mb-3">Canada • MBA Global</p>
+<div class="flex justify-between items-center border-t border-outline-variant/30 pt-3">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full border-2 border-white bg-primary"></div>
+</div>
+<span class="text-[11px] text-on-surface-variant/60 font-medium">Updated 1d ago</span>
+</div>
+</div>
+<!-- Add Placeholder -->
+<button class="w-full py-2 border-2 border-dashed border-outline-variant rounded-xl text-on-surface-variant hover:bg-surface-container-high transition-colors text-body-sm font-medium">
+                                + Add Student
+                            </button>
+</div>
+</div>
+<!-- Column: Document Collection -->
+<div class="w-80 flex flex-col gap-4">
+<div class="flex justify-between items-center px-2">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">Document Collection (5)</h3>
+<button class="p-1 hover:bg-surface-container-high rounded text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">more_horiz</span>
+</button>
+</div>
+<div class="flex-grow bg-surface-container-low rounded-xl p-3 space-y-4 kanban-column">
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-grab">
+<div class="flex justify-between items-start mb-2">
+<span class="bg-error-container text-on-error-container text-[10px] font-bold px-2 py-0.5 rounded-full">PENDING IELTS</span>
+<span class="text-primary font-bold text-body-sm">Score: 78</span>
+</div>
+<h4 class="font-title-sm text-title-sm text-primary mb-1">Li Wei</h4>
+<p class="text-on-surface-variant text-body-sm mb-3">Australia • BEng Civil</p>
+<div class="w-full bg-surface-container h-1.5 rounded-full mb-3 overflow-hidden">
+<div class="bg-secondary-container h-full w-[70%]"></div>
+</div>
+<div class="flex justify-between items-center border-t border-outline-variant/30 pt-3">
+<span class="text-[11px] font-bold text-secondary-container">7/10 Docs</span>
+<span class="text-[11px] text-on-surface-variant/60 font-medium">Updated 5h ago</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: University Selection -->
+<div class="w-80 flex flex-col gap-4">
+<div class="flex justify-between items-center px-2">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">University Selection (6)</h3>
+<button class="p-1 hover:bg-surface-container-high rounded text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">more_horiz</span>
+</button>
+</div>
+<div class="flex-grow bg-surface-container-low rounded-xl p-3 space-y-4 kanban-column">
+<!-- Card 4 -->
+<div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-grab">
+<div class="flex justify-between items-start mb-2">
+<span class="bg-primary-fixed text-on-primary-fixed text-[10px] font-bold px-2 py-0.5 rounded-full">SHORTLISTED</span>
+<span class="text-primary font-bold text-body-sm">Score: 88</span>
+</div>
+<h4 class="font-title-sm text-title-sm text-primary mb-1">Elena Petrova</h4>
+<p class="text-on-surface-variant text-body-sm mb-3">Germany • MA Architecture</p>
+<div class="flex gap-2 mb-3">
+<span class="px-2 py-1 bg-surface-container text-[10px] rounded text-on-surface">TUM</span>
+<span class="px-2 py-1 bg-surface-container text-[10px] rounded text-on-surface">RWTH Aachen</span>
+</div>
+<div class="flex justify-between items-center border-t border-outline-variant/30 pt-3">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full border-2 border-white bg-tertiary"></div>
+</div>
+<span class="text-[11px] text-on-surface-variant/60 font-medium">Updated 1h ago</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: Application Sent -->
+<div class="w-80 flex flex-col gap-4">
+<div class="flex justify-between items-center px-2">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">Application Sent (5)</h3>
+<button class="p-1 hover:bg-surface-container-high rounded text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">more_horiz</span>
+</button>
+</div>
+<div class="flex-grow bg-surface-container-low rounded-xl p-3 space-y-4 kanban-column">
+<!-- Card 5 -->
+<div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-grab">
+<div class="flex justify-between items-start mb-2">
+<span class="bg-secondary-fixed text-on-secondary-fixed-variant text-[10px] font-bold px-2 py-0.5 rounded-full">SUBMITTED</span>
+<span class="text-primary font-bold text-body-sm">Score: 95</span>
+</div>
+<h4 class="font-title-sm text-title-sm text-primary mb-1">Omar Siddiqui</h4>
+<p class="text-on-surface-variant text-body-sm mb-3">USA • PhD Robotics</p>
+<div class="bg-surface-container-low border border-outline-variant/50 p-2 rounded-lg mb-3">
+<p class="text-[11px] font-bold text-primary">Target: Stanford University</p>
+<p class="text-[10px] text-on-surface-variant">Portal ID: APP-90221</p>
+</div>
+<div class="flex justify-between items-center border-t border-outline-variant/30 pt-3">
+<div class="flex items-center text-secondary-container">
+<span class="material-symbols-outlined text-[14px] mr-1">check_circle</span>
+<span class="text-[11px] font-bold">Verified</span>
+</div>
+<span class="text-[11px] text-on-surface-variant/60 font-medium">Updated 30m ago</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button (FAB) - Suppressed as per Task instructions for CRM dashboard focus -->
+<script>
+        // Simple micro-interaction for Kanban Cards
+        document.querySelectorAll('.kanban-column > div').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-2px)';
+                card.style.transition = 'transform 0.2s ease-out';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0px)';
+            });
+        });
+
+        // Search Bar Focus Effect
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('ring-2', 'ring-secondary-container');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('ring-2', 'ring-secondary-container');
+        });
+    </script>
+</body></html>

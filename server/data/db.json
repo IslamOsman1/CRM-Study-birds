@@ -1,0 +1,916 @@
+{
+  "users": [
+    {
+      "id": "usr-admin",
+      "name": "Nour El-Din Hassan",
+      "email": "admin@eduglobal.local",
+      "role": "admin",
+      "department": "Executive Management",
+      "avatar": "NH",
+      "passwordHash": "$2b$10$5CCTiypEkgdrFYykN3MfYOWZjc8NjO9Tq./oSuEZks2L0MZqc4rni",
+      "isActive": true,
+      "companyId": "company-default"
+    },
+    {
+      "id": "usr-manager",
+      "name": "Maya Roberts",
+      "email": "manager@eduglobal.local",
+      "role": "management",
+      "department": "Upper Management",
+      "avatar": "MR",
+      "passwordHash": "$2b$10$du83HGWGfrMh7Gw2yWOGsOGBbFXILEGDeS12mJ6GNsi0d3Os5vniu",
+      "isActive": true,
+      "companyId": "company-default"
+    },
+    {
+      "id": "usr-consultant",
+      "name": "Lina Ahmed",
+      "email": "consultant@eduglobal.local",
+      "role": "consultant",
+      "department": "Consultancy",
+      "avatar": "LA",
+      "passwordHash": "$2b$10$h.Vh7bx2y5f0YbHApdUUs.HbKZxCwpnfieBQmsvrB8SJ8KqOE8XWm",
+      "isActive": true,
+      "companyId": "company-default"
+    },
+    {
+      "id": "usr-admissions",
+      "name": "Omar Khaled",
+      "email": "admissions@eduglobal.local",
+      "role": "admissions",
+      "department": "Admissions",
+      "avatar": "OK",
+      "passwordHash": "$2b$10$07.hWwjBGHNefiS5SeD.6.SRYjh5UDTUs655bgxNMBiWt8puCgBKm",
+      "isActive": true,
+      "companyId": "company-default"
+    },
+    {
+      "id": "usr-reception",
+      "name": "Sara Ali",
+      "email": "reception@eduglobal.local",
+      "role": "reception",
+      "department": "Reception",
+      "avatar": "SA",
+      "passwordHash": "$2b$10$H4hFs7bVk1NpsdiPe7l8FuQdUBSCM.SeZxc2xZkJSIQeeq6KgrTt2",
+      "isActive": true,
+      "companyId": "company-default"
+    },
+    {
+      "id": "usr-hr",
+      "name": "Farah Samir",
+      "email": "hr@eduglobal.local",
+      "role": "hr",
+      "department": "Human Resources",
+      "avatar": "FS",
+      "passwordHash": "$2b$10$wjKvIE/K7tRy8VcDWvbisukyLQOReh80ujdXjnnnam.a9OO7X0Qoe",
+      "isActive": true,
+      "companyId": "company-default"
+    },
+    {
+      "id": "usr-finance",
+      "name": "Youssef Adel",
+      "email": "finance@eduglobal.local",
+      "role": "finance",
+      "department": "Finance",
+      "avatar": "YA",
+      "passwordHash": "$2b$10$doNLybfeEoEMH4B2zWg7OOOLlBLEHN8C9QB8jg9T45LyasTfg4PwW",
+      "isActive": true,
+      "companyId": "company-default"
+    }
+  ],
+  "employees": [
+    {
+      "id": "emp-lina",
+      "name": "Lina Ahmed",
+      "email": "consultant@eduglobal.local",
+      "phone": "+20 100 555 1201",
+      "department": "Consultancy",
+      "title": "Senior Educational Consultant",
+      "status": "Active",
+      "joinDate": "2024-02-01",
+      "attendanceRate": 96,
+      "performance": 92,
+      "branch": "Cairo HQ",
+      "avatar": "LA",
+      "companyId": "company-default"
+    },
+    {
+      "id": "emp-ziad",
+      "name": "Ziad Mahmoud",
+      "email": "ziad@eduglobal.local",
+      "phone": "+20 100 555 1202",
+      "department": "Consultancy",
+      "title": "Educational Consultant",
+      "status": "Active",
+      "joinDate": "2025-01-12",
+      "attendanceRate": 91,
+      "performance": 84,
+      "branch": "Cairo HQ",
+      "avatar": "ZM",
+      "companyId": "company-default"
+    },
+    {
+      "id": "emp-mariam",
+      "name": "Mariam Tarek",
+      "email": "mariam@eduglobal.local",
+      "phone": "+20 100 555 1203",
+      "department": "Consultancy",
+      "title": "Educational Consultant",
+      "status": "Active",
+      "joinDate": "2025-06-10",
+      "attendanceRate": 94,
+      "performance": 79,
+      "branch": "Alexandria",
+      "avatar": "MT",
+      "companyId": "company-default"
+    },
+    {
+      "id": "emp-omar",
+      "name": "Omar Khaled",
+      "email": "admissions@eduglobal.local",
+      "phone": "+20 100 555 1301",
+      "department": "Admissions",
+      "title": "Admissions Specialist",
+      "status": "Active",
+      "joinDate": "2023-10-20",
+      "attendanceRate": 98,
+      "performance": 90,
+      "branch": "Cairo HQ",
+      "avatar": "OK",
+      "companyId": "company-default"
+    },
+    {
+      "id": "emp-sara",
+      "name": "Sara Ali",
+      "email": "reception@eduglobal.local",
+      "phone": "+20 100 555 1401",
+      "department": "Reception",
+      "title": "Front Desk Coordinator",
+      "status": "Active",
+      "joinDate": "2024-08-11",
+      "attendanceRate": 95,
+      "performance": 86,
+      "branch": "Cairo HQ",
+      "avatar": "SA",
+      "companyId": "company-default"
+    },
+    {
+      "id": "emp-farah",
+      "name": "Farah Samir",
+      "email": "hr@eduglobal.local",
+      "phone": "+20 100 555 1501",
+      "department": "Human Resources",
+      "title": "HR Specialist",
+      "status": "Active",
+      "joinDate": "2023-04-03",
+      "attendanceRate": 97,
+      "performance": 88,
+      "branch": "Cairo HQ",
+      "avatar": "FS",
+      "companyId": "company-default"
+    },
+    {
+      "id": "emp-youssef",
+      "name": "Youssef Adel",
+      "email": "finance@eduglobal.local",
+      "phone": "+20 100 555 1601",
+      "department": "Finance",
+      "title": "Finance Officer",
+      "status": "Active",
+      "joinDate": "2023-07-17",
+      "attendanceRate": 93,
+      "performance": 89,
+      "branch": "Cairo HQ",
+      "avatar": "YA",
+      "companyId": "company-default"
+    }
+  ],
+  "leads": [
+    {
+      "id": "lead-1",
+      "name": "Ahmed Mostafa",
+      "phone": "+20 101 220 4501",
+      "email": "ahmed.m@example.com",
+      "country": "United Kingdom",
+      "program": "MSc Data Science",
+      "university": "University of Leeds",
+      "source": "Instagram",
+      "stage": "Initial Inquiry",
+      "consultantId": "emp-lina",
+      "priority": "High",
+      "nextFollowUp": "2026-07-18",
+      "notes": "Interested in January intake and scholarship options.",
+      "createdAt": "2026-07-15T09:10:00Z",
+      "updatedAt": "2026-07-16T10:00:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "lead-2",
+      "name": "Salma Hany",
+      "phone": "+20 102 330 5552",
+      "email": "salma.h@example.com",
+      "country": "Canada",
+      "program": "BBA",
+      "university": "York University",
+      "source": "Walk-in",
+      "stage": "Initial Inquiry",
+      "consultantId": "emp-ziad",
+      "priority": "Medium",
+      "nextFollowUp": "2026-07-19",
+      "notes": "Parents will attend the next meeting.",
+      "createdAt": "2026-07-14T12:00:00Z",
+      "updatedAt": "2026-07-15T08:00:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "lead-3",
+      "name": "Mohamed Yasser",
+      "phone": "+20 111 442 3810",
+      "email": "m.yasser@example.com",
+      "country": "Germany",
+      "program": "Computer Engineering",
+      "university": "TU Berlin",
+      "source": "Facebook",
+      "stage": "Contacted",
+      "consultantId": "emp-mariam",
+      "priority": "High",
+      "nextFollowUp": "2026-07-17",
+      "notes": "Needs language pathway advice.",
+      "createdAt": "2026-07-10T08:30:00Z",
+      "updatedAt": "2026-07-16T15:45:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "lead-4",
+      "name": "Rana Adel",
+      "phone": "+20 115 339 7402",
+      "email": "rana.a@example.com",
+      "country": "Turkey",
+      "program": "Architecture",
+      "university": "Istanbul Okan University",
+      "source": "Referral",
+      "stage": "University Selection",
+      "consultantId": "emp-lina",
+      "priority": "Medium",
+      "nextFollowUp": "2026-07-20",
+      "notes": "Comparing three private universities.",
+      "createdAt": "2026-07-08T08:30:00Z",
+      "updatedAt": "2026-07-16T13:45:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "lead-5",
+      "name": "Kareem Fawzy",
+      "phone": "+20 120 992 1311",
+      "email": "kareem.f@example.com",
+      "country": "United Kingdom",
+      "program": "MBA",
+      "university": "University of Birmingham",
+      "source": "Google Ads",
+      "stage": "University Selection",
+      "consultantId": "emp-ziad",
+      "priority": "High",
+      "nextFollowUp": "2026-07-18",
+      "notes": "Waiting for budget confirmation.",
+      "createdAt": "2026-07-05T10:30:00Z",
+      "updatedAt": "2026-07-15T13:45:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "lead-6",
+      "name": "Nada Sherif",
+      "phone": "+20 109 122 8762",
+      "email": "nada.s@example.com",
+      "country": "Netherlands",
+      "program": "MSc Marketing",
+      "university": "Erasmus University",
+      "source": "Website",
+      "stage": "Documents Collected",
+      "consultantId": "emp-mariam",
+      "priority": "High",
+      "nextFollowUp": "2026-07-18",
+      "notes": "Passport and transcript received.",
+      "createdAt": "2026-07-02T10:30:00Z",
+      "updatedAt": "2026-07-16T17:00:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "lead-7",
+      "name": "Youssef Emad",
+      "phone": "+20 106 884 5322",
+      "email": "y.emad@example.com",
+      "country": "Canada",
+      "program": "MEng Software",
+      "university": "Concordia University",
+      "source": "WhatsApp",
+      "stage": "Application Sent",
+      "consultantId": "emp-lina",
+      "priority": "High",
+      "nextFollowUp": "2026-07-25",
+      "notes": "Application submitted; awaiting university response.",
+      "studentId": "student-1",
+      "createdAt": "2026-06-19T10:30:00Z",
+      "updatedAt": "2026-07-16T17:00:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "lead-8",
+      "name": "Mariam Wael",
+      "phone": "+20 103 772 8901",
+      "email": "mariam.w@example.com",
+      "country": "Turkey",
+      "program": "Medicine",
+      "university": "Medipol University",
+      "source": "Referral",
+      "stage": "Enrolled",
+      "consultantId": "emp-ziad",
+      "priority": "High",
+      "nextFollowUp": "",
+      "notes": "Deposit paid and enrollment confirmed.",
+      "studentId": "student-2",
+      "createdAt": "2026-05-11T10:30:00Z",
+      "updatedAt": "2026-07-10T17:00:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "lead-9",
+      "name": "Ali Sameh",
+      "phone": "+20 112 651 8093",
+      "email": "ali.s@example.com",
+      "country": "Italy",
+      "program": "Design",
+      "university": "Politecnico di Milano",
+      "source": "Instagram",
+      "stage": "Lost",
+      "consultantId": "emp-mariam",
+      "priority": "Low",
+      "nextFollowUp": "",
+      "notes": "Paused due to budget.",
+      "createdAt": "2026-06-11T10:30:00Z",
+      "updatedAt": "2026-07-01T17:00:00Z",
+      "companyId": "company-default"
+    }
+  ],
+  "students": [
+    {
+      "id": "student-1",
+      "leadId": "lead-7",
+      "name": "Youssef Emad",
+      "phone": "+20 106 884 5322",
+      "email": "y.emad@example.com",
+      "nationality": "Egyptian",
+      "consultantId": "emp-lina",
+      "createdAt": "2026-07-01T10:00:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "student-2",
+      "leadId": "lead-8",
+      "name": "Mariam Wael",
+      "phone": "+20 103 772 8901",
+      "email": "mariam.w@example.com",
+      "nationality": "Egyptian",
+      "consultantId": "emp-ziad",
+      "createdAt": "2026-06-01T10:00:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "student-3",
+      "name": "Hassan Nabil",
+      "phone": "+20 100 223 8811",
+      "email": "hassan.n@example.com",
+      "nationality": "Egyptian",
+      "consultantId": "emp-mariam",
+      "createdAt": "2026-06-25T10:00:00Z",
+      "companyId": "company-default"
+    }
+  ],
+  "applications": [
+    {
+      "id": "bd7ba116-4b7a-4fe7-9a52-337fca47e105",
+      "companyId": "company-default",
+      "studentId": "student-1",
+      "university": "ddd",
+      "program": "ddd",
+      "country": "ddd",
+      "status": "Ready to Submit",
+      "intake": "22d",
+      "assignedTo": "emp-omar",
+      "documentProgress": 0,
+      "followUpProgress": [],
+      "documents": [],
+      "notes": "",
+      "createdAt": "2026-07-18T12:20:13.256Z",
+      "updatedAt": "2026-07-18T12:20:13.256Z"
+    },
+    {
+      "id": "app-1",
+      "studentId": "student-1",
+      "university": "Concordia University",
+      "program": "MEng Software Engineering",
+      "country": "Canada",
+      "status": "Application Submitted",
+      "intake": "Winter 2027",
+      "assignedTo": "emp-omar",
+      "documentProgress": 75,
+      "documents": [
+        {
+          "id": "doc-1",
+          "type": "Passport",
+          "originalName": "passport-youssef.pdf",
+          "fileName": "",
+          "url": "",
+          "size": 0,
+          "status": "Received",
+          "uploadedBy": "Omar Khaled",
+          "uploadedAt": "2026-07-03T10:00:00Z"
+        },
+        {
+          "id": "doc-2",
+          "type": "Transcript",
+          "originalName": "transcript-youssef.pdf",
+          "fileName": "",
+          "url": "",
+          "size": 0,
+          "status": "Received",
+          "uploadedBy": "Omar Khaled",
+          "uploadedAt": "2026-07-03T10:05:00Z"
+        },
+        {
+          "id": "doc-3",
+          "type": "English Certificate",
+          "originalName": "ielts-youssef.pdf",
+          "fileName": "",
+          "url": "",
+          "size": 0,
+          "status": "Received",
+          "uploadedBy": "Omar Khaled",
+          "uploadedAt": "2026-07-04T09:00:00Z"
+        }
+      ],
+      "notes": "University fee paid. Waiting for file review.",
+      "createdAt": "2026-07-01T10:00:00Z",
+      "updatedAt": "2026-07-16T10:00:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "app-2",
+      "studentId": "student-2",
+      "university": "Medipol University",
+      "program": "Medicine",
+      "country": "Turkey",
+      "status": "Final Acceptance",
+      "intake": "Fall 2026",
+      "assignedTo": "emp-omar",
+      "documentProgress": 100,
+      "documents": [
+        {
+          "id": "doc-4",
+          "type": "Passport",
+          "originalName": "passport-mariam.pdf",
+          "fileName": "",
+          "url": "",
+          "size": 0,
+          "status": "Received",
+          "uploadedBy": "Omar Khaled",
+          "uploadedAt": "2026-06-03T10:00:00Z"
+        },
+        {
+          "id": "doc-5",
+          "type": "Transcript",
+          "originalName": "transcript-mariam.pdf",
+          "fileName": "",
+          "url": "",
+          "size": 0,
+          "status": "Received",
+          "uploadedBy": "Omar Khaled",
+          "uploadedAt": "2026-06-03T10:00:00Z"
+        },
+        {
+          "id": "doc-6",
+          "type": "Personal Photo",
+          "originalName": "photo-mariam.jpg",
+          "fileName": "",
+          "url": "",
+          "size": 0,
+          "status": "Received",
+          "uploadedBy": "Omar Khaled",
+          "uploadedAt": "2026-06-03T10:00:00Z"
+        },
+        {
+          "id": "doc-7",
+          "type": "Acceptance Letter",
+          "originalName": "acceptance-mariam.pdf",
+          "fileName": "",
+          "url": "",
+          "size": 0,
+          "status": "Received",
+          "uploadedBy": "Omar Khaled",
+          "uploadedAt": "2026-06-18T10:00:00Z"
+        }
+      ],
+      "notes": "Final acceptance issued; enrollment completed.",
+      "createdAt": "2026-06-01T10:00:00Z",
+      "updatedAt": "2026-07-10T10:00:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "app-3",
+      "studentId": "student-3",
+      "university": "University of Glasgow",
+      "program": "MSc International Business",
+      "country": "United Kingdom",
+      "status": "Preparing Documents",
+      "intake": "Fall 2027",
+      "assignedTo": "emp-omar",
+      "documentProgress": 25,
+      "documents": [
+        {
+          "id": "doc-8",
+          "type": "Passport",
+          "originalName": "passport-hassan.pdf",
+          "fileName": "",
+          "url": "",
+          "size": 0,
+          "status": "Received",
+          "uploadedBy": "Omar Khaled",
+          "uploadedAt": "2026-07-12T10:00:00Z"
+        }
+      ],
+      "notes": "Transcript and English certificate are missing.",
+      "createdAt": "2026-07-11T10:00:00Z",
+      "updatedAt": "2026-07-16T10:00:00Z",
+      "companyId": "company-default"
+    }
+  ],
+  "receptionLogs": [
+    {
+      "id": "rec-1",
+      "type": "Walk-in",
+      "name": "Salma Hany",
+      "phone": "+20 102 330 5552",
+      "email": "salma.h@example.com",
+      "interest": "BBA in Canada",
+      "source": "Walk-in",
+      "consultantId": "emp-ziad",
+      "notes": "Visited with her mother.",
+      "status": "Assigned",
+      "createdBy": "Sara Ali",
+      "leadId": "lead-2",
+      "createdAt": "2026-07-16T11:20:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "rec-2",
+      "type": "Incoming Call",
+      "name": "Heba Magdy",
+      "phone": "+20 127 450 1920",
+      "email": "",
+      "interest": "Foundation year in the UK",
+      "source": "Phone",
+      "consultantId": "emp-lina",
+      "notes": "Requested a callback after 6 PM.",
+      "status": "Assigned",
+      "createdBy": "Sara Ali",
+      "createdAt": "2026-07-16T09:42:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "rec-3",
+      "type": "WhatsApp",
+      "name": "Omar Ashraf",
+      "phone": "+20 101 771 8332",
+      "email": "omar.a@example.com",
+      "interest": "Engineering in Germany",
+      "source": "WhatsApp",
+      "consultantId": "emp-mariam",
+      "notes": "Sent high school grades.",
+      "status": "Assigned",
+      "createdBy": "Sara Ali",
+      "createdAt": "2026-07-15T15:10:00Z",
+      "companyId": "company-default"
+    }
+  ],
+  "attendance": [
+    {
+      "id": "att-1",
+      "employeeId": "emp-lina",
+      "date": "2026-07-17",
+      "checkIn": "08:51",
+      "checkOut": "",
+      "status": "Present",
+      "notes": "",
+      "companyId": "company-default"
+    },
+    {
+      "id": "att-2",
+      "employeeId": "emp-ziad",
+      "date": "2026-07-17",
+      "checkIn": "09:06",
+      "checkOut": "",
+      "status": "Present",
+      "notes": "",
+      "companyId": "company-default"
+    },
+    {
+      "id": "att-3",
+      "employeeId": "emp-mariam",
+      "date": "2026-07-17",
+      "checkIn": "09:00",
+      "checkOut": "",
+      "status": "Remote",
+      "notes": "Client calls from home",
+      "companyId": "company-default"
+    },
+    {
+      "id": "att-4",
+      "employeeId": "emp-omar",
+      "date": "2026-07-17",
+      "checkIn": "08:47",
+      "checkOut": "",
+      "status": "Present",
+      "notes": "",
+      "companyId": "company-default"
+    },
+    {
+      "id": "att-5",
+      "employeeId": "emp-sara",
+      "date": "2026-07-17",
+      "checkIn": "08:35",
+      "checkOut": "",
+      "status": "Present",
+      "notes": "",
+      "companyId": "company-default"
+    },
+    {
+      "id": "att-6",
+      "employeeId": "emp-farah",
+      "date": "2026-07-17",
+      "checkIn": "",
+      "checkOut": "",
+      "status": "Leave",
+      "notes": "Annual leave",
+      "companyId": "company-default"
+    },
+    {
+      "id": "att-7",
+      "employeeId": "emp-youssef",
+      "date": "2026-07-17",
+      "checkIn": "08:58",
+      "checkOut": "",
+      "status": "Present",
+      "notes": "",
+      "companyId": "company-default"
+    }
+  ],
+  "invoices": [
+    {
+      "id": "inv-1",
+      "number": "INV-2026-0001",
+      "studentId": "student-1",
+      "description": "Application package and university submission fees",
+      "currency": "USD",
+      "subtotal": 2200,
+      "tax": 0,
+      "total": 2200,
+      "commission": 400,
+      "dueDate": "2026-07-30",
+      "status": "Partial",
+      "notes": "Second installment due before acceptance.",
+      "createdAt": "2026-07-02T10:00:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "inv-2",
+      "number": "INV-2026-0002",
+      "studentId": "student-2",
+      "description": "Medical university admission and enrollment package",
+      "currency": "USD",
+      "subtotal": 5000,
+      "tax": 0,
+      "total": 5000,
+      "commission": 900,
+      "dueDate": "2026-06-20",
+      "status": "Paid",
+      "notes": "Paid in full.",
+      "createdAt": "2026-06-02T10:00:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "inv-3",
+      "number": "INV-2026-0003",
+      "studentId": "student-3",
+      "description": "UK university application package",
+      "currency": "USD",
+      "subtotal": 1800,
+      "tax": 0,
+      "total": 1800,
+      "commission": 300,
+      "dueDate": "2026-07-28",
+      "status": "Unpaid",
+      "notes": "Awaiting first deposit.",
+      "createdAt": "2026-07-13T10:00:00Z",
+      "companyId": "company-default"
+    }
+  ],
+  "payments": [
+    {
+      "id": "pay-1",
+      "invoiceId": "inv-1",
+      "amount": 1000,
+      "method": "Bank Transfer",
+      "reference": "TRX-90812",
+      "date": "2026-07-05",
+      "notes": "First installment",
+      "receivedBy": "Youssef Adel",
+      "createdAt": "2026-07-05T12:00:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "pay-2",
+      "invoiceId": "inv-2",
+      "amount": 5000,
+      "method": "Card",
+      "reference": "POS-77210",
+      "date": "2026-06-12",
+      "notes": "Full settlement",
+      "receivedBy": "Youssef Adel",
+      "createdAt": "2026-06-12T12:00:00Z",
+      "companyId": "company-default"
+    }
+  ],
+  "activities": [
+    {
+      "id": "7b080854-d84d-47b2-ab65-563751fe7ef5",
+      "companyId": "company-default",
+      "actorId": "usr-manager",
+      "actorName": "Maya Roberts",
+      "action": "created",
+      "entityType": "application",
+      "entityId": "bd7ba116-4b7a-4fe7-9a52-337fca47e105",
+      "details": "تم إنشاء طلب قبول للطالب Youssef Emad",
+      "createdAt": "2026-07-18T12:20:13.257Z"
+    },
+    {
+      "id": "c1dfccaf-af06-4a60-ac16-cd307351a2a2",
+      "companyId": "company-default",
+      "actorId": "usr-manager",
+      "actorName": "Maya Roberts",
+      "action": "updated",
+      "entityType": "settings",
+      "entityId": "system-settings",
+      "details": "تم تحديث إعدادات النظام",
+      "createdAt": "2026-07-18T12:13:57.746Z"
+    },
+    {
+      "id": "act-1",
+      "actorId": "usr-admissions",
+      "actorName": "Omar Khaled",
+      "action": "updated",
+      "entityType": "application",
+      "entityId": "app-1",
+      "details": "Youssef Emad application moved to Application Submitted",
+      "createdAt": "2026-07-16T15:25:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "act-2",
+      "actorId": "usr-finance",
+      "actorName": "Youssef Adel",
+      "action": "created",
+      "entityType": "invoice",
+      "entityId": "inv-3",
+      "details": "INV-2026-0003 created for Hassan Nabil",
+      "createdAt": "2026-07-16T14:10:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "act-3",
+      "actorId": "usr-consultant",
+      "actorName": "Lina Ahmed",
+      "action": "moved",
+      "entityType": "lead",
+      "entityId": "lead-4",
+      "details": "Rana Adel moved to University Selection",
+      "createdAt": "2026-07-16T13:35:00Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "act-4",
+      "actorId": "usr-reception",
+      "actorName": "Sara Ali",
+      "action": "logged",
+      "entityType": "reception",
+      "entityId": "rec-1",
+      "details": "Walk-in: Salma Hany",
+      "createdAt": "2026-07-16T11:20:00Z",
+      "companyId": "company-default"
+    }
+  ],
+  "monthlyRevenue": [
+    {
+      "month": "Feb",
+      "value": 28500
+    },
+    {
+      "month": "Mar",
+      "value": 34200
+    },
+    {
+      "month": "Apr",
+      "value": 31800
+    },
+    {
+      "month": "May",
+      "value": 40700
+    },
+    {
+      "month": "Jun",
+      "value": 46200
+    },
+    {
+      "month": "Jul",
+      "value": 39100
+    }
+  ],
+  "settings": {
+    "companyName": "study birds",
+    "workspace": "Global Hub",
+    "currency": "USD",
+    "pipelineStages": [
+      "Initial Inquiry",
+      "Contacted",
+      "University Selection",
+      "Documents Collected",
+      "Application Sent",
+      "Enrolled",
+      "Lost"
+    ],
+    "applicationStatuses": [
+      "Preparing Documents",
+      "Ready to Submit",
+      "Application Submitted",
+      "Under Review",
+      "Conditional Acceptance",
+      "Final Acceptance",
+      "Rejected",
+      "Deferred"
+    ],
+    "documentTypes": [
+      {
+        "name": "Passport",
+        "required": true
+      },
+      {
+        "name": "Transcript",
+        "required": true
+      },
+      {
+        "name": "Personal Photo",
+        "required": true
+      },
+      {
+        "name": "English Certificate",
+        "required": true
+      },
+      {
+        "name": "Motivation Letter",
+        "required": false
+      },
+      {
+        "name": "Recommendation Letter",
+        "required": false
+      },
+      {
+        "name": "Acceptance Letter",
+        "required": false
+      },
+      {
+        "name": "Other",
+        "required": false
+      }
+    ],
+    "documentChecklistTemplates": [],
+    "applicationWorkflowTemplates": []
+  },
+  "tasks": [],
+  "companies": [
+    {
+      "id": "company-default",
+      "name": "EduGlobal CRM",
+      "slug": "default-company",
+      "status": "active",
+      "createdAt": "2026-07-18T11:27:11.522Z"
+    }
+  ],
+  "oauthStates": [],
+  "metaPendingSessions": [],
+  "metaIntegrations": [],
+  "connectedChannels": [],
+  "conversations": [],
+  "messages": [],
+  "webhookEvents": [],
+  "whatsAppTemplates": [],
+  "integrationAuditLogs": [],
+  "contactChannelIdentities": []
+}

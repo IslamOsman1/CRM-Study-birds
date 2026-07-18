@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: eduglobal-crm-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: PORT
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_DB_TABLE
+        value: app_state
+      - key: SUPABASE_DB_ROW_ID
+        value: default
+      - key: SUPABASE_STORAGE_BUCKET
+        value: crm-files
+      - key: META_APP_ID
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: META_CONFIG_ID
+        sync: false
+      - key: META_VERIFY_TOKEN
+        sync: false
+      - key: META_GRAPH_API_VERSION
+        value: v22.0
+      - key: META_REDIRECT_URI
+        sync: false
+      - key: META_WEBHOOK_URL
+        sync: false

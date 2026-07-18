@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduGlobal CRM | Front Desk Quick-Log</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f7f9ff;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid #E9EDF7;
+        }
+        .custom-shadow {
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.03);
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#e3dfff",
+                        "surface-dim": "#d7dae1",
+                        "on-error": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "tertiary-container": "#23282f",
+                        "on-secondary-container": "#d3d0ff",
+                        "inverse-on-surface": "#eef1f8",
+                        "secondary": "#2d00de",
+                        "on-primary-fixed-variant": "#3b456c",
+                        "surface-variant": "#dfe2e9",
+                        "primary-fixed": "#dde1ff",
+                        "on-primary-fixed": "#0e193e",
+                        "on-primary": "#ffffff",
+                        "primary": "#050f36",
+                        "on-tertiary-fixed": "#171c23",
+                        "primary-container": "#1b254b",
+                        "secondary-container": "#4631ff",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#dee2ec",
+                        "surface-container-highest": "#dfe2e9",
+                        "primary-fixed-dim": "#bbc4f4",
+                        "outline": "#76767f",
+                        "error": "#ba1a1a",
+                        "inverse-primary": "#bbc4f4",
+                        "surface-tint": "#535c86",
+                        "on-surface": "#181c21",
+                        "inverse-surface": "#2d3136",
+                        "surface-container-high": "#e5e8ef",
+                        "on-secondary-fixed-variant": "#2f00e5",
+                        "tertiary": "#0f131a",
+                        "outline-variant": "#c6c5cf",
+                        "surface-container-low": "#f1f4fb",
+                        "on-surface-variant": "#45464e",
+                        "on-tertiary": "#ffffff",
+                        "on-background": "#181c21",
+                        "secondary-fixed-dim": "#c3c0ff",
+                        "on-secondary-fixed": "#100069",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f7f9ff",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#42474f",
+                        "on-primary-container": "#838db9",
+                        "on-tertiary-container": "#8a8f98",
+                        "tertiary-fixed-dim": "#c2c7d0",
+                        "surface-container": "#ebeef5",
+                        "surface": "#f7f9ff",
+                        "surface-bright": "#f7f9ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "sidebar-collapsed": "80px",
+                        "stack-sm": "8px",
+                        "unit": "4px",
+                        "stack-md": "16px",
+                        "stack-lg": "24px",
+                        "container-margin": "32px",
+                        "sidebar-width": "280px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Plus Jakarta Sans"],
+                        "button": ["Plus Jakarta Sans"],
+                        "title-sm": ["Plus Jakarta Sans"],
+                        "label-caps": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="flex overflow-hidden">
+<!-- SideNavBar Component -->
+<aside class="w-sidebar-width h-screen fixed left-0 top-0 bg-primary flex flex-col py-stack-lg shadow-md z-50">
+<div class="px-gutter mb-10">
+<h1 class="font-headline-md text-headline-md font-bold text-surface-container-lowest">EduGlobal CRM</h1>
+<p class="text-on-primary-container/60 font-body-sm text-body-sm">Global Hub</p>
+</div>
+<nav class="flex-grow flex flex-col gap-1">
+<!-- Consultancy -->
+<a class="flex items-center px-gutter py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">stress_management</span>
+<span class="font-body-md text-body-md">Consultancy</span>
+</a>
+<!-- Admissions -->
+<a class="flex items-center px-gutter py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">assignment_turned_in</span>
+<span class="font-body-md text-body-md">Admissions</span>
+</a>
+<!-- Reception (ACTIVE) -->
+<a class="flex items-center px-gutter py-3 border-l-4 border-secondary-container bg-surface-container-highest/10 text-secondary-fixed font-bold transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">desk</span>
+<span class="font-body-md text-body-md">Reception</span>
+</a>
+<!-- Human Resources -->
+<a class="flex items-center px-gutter py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">badge</span>
+<span class="font-body-md text-body-md">Human Resources</span>
+</a>
+<!-- Finance -->
+<a class="flex items-center px-gutter py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">payments</span>
+<span class="font-body-md text-body-md">Finance</span>
+</a>
+<!-- Admin Panel -->
+<a class="flex items-center px-gutter py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="font-body-md text-body-md">Admin Panel</span>
+</a>
+</nav>
+<div class="mt-auto px-gutter flex flex-col gap-1 border-t border-white/10 pt-4">
+<a class="flex items-center py-2 text-on-primary-container/70 font-medium hover:text-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">settings</span>
+<span class="font-body-sm text-body-sm">Settings</span>
+</a>
+<a class="flex items-center py-2 text-on-primary-container/70 font-medium hover:text-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">help</span>
+<span class="font-body-sm text-body-sm">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Workspace -->
+<main class="ml-sidebar-width flex-grow h-screen flex flex-col relative overflow-hidden bg-background">
+<!-- TopNavBar Component -->
+<header class="h-16 fixed top-0 right-0 left-sidebar-width bg-surface-bright flex justify-between items-center px-gutter w-full border-b border-outline-variant z-40">
+<div class="flex items-center gap-stack-lg">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-surface-container-low border-none rounded-full font-body-sm text-body-sm w-64 focus:ring-2 focus:ring-primary transition-all" placeholder="Search for student or log..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex gap-4 items-center">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">history</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">apps</span>
+</div>
+<div class="h-8 w-[1px] bg-outline-variant"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<div class="text-right hidden sm:block">
+<p class="font-body-sm text-body-sm font-bold text-primary">Sarah Miller</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Reception Lead</p>
+</div>
+<img class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover" data-alt="A professional headshot of a young female office receptionist with a warm, friendly smile, wearing corporate attire in a modern, well-lit global educational consultancy office. The background features blurred glass partitions and soft branding colors of deep navy and bright white, evoking trust and professionalism." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtzZRlehacIA_R7CiCsjnGNoo0o3YE3UOsooiTu60Po2kMVFT_56WMOBJ8m12TSIZnWewl6V2AM43pFlDnwQmcQIoxdj1VVoA0Dchn3BKUx_SM7blMWaXvw64UQJwIH5THQ-jIzdUNTXA4z9yC5lNBPOqSrMPOAS1l5KWyg3b4g2iUFbdZGV7NxI7DqUX6c-Qi61iHFnuSOJfw7iqpYsfAVUSd7OLknrl5q1twEs7WeIgp8R71sBWqiA"/>
+</div>
+</div>
+</header>
+<!-- Page Content: Quick-Log Portal -->
+<div class="mt-16 p-stack-lg flex-grow flex gap-stack-lg overflow-hidden">
+<!-- Left Panel: Fast Entry Form -->
+<div class="flex-[3] flex flex-col gap-stack-lg h-full overflow-y-auto scrollbar-hide">
+<div class="flex items-end justify-between">
+<div>
+<h2 class="font-display-lg text-display-lg text-primary tracking-tight">Quick Log</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">New walk-in or phone inquiry entry</p>
+</div>
+<div class="flex gap-2 bg-surface-container p-1 rounded-lg">
+<button class="px-4 py-2 bg-white shadow-sm rounded-md text-primary font-bold text-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">person</span> Walk-in
+                        </button>
+<button class="px-4 py-2 text-on-surface-variant font-bold text-sm flex items-center gap-2 hover:bg-white/50 rounded-md transition-all">
+<span class="material-symbols-outlined text-sm">call</span> Call
+                        </button>
+</div>
+</div>
+<section class="bg-white border border-outline-variant rounded-xl p-8 custom-shadow relative overflow-hidden">
+<!-- Subtle background element -->
+<div class="absolute -right-20 -top-20 w-64 h-64 bg-primary-container/5 rounded-full blur-3xl"></div>
+<form class="space-y-8 relative z-10" id="quickLogForm">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Student Name -->
+<div class="space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant ml-1">STUDENT FULL NAME</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-4 font-body-md text-body-md focus:border-secondary-container focus:ring-0 transition-all outline-none" placeholder="e.g. Johnathan Doe" type="text"/>
+</div>
+<!-- Contact Number -->
+<div class="space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant ml-1">CONTACT NUMBER</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-4 font-body-md text-body-md focus:border-secondary-container focus:ring-0 transition-all outline-none" placeholder="+1 (555) 000-0000" type="tel"/>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Preferred Destination -->
+<div class="space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant ml-1">INTERESTED DESTINATION</label>
+<select class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-4 font-body-md text-body-md focus:border-secondary-container focus:ring-0 transition-all outline-none appearance-none">
+<option>Select Destination</option>
+<option>United Kingdom</option>
+<option>United States</option>
+<option>Australia</option>
+<option>Canada</option>
+<option>Europe</option>
+</select>
+</div>
+<!-- Inquiry Source -->
+<div class="space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant ml-1">LEVEL OF STUDY</label>
+<select class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-4 font-body-md text-body-md focus:border-secondary-container focus:ring-0 transition-all outline-none appearance-none">
+<option>Undergraduate</option>
+<option>Postgraduate</option>
+<option>PhD / Research</option>
+<option>Foundation</option>
+</select>
+</div>
+</div>
+<!-- Notes/Details -->
+<div class="space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant ml-1">INITIAL INQUIRY NOTES</label>
+<textarea class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-4 font-body-md text-body-md focus:border-secondary-container focus:ring-0 transition-all outline-none resize-none" placeholder="Brief details about student's background, current qualification, or specific university interest..." rows="4"></textarea>
+</div>
+<div class="pt-4">
+<button class="w-full bg-secondary-container hover:bg-secondary text-white font-button text-button py-4 rounded-lg shadow-lg shadow-secondary-container/20 transition-all active:scale-[0.98] flex justify-center items-center gap-2" type="submit">
+<span class="material-symbols-outlined">save</span>
+                                Log Inquiry &amp; Next Steps
+                            </button>
+</div>
+</form>
+</section>
+<!-- Recent Logs Mini-Table -->
+<div class="space-y-4">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant">RECENT ENTRIES TODAY</h3>
+<div class="bg-white border border-outline-variant rounded-xl overflow-hidden custom-shadow">
+<table class="w-full text-left font-body-sm text-body-sm">
+<thead class="bg-surface-container-low border-b border-outline-variant">
+<tr>
+<th class="px-6 py-3 font-bold">NAME</th>
+<th class="px-6 py-3 font-bold">INTEREST</th>
+<th class="px-6 py-3 font-bold">TIME</th>
+<th class="px-6 py-3 font-bold text-right">STATUS</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container-low/50 transition-colors cursor-pointer">
+<td class="px-6 py-4 font-medium text-primary">Arjun Mehta</td>
+<td class="px-6 py-4">Masters (UK)</td>
+<td class="px-6 py-4 text-on-surface-variant">10:45 AM</td>
+<td class="px-6 py-4 text-right">
+<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold uppercase">Assigned</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low/50 transition-colors cursor-pointer">
+<td class="px-6 py-4 font-medium text-primary">Li Wei</td>
+<td class="px-6 py-4">Bachelors (USA)</td>
+<td class="px-6 py-4 text-on-surface-variant">10:12 AM</td>
+<td class="px-6 py-4 text-right">
+<span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-[10px] font-bold uppercase">Pending</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Right Panel: Available Consultants -->
+<div class="flex-[1.5] flex flex-col gap-stack-lg h-full overflow-hidden">
+<div class="flex items-center justify-between">
+<h3 class="font-title-sm text-title-sm text-primary">Available Consultants</h3>
+<span class="bg-secondary-container/10 text-secondary-container px-2 py-1 rounded-full text-[10px] font-extrabold">8 ONLINE</span>
+</div>
+<div class="bg-white border border-outline-variant rounded-xl flex-grow overflow-y-auto scrollbar-hide custom-shadow p-stack-md space-y-4">
+<!-- Consultant Card 1 -->
+<div class="group border border-outline-variant rounded-lg p-4 hover:border-secondary-container hover:bg-surface-container-low transition-all">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img class="w-12 h-12 rounded-full object-cover" data-alt="A focused headshot of an expert male education consultant in a crisp white shirt and navy tie, sitting in a modern office with maps and awards in the background. High-key lighting, bright and professional educational consultancy vibe. The person looks approachable and intelligent." src="https://lh3.googleusercontent.com/aida-public/AB6AXuABgCdt0s5YRHU0cH3083hb7QbRs5QKhCILPc_yQBGyxCYv6SAzE5Rduc-aOoN-BxWiDC0mQTSl7zGkeRH14968pf6t7SssN9_9BFgtbWhwe5fFyaLI9CtJ9pZ8i-AMPowBVBgWIwn7imHC-y7A8_ZTNm8xBQHkItCVSrsPeUDLymtK3Yxc7yQfDtVbtNl_SMjOEM35O7-C6UE2La0YKjMY-reJZ01TV0ysif5WSyUaxYLiHH07U0Br2Q"/>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+</div>
+<div class="flex-grow">
+<h4 class="font-body-md text-body-md font-bold text-primary">Robert Chen</h4>
+<p class="text-[11px] text-on-surface-variant font-medium">Specialty: UK &amp; Canada</p>
+</div>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/30 flex items-center justify-between">
+<div class="flex gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-secondary-container"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-outline-variant"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-outline-variant"></div>
+<span class="text-[10px] text-on-surface-variant ml-1">1 active</span>
+</div>
+<button class="bg-primary text-white font-button text-[12px] px-4 py-1.5 rounded-md hover:bg-secondary-container transition-colors active:scale-95" onclick="handleAssign(this, 'Robert')">
+                                Assign
+                            </button>
+</div>
+</div>
+<!-- Consultant Card 2 -->
+<div class="group border border-outline-variant rounded-lg p-4 hover:border-secondary-container hover:bg-surface-container-low transition-all">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img class="w-12 h-12 rounded-full object-cover" data-alt="A professional headshot of a friendly female education consultant with glasses, wearing a smart grey blazer. She is working in a high-tech office environment with a soft-focus background of digital screens showing university data. The lighting is soft and professional, highlighting a reliable and knowledgeable professional." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDyjMNsKPfjj0xNaCt6vF-0t5hEhr8OJA4Q3RixefP-2_tcRk_GYtRMpmOKU4MQebs_hRo8W7u8bss562TVw5PKJpUMprV6NsIpbzvgMeSYfm08NZFOZXfaLmOVD7urhO2Jg8vj1l1KgK6E1x3dZQHlpEYI9bfvPk5kGcZOSPiDBmuyvDy-pt6E36FboSaKpndROtd05o6lUkN_aH2vzbmxqkHnJoLUHB80PH0ZGHbr1ZqctcEvGwNdiw"/>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+</div>
+<div class="flex-grow">
+<h4 class="font-body-md text-body-md font-bold text-primary">Elena Rodriguez</h4>
+<p class="text-[11px] text-on-surface-variant font-medium">Specialty: Europe &amp; Art</p>
+</div>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/30 flex items-center justify-between">
+<div class="flex gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-outline-variant"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-outline-variant"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-outline-variant"></div>
+<span class="text-[10px] text-on-surface-variant ml-1">0 active</span>
+</div>
+<button class="bg-primary text-white font-button text-[12px] px-4 py-1.5 rounded-md hover:bg-secondary-container transition-colors active:scale-95" onclick="handleAssign(this, 'Elena')">
+                                Assign
+                            </button>
+</div>
+</div>
+<!-- Consultant Card 3 -->
+<div class="group border border-outline-variant rounded-lg p-4 hover:border-secondary-container hover:bg-surface-container-low transition-all">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img class="w-12 h-12 rounded-full object-cover" data-alt="Close-up portrait of a senior male academic consultant with a distinguished grey beard, wearing a professional navy blue suit. The setting is a library-themed office with leather-bound books and warm lighting, creating an atmosphere of deep wisdom and high-level educational guidance for elite institutions." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeuCmzLHdJBFo0LLIW3tbIXESLtS7MAFsbd1B_VjnLnkB_ZBoD_z6_LiC1m_Gfeyhb40TnoeMerr4v-9Kulv9bK0BrLomOFAH6eLQjEY3BLZXcn8omHIrMnieQTVBuozo2FfHb7CO7pcxHcFCjynqv_xM1U4FJI7wkCoJ4CaRTdVBZlLcsiF1NjfyfOMuMi0A1SPY4deqGdDMG6J7vfmcCePEtZjNyZJtyVF1hGoxUKgRawrupor3o5w"/>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+</div>
+<div class="flex-grow">
+<h4 class="font-body-md text-body-md font-bold text-primary">Dr. Samuel Harris</h4>
+<p class="text-[11px] text-on-surface-variant font-medium">Specialty: Ivy League / Research</p>
+</div>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/30 flex items-center justify-between">
+<div class="flex gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-secondary-container"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-secondary-container"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-outline-variant"></div>
+<span class="text-[10px] text-on-surface-variant ml-1">2 active</span>
+</div>
+<button class="bg-primary text-white font-button text-[12px] px-4 py-1.5 rounded-md hover:bg-secondary-container transition-colors active:scale-95" onclick="handleAssign(this, 'Samuel')">
+                                Assign
+                            </button>
+</div>
+</div>
+<!-- Consultant Card 4 -->
+<div class="group border border-outline-variant rounded-lg p-4 hover:border-secondary-container hover:bg-surface-container-low transition-all opacity-75">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img class="w-12 h-12 rounded-full object-cover" data-alt="A portrait of a young, vibrant female education counselor in a bright teal top, smiling cheerfully in a modern, plant-filled office. The sun is streaming through the window, giving a fresh and energetic look to the scene. The image focuses on a friendly, peer-like academic guidance professional." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_sM8LcijYQn3FZCUnKg5zUyTmHc3ZTMkpdL_IKboYBUIMcqXMHCbPH8gsGAHILJfO0WWZRbTXEyTsQY2Xh5yw-eS1pvqqwKmhF5pDqq00S3m4L5HrBPKrCIgcQBD_b5nMgLSd-FdJgf5OPeEbtn48-Xf4xTZzSlL_oxV5-1ru1cUXBBLRhk30ihv5jebfpQWQCm4FVyEkrdydTRZdec6UZxgSr_nSYp-1YskJnUPxWhwl1HaI2-Dcvw"/>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-yellow-500 border-2 border-white rounded-full"></div>
+</div>
+<div class="flex-grow">
+<h4 class="font-body-md text-body-md font-bold text-primary">Maya Patel</h4>
+<p class="text-[11px] text-on-surface-variant font-medium">Specialty: Australia &amp; NZ</p>
+</div>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/30 flex items-center justify-between">
+<div class="flex gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-secondary-container"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-secondary-container"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-secondary-container"></div>
+<span class="text-[10px] text-on-surface-variant ml-1">In Meeting</span>
+</div>
+<button class="bg-surface-dim text-on-surface-variant/50 font-button text-[12px] px-4 py-1.5 rounded-md cursor-not-allowed" disabled="">
+                                Busy
+                            </button>
+</div>
+</div>
+</div>
+<!-- Assignment Status Notification -->
+<div class="hidden animate-in slide-in-from-bottom-2 duration-300 bg-secondary-container text-white p-4 rounded-xl flex items-center gap-3" id="assignmentAlert">
+<span class="material-symbols-outlined">check_circle</span>
+<div>
+<p class="font-bold text-sm">Successfully Assigned!</p>
+<p class="text-[11px] opacity-90">Inquiry transferred to consultant's queue.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+        function handleAssign(btn, name) {
+            // Visual feedback
+            const originalText = btn.innerText;
+            btn.innerText = 'Assigned';
+            btn.classList.replace('bg-primary', 'bg-green-600');
+            btn.disabled = true;
+
+            const alert = document.getElementById('assignmentAlert');
+            alert.classList.remove('hidden');
+            
+            setTimeout(() => {
+                alert.classList.add('hidden');
+                btn.innerText = originalText;
+                btn.classList.replace('bg-green-600', 'bg-primary');
+                btn.disabled = false;
+            }, 3000);
+        }
+
+        // Form submission behavior
+        document.getElementById('quickLogForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalContent = btn.innerHTML;
+            
+            btn.innerHTML = `<span class="animate-spin material-symbols-outlined">sync</span> Saving...`;
+            btn.disabled = true;
+
+            setTimeout(() => {
+                btn.innerHTML = `<span class="material-symbols-outlined">done_all</span> Logged Successfully`;
+                btn.classList.replace('bg-secondary-container', 'bg-green-600');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalContent;
+                    btn.classList.replace('bg-green-600', 'bg-secondary-container');
+                    btn.disabled = false;
+                    e.target.reset();
+                }, 2000);
+            }, 1000);
+        });
+    </script>
+</body></html>

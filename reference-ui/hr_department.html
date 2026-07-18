@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduGlobal CRM - HR Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .fill-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #dfe2e9;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #c6c5cf;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid #E9EDF7;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-fixed": "#e3dfff",
+                      "surface-dim": "#d7dae1",
+                      "on-error": "#ffffff",
+                      "on-secondary": "#ffffff",
+                      "tertiary-container": "#23282f",
+                      "on-secondary-container": "#d3d0ff",
+                      "inverse-on-surface": "#eef1f8",
+                      "secondary": "#2d00de",
+                      "on-primary-fixed-variant": "#3b456c",
+                      "surface-variant": "#dfe2e9",
+                      "primary-fixed": "#dde1ff",
+                      "on-primary-fixed": "#0e193e",
+                      "on-primary": "#ffffff",
+                      "primary": "#050f36",
+                      "on-tertiary-fixed": "#171c23",
+                      "primary-container": "#1b254b",
+                      "secondary-container": "#4631ff",
+                      "error-container": "#ffdad6",
+                      "tertiary-fixed": "#dee2ec",
+                      "surface-container-highest": "#dfe2e9",
+                      "primary-fixed-dim": "#bbc4f4",
+                      "outline": "#76767f",
+                      "error": "#ba1a1a",
+                      "inverse-primary": "#bbc4f4",
+                      "surface-tint": "#535c86",
+                      "on-surface": "#181c21",
+                      "inverse-surface": "#2d3136",
+                      "surface-container-high": "#e5e8ef",
+                      "on-secondary-fixed-variant": "#2f00e5",
+                      "tertiary": "#0f131a",
+                      "outline-variant": "#c6c5cf",
+                      "surface-container-low": "#f1f4fb",
+                      "on-surface-variant": "#45464e",
+                      "on-tertiary": "#ffffff",
+                      "on-background": "#181c21",
+                      "secondary-fixed-dim": "#c3c0ff",
+                      "on-secondary-fixed": "#100069",
+                      "surface-container-lowest": "#ffffff",
+                      "background": "#f7f9ff",
+                      "on-error-container": "#93000a",
+                      "on-tertiary-fixed-variant": "#42474f",
+                      "on-primary-container": "#838db9",
+                      "on-tertiary-container": "#8a8f98",
+                      "tertiary-fixed-dim": "#c2c7d0",
+                      "surface-container": "#ebeef5",
+                      "surface": "#f7f9ff",
+                      "surface-bright": "#f7f9ff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "24px",
+                      "sidebar-collapsed": "80px",
+                      "stack-sm": "8px",
+                      "unit": "4px",
+                      "stack-md": "16px",
+                      "stack-lg": "24px",
+                      "container-margin": "32px",
+                      "sidebar-width": "280px"
+              },
+              "fontFamily": {
+                      "body-md": ["Plus Jakarta Sans"],
+                      "button": ["Plus Jakarta Sans"],
+                      "title-sm": ["Plus Jakarta Sans"],
+                      "label-caps": ["Plus Jakarta Sans"],
+                      "body-sm": ["Plus Jakarta Sans"],
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "display-lg": ["Plus Jakarta Sans"],
+                      "display-lg-mobile": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "body-md": ["16px", {"lineHeight": "26px", "fontWeight": "400"}],
+                      "button": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+                      "title-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                      "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "display-lg-mobile": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen overflow-x-hidden">
+<!-- Side Navigation Shell -->
+<aside class="w-sidebar-width h-screen fixed left-0 top-0 bg-primary dark:bg-primary-container shadow-md flex flex-col h-full py-stack-lg z-50 transition-all duration-200 ease-in-out">
+<div class="px-6 mb-10">
+<h1 class="font-headline-md text-headline-md font-bold text-surface-container-lowest tracking-tight">EduGlobal CRM</h1>
+<p class="text-on-primary-container/60 font-body-sm text-body-sm">Global Hub</p>
+</div>
+<nav class="flex-grow space-y-1">
+<a class="flex items-center px-6 py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="lead_management">stress_management</span>
+                Consultancy
+            </a>
+<a class="flex items-center px-6 py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="assignment_turned_in">assignment_turned_in</span>
+                Admissions
+            </a>
+<a class="flex items-center px-6 py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="desk">desk</span>
+                Reception
+            </a>
+<a class="flex items-center px-6 py-3 border-l-4 border-secondary-container bg-surface-container-highest/10 text-secondary-fixed font-bold" href="#">
+<span class="material-symbols-outlined mr-3 fill-icon" data-icon="badge" style="font-variation-settings: 'FILL' 1;">badge</span>
+                Human Resources
+            </a>
+<a class="flex items-center px-6 py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="payments">payments</span>
+                Finance
+            </a>
+<a class="flex items-center px-6 py-3 text-on-primary-container/70 font-medium hover:bg-surface-container-highest/5 hover:text-secondary-fixed transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="analytics">analytics</span>
+                Admin Panel
+            </a>
+</nav>
+<div class="px-6 mb-8">
+<button class="w-full py-3 bg-secondary-container text-white font-button text-button rounded-xl shadow-lg hover:scale-[1.02] transition-transform active:scale-95">
+                New Application
+            </button>
+</div>
+<div class="mt-auto border-t border-white/10 pt-4 space-y-1">
+<a class="flex items-center px-6 py-3 text-on-primary-container/70 font-medium hover:text-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="settings">settings</span>
+                Settings
+            </a>
+<a class="flex items-center px-6 py-3 text-on-primary-container/70 font-medium hover:text-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="help">help</span>
+                Support
+            </a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-sidebar-width min-h-screen transition-all">
+<!-- Top Navigation Shell -->
+<header class="h-16 fixed top-0 right-0 left-sidebar-width bg-surface border-b border-outline-variant flex justify-between items-center px-gutter z-40">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full pl-10 pr-4 py-2 text-body-sm focus:ring-2 focus:ring-secondary/20 outline-none" placeholder="Search employees, performance..." type="text"/>
+</div>
+<div class="flex items-center gap-6 ml-8">
+<a class="text-on-surface-variant font-medium hover:text-secondary-container transition-colors" href="#">Dashboard</a>
+<a class="text-secondary font-bold border-b-2 border-secondary pb-1" href="#">Reports</a>
+<a class="text-on-surface-variant font-medium hover:text-secondary-container transition-colors" href="#">Calendar</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-3 mr-4">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container rounded-full relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container rounded-full">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+</button>
+</div>
+<button class="bg-primary-container text-white px-5 py-2 rounded-lg font-button text-button flex items-center gap-2 hover:bg-primary transition-colors">
+<span class="material-symbols-outlined text-sm">add</span>
+                    Create New
+                </button>
+<div class="w-10 h-10 rounded-full border-2 border-secondary/20 overflow-hidden cursor-pointer active:scale-95 transition-transform">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a senior HR manager in a bright, modern corporate office. The manager is wearing a stylish dark navy blazer over a crisp white shirt, exuding confidence and approachability. The background is softly blurred, showing hints of an upscale educational consultancy office with glass walls and minimalist furniture in a clean light-mode aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCj80crN_akfWi0MXmxZO6s6VJly75c2DFfNNE7uPRzD6m7kQgBi2StKD6cnumqsALi9oJC7b3S-QxG7GpaP8lHPtrhCTZ3JMobUx1EW4sA60CHOEDi3JzZfxbA7sq206v1cDjdpufg50mjQ6Yf0YoN9cr4wapskWK1IKSLb8ZwopF1HsYQS8xKh5knVOa4iTc0ruCpy5yA_vERo_eEKDg-RXb5uhnHOCw6CVPSx5gBHiJonsc32ZGkag"/>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<section class="pt-24 px-container-margin pb-10">
+<!-- Page Header & Stats -->
+<div class="flex flex-col md:flex-row justify-between items-end mb-8 gap-6">
+<div>
+<h2 class="font-display-lg text-display-lg text-primary mb-1">Human Resources</h2>
+<p class="text-on-surface-variant">Managing 48 consultants across 4 global regions.</p>
+</div>
+<div class="flex gap-4">
+<div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl flex items-center gap-4 min-w-[160px] shadow-sm">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+</div>
+<div>
+<p class="text-label-caps font-label-caps text-on-surface-variant uppercase">Staff Present</p>
+<p class="text-headline-md font-headline-md text-primary leading-none">42<span class="text-body-sm font-normal text-on-surface-variant ml-1">/48</span></p>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl flex items-center gap-4 min-w-[160px] shadow-sm">
+<div class="w-10 h-10 rounded-full bg-error-container flex items-center justify-center text-error">
+<span class="material-symbols-outlined" data-icon="pending_actions">pending_actions</span>
+</div>
+<div>
+<p class="text-label-caps font-label-caps text-on-surface-variant uppercase">On Leave</p>
+<p class="text-headline-md font-headline-md text-primary leading-none">6</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Bento Layout Content -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Attendance Log & Performance Table (LHS) -->
+<div class="col-span-12 lg:col-span-8 space-y-6">
+<!-- Performance Metrics Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-title-sm text-title-sm text-primary">Top Performing Consultants</h3>
+<button class="text-secondary font-button text-button flex items-center gap-1 hover:underline">
+                                View Full Analytics <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="border-b border-outline-variant">
+<th class="pb-4 text-label-caps font-label-caps text-on-surface-variant">CONSULTANT</th>
+<th class="pb-4 text-label-caps font-label-caps text-on-surface-variant">STUDENT PIPELINE</th>
+<th class="pb-4 text-label-caps font-label-caps text-on-surface-variant">CONVERSION RATE</th>
+<th class="pb-4 text-label-caps font-label-caps text-on-surface-variant">STATUS</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-variant">
+<img class="w-full h-full object-cover" data-alt="A close-up professional portrait of a female education consultant in her early 30s. She is smiling warmly, wearing a modern charcoal grey suit. The lighting is soft and professional, set against a bright, airy office background with subtle blue accents reflecting a high-performance CRM environment style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBU5EVolc3p9ufZtxP4UuamWJUfls_-5Cgk5lJ699HMSeIzqkIU8GQLckeo9pWiLbG5UCZDaIbTD4B-NfEhPWj_4SGWLJG8HkFt0Iom5qJzssrrZibIEjx-ObPUDJ51T8QzT-JgHTYnQqfNZm0Oop_lbXSYVo1_TPMkZRoxmfkRuyiRRQsYAwi3vvkr61-7ez3nxQGOldzvr7NPJAI3uJnRiSZLoni74HCofeCekeEuZFo56_ZcHuSnew"/>
+</div>
+<div>
+<p class="font-semibold text-primary">Sarah Jenkins</p>
+<p class="text-body-sm text-on-surface-variant">Senior Advisor</p>
+</div>
+</div>
+</td>
+<td class="py-4">
+<div class="w-full max-w-[120px] h-2 bg-surface-variant rounded-full overflow-hidden">
+<div class="bg-secondary-container h-full w-[85%] rounded-full"></div>
+</div>
+<p class="text-body-sm text-on-surface-variant mt-1">142 Active Leads</p>
+</td>
+<td class="py-4 font-bold text-primary">
+                                            24.8% <span class="text-xs text-green-600 font-normal ml-1">↑ 2%</span>
+</td>
+<td class="py-4">
+<span class="px-3 py-1 rounded-full bg-secondary-fixed text-secondary text-xs font-bold uppercase tracking-wider">Top Tier</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-variant">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a young male consultant, around 28 years old, wearing a smart-casual light blue shirt. He has an intelligent and friendly expression. The photograph is shot with a shallow depth of field in a contemporary office setting with clean lines and a palette of whites and corporate blues." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBIicvZonOyrB7hghtLpd3ME1jMilfhCXLwqwBnzS-Ib9Wpbo3x3B_tqbgS9zbB_glvuMBTtQBhfAxbZFUGfNYql7bbb1p2W2E2f-QXzPXZJQEnIgUTuMcK-t3fZI-1opoDdqjQAHYELwzRblnUD-NCwrWT1gOCSqZUDRLxgOkfxH0f4oo3TjyMbn2Y9_Dte0mLAsBDX-T4FCDwWaUrQ-b9baVuW34Y5A69AGuJ70G5fcpsnmUdQYjymw"/>
+</div>
+<div>
+<p class="font-semibold text-primary">Marcus Thorne</p>
+<p class="text-body-sm text-on-surface-variant">European Specialist</p>
+</div>
+</div>
+</td>
+<td class="py-4">
+<div class="w-full max-w-[120px] h-2 bg-surface-variant rounded-full overflow-hidden">
+<div class="bg-secondary-container h-full w-[72%] rounded-full"></div>
+</div>
+<p class="text-body-sm text-on-surface-variant mt-1">98 Active Leads</p>
+</td>
+<td class="py-4 font-bold text-primary">
+                                            21.2% <span class="text-xs text-green-600 font-normal ml-1">↑ 0.5%</span>
+</td>
+<td class="py-4">
+<span class="px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-xs font-bold uppercase tracking-wider">Advised</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-variant">
+<img class="w-full h-full object-cover" data-alt="A portrait of a mature female consultant with an air of authority and grace. She wears elegant business attire and a subtle necklace. The environment is a sophisticated office with polished surfaces and natural lighting, embodying a minimalist yet warm professional brand aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTXRH4FcDA0whKmCQm-Rymoj7Ep5CKrQuCpg-F1Vz8UeQcWzVFi5FSQe_A4c7_zwL2JOHZswkPVfGwb4fuXdbv5cvzqqXpmlA9P9ZWrXO1xbR02LWJHyyIgifHTavnaB78myPygDNTRVj75n-k84RxAJICv8Ypi1gFUhwmt6i_aKtfZJ-7i6j3gQyjLqlRkyrjm2tLbC0vb60rP65D3vurI1INbS1du3zlqpo8Zh8QUaeCpxDKZ-Pxdg"/>
+</div>
+<div>
+<p class="font-semibold text-primary">Elena Rodriguez</p>
+<p class="text-body-sm text-on-surface-variant">PhD Admissions</p>
+</div>
+</div>
+</td>
+<td class="py-4">
+<div class="w-full max-w-[120px] h-2 bg-surface-variant rounded-full overflow-hidden">
+<div class="bg-secondary-container h-full w-[65%] rounded-full"></div>
+</div>
+<p class="text-body-sm text-on-surface-variant mt-1">76 Active Leads</p>
+</td>
+<td class="py-4 font-bold text-primary">
+                                            19.5% <span class="text-xs text-error font-normal ml-1">↓ 1.2%</span>
+</td>
+<td class="py-4">
+<span class="px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-xs font-bold uppercase tracking-wider">Stable</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Attendance Insights (Visual Micro-interactions) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="bg-primary-container text-white p-6 rounded-xl shadow-lg relative overflow-hidden group">
+<div class="relative z-10">
+<h4 class="font-title-sm text-title-sm mb-4">Daily Attendance Health</h4>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-bold">96.4%</span>
+<span class="text-secondary-fixed text-sm">Target: 95%</span>
+</div>
+<div class="mt-6 flex gap-1 h-8">
+<div class="flex-1 bg-secondary-container rounded-sm h-full hover:scale-y-110 transition-transform origin-bottom cursor-pointer" title="Monday: 98%"></div>
+<div class="flex-1 bg-secondary-container/80 rounded-sm h-[90%] hover:scale-y-110 transition-transform origin-bottom cursor-pointer" title="Tuesday: 92%"></div>
+<div class="flex-1 bg-secondary-container rounded-sm h-[95%] hover:scale-y-110 transition-transform origin-bottom cursor-pointer" title="Wednesday: 95%"></div>
+<div class="flex-1 bg-secondary-container rounded-sm h-full hover:scale-y-110 transition-transform origin-bottom cursor-pointer" title="Thursday: 99%"></div>
+<div class="flex-1 bg-white rounded-sm h-[96%] hover:scale-y-110 transition-transform origin-bottom cursor-pointer" title="Today: 96%"></div>
+</div>
+<p class="text-on-primary-container text-xs mt-4">Calculated across all departments today.</p>
+</div>
+<!-- Subtle background pulse animation -->
+<div class="absolute -right-10 -bottom-10 w-40 h-40 bg-secondary rounded-full opacity-10 blur-3xl group-hover:scale-125 transition-transform duration-1000"></div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl shadow-sm flex flex-col justify-between">
+<div>
+<h4 class="font-title-sm text-title-sm text-primary mb-2">Internal Training Status</h4>
+<p class="text-body-sm text-on-surface-variant">12 consultants currently undergoing "Global Visa Protocol" certification.</p>
+</div>
+<div class="mt-6">
+<div class="flex justify-between text-xs font-bold text-on-surface-variant mb-2">
+<span>PROGRESS</span>
+<span>84% COMPLETE</span>
+</div>
+<div class="h-3 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-secondary-container h-full w-[84%]" id="trainingBar"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Employee Profiles Feed & Status (RHS) -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm h-full">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-title-sm text-title-sm text-primary">Employee Status</h3>
+<div class="flex bg-surface-container rounded-lg p-1">
+<button class="px-3 py-1 bg-white shadow-sm rounded-md text-xs font-bold text-secondary">ALL</button>
+<button class="px-3 py-1 text-xs font-bold text-on-surface-variant hover:text-primary transition-colors">LEAVE</button>
+</div>
+</div>
+<div class="space-y-4">
+<!-- Employee Status Item -->
+<div class="flex items-center gap-4 p-3 hover:bg-surface-container-low rounded-xl transition-all border border-transparent hover:border-outline-variant group">
+<div class="relative">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm">
+<img class="w-full h-full object-cover" data-alt="Close up of a friendly male education consultant with glasses and a professional demeanor, wearing a light grey sweater. He is in a brightly lit modern office with blurred plants in the background, consistent with a clean, high-end corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4UQZttYbjmBWjFK69w43ZsojMXORGrK_K7l6x4_ZbSFpPw-WzytlomUMY2d4tf93lkIdBwkPsUyiPtKlEqGT5kUc2ijpC4TwKF1gqGzu3lXqNUTKMTr2XvD27YW1iO092kNmR9NQ6xZtydm78F9zqZlw3bnVihHDwLM-k50IH3ZQHgH8sXfvEi77bHSSZhyoJiOJBdX4f5x0XQHz4LfSngoj4bEypAN9mta5bUo2zHogs9bEwrCtJow"/>
+</div>
+<div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full" title="Present"></div>
+</div>
+<div class="flex-1">
+<h5 class="font-semibold text-primary leading-tight">David Cohen</h5>
+<p class="text-xs text-on-surface-variant">In a Meeting</p>
+</div>
+<div class="text-right">
+<span class="text-[10px] font-bold text-on-surface-variant block uppercase">Checked In</span>
+<span class="text-xs font-semibold text-primary">08:45 AM</span>
+</div>
+</div>
+<div class="flex items-center gap-4 p-3 hover:bg-surface-container-low rounded-xl transition-all border border-transparent hover:border-outline-variant group">
+<div class="relative">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm">
+<img class="w-full h-full object-cover" data-alt="Professional portrait of a young female consultant with dark curly hair and a joyful expression, wearing a vibrant blue blazer. The shot is well-lit in a minimalist, modern educational hub environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQK2GTJmMrhqG_UF2onKH24bxb1jgkPZfgnqUVuAQ9WrJ7cUPQF22YyDu8Pir0pLGLTNkrUdhlTwaO6AF9s5Zr86l1Idnue3a9-ysVHIow-aXXm5_l5lfFMK4J3JH8qHjn-7NfW8I2fSFMVIQU_V5Z4lbBozLEE0tzdHEUg409kPEToyXphbB4tMNrCHzMpeqjUKg5v7jPG3q1dAi_ENBmhJpFZENtF3ZIs9ownSdjMgZDTaoGQ51lFQ"/>
+</div>
+<div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full" title="Present"></div>
+</div>
+<div class="flex-1">
+<h5 class="font-semibold text-primary leading-tight">Lara Smith</h5>
+<p class="text-xs text-on-surface-variant">Available</p>
+</div>
+<div class="text-right">
+<span class="text-[10px] font-bold text-on-surface-variant block uppercase">Checked In</span>
+<span class="text-xs font-semibold text-primary">09:12 AM</span>
+</div>
+</div>
+<div class="flex items-center gap-4 p-3 hover:bg-surface-container-low rounded-xl transition-all border border-transparent hover:border-outline-variant group grayscale-[0.6]">
+<div class="relative">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm">
+<img class="w-full h-full object-cover" data-alt="A portrait of a male consultant in a professional attire, with a calm expression. He is wearing a classic white shirt and dark vest. The background is a minimalist corporate workspace with soft lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQyQHXMPlwppyaO4meknd4VExY6y-zy7Vj0kJUrlNoA-7ps2cNd1pNLGoFdXTG7HQ91CW6tc2gP7HnwVF9iXqpg19tISRNaAwmyyYPP22x1tLXjRc2vP-zRqf8mmD6xStoWXn05kJQehoEuYRg52NHotmbviD6csi40dPoIUxtS-y1iTH6a4iaeGfmBnli_yNfQKXvXAANg_St2Iba3TgxnKlp5V_sbCN--dGKd1kUSIAKWhUdRNU1uA"/>
+</div>
+<div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-surface-dim border-2 border-white rounded-full" title="On Leave"></div>
+</div>
+<div class="flex-1">
+<h5 class="font-semibold text-primary leading-tight">Simon K.</h5>
+<p class="text-xs text-error font-medium">On Sick Leave</p>
+</div>
+<div class="text-right">
+<span class="text-[10px] font-bold text-on-surface-variant block uppercase">Expected</span>
+<span class="text-xs font-semibold text-on-surface-variant">Mon, 24th</span>
+</div>
+</div>
+<div class="flex items-center gap-4 p-3 hover:bg-surface-container-low rounded-xl transition-all border border-transparent hover:border-outline-variant group">
+<div class="relative">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm">
+<img class="w-full h-full object-cover" data-alt="A smiling female professional in business casual wear, against a light-filled office interior. She represents a cheerful and diligent consultant in an international educational environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvLeAmfS7CXfs-WKlXdE4uBz8BTU4DDTbE8xe7JV2FWO7IIRyR_MifWfrKydJ7f1voQ4rEviv4HOtIzeslkrLD6vRCC0t7yHNmukhcYPvBdf8t_dxgwfIyrZ5tpJBOAT-y-fm_jNE4rH4Z_uqsq1wXHqn1gTITpNeXJ3vpuR0mCEizYL3fTJQczdhsVWkjUfhLTc6--8EJsho8-QaFLmKVoEQ2hhN8yIoG6YTRh3W_LFvPBlByNW5IZQ"/>
+</div>
+<div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full" title="Present"></div>
+</div>
+<div class="flex-1">
+<h5 class="font-semibold text-primary leading-tight">Yuki Tanaka</h5>
+<p class="text-xs text-on-surface-variant">Available</p>
+</div>
+<div class="text-right">
+<span class="text-[10px] font-bold text-on-surface-variant block uppercase">Checked In</span>
+<span class="text-xs font-semibold text-primary">08:30 AM</span>
+</div>
+</div>
+<div class="flex items-center gap-4 p-3 hover:bg-surface-container-low rounded-xl transition-all border border-transparent hover:border-outline-variant group">
+<div class="relative">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm">
+<img class="w-full h-full object-cover" data-alt="Close-up of a middle-aged male executive in a formal navy suit, exuding authority and experience. Professional corporate lighting in a sleek modern office setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0pFyX_YcLeF6dsnsKGN1dHvccHAuk_v5M3iyLb3B88ogwoJC5A6sa2JrYt_J0H3k9RqVTwJRaqunqjInw84F16o41yJXfG5p5a4NrQk5LtL84Hko4yJwWYo11SEtsmO10hthifGflphvLqVCd-di9xp-NUNXaTjvIBV2t8kFRz5Ja6f5k5owiOxhMfKzuIEoPu3li2BneyzGBUKrEFx6a32iYeGRIa8Ew7ct5kw40YizDOPuSb1vEwg"/>
+</div>
+<div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full" title="Present"></div>
+</div>
+<div class="flex-1">
+<h5 class="font-semibold text-primary leading-tight">Chris Walters</h5>
+<p class="text-xs text-on-surface-variant">Busy</p>
+</div>
+<div class="text-right">
+<span class="text-[10px] font-bold text-on-surface-variant block uppercase">Checked In</span>
+<span class="text-xs font-semibold text-primary">07:55 AM</span>
+</div>
+</div>
+</div>
+<button class="w-full mt-8 py-3 border border-outline-variant text-on-surface-variant font-button text-button rounded-xl hover:bg-surface-container transition-colors">
+                            View All Logs
+                        </button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<script>
+        // Simple micro-interaction for the training progress bar
+        window.addEventListener('DOMContentLoaded', () => {
+            const bar = document.getElementById('trainingBar');
+            bar.style.width = '0%';
+            setTimeout(() => {
+                bar.style.transition = 'width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                bar.style.width = '84%';
+            }, 500);
+
+            // Adding hover lift effect to cards
+            document.querySelectorAll('.bg-surface-container-lowest').forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    card.style.transform = 'translateY(-2px)';
+                    card.style.transition = 'transform 0.2s ease, box-shadow 0.2s ease';
+                    card.classList.add('shadow-md');
+                });
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = 'translateY(0px)';
+                    card.classList.remove('shadow-md');
+                });
+            });
+        });
+    </script>
+</body></html>
