@@ -48,8 +48,9 @@ crm-files
 JWT_SECRET=...
 TOKEN_ENCRYPTION_KEY=...
 CLIENT_ORIGIN=https://your-frontend.vercel.app
-SUPABASE_URL=...
+SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_DB_SCHEMA=public
 SUPABASE_DB_TABLE=app_state
 SUPABASE_DB_ROW_ID=default
 SUPABASE_STORAGE_BUCKET=crm-files
@@ -61,6 +62,8 @@ META_GRAPH_API_VERSION=v22.0
 META_REDIRECT_URI=https://your-render-backend.onrender.com/api/integrations/meta/oauth/callback
 META_WEBHOOK_URL=https://your-render-backend.onrender.com/api/integrations/meta/webhook
 ```
+
+مهم: استخدم رابط المشروع الأساسي في `SUPABASE_URL` مثل `https://your-project-ref.supabase.co` وليس رابط `.../rest/v1` إن أمكن. وإذا كان الجدول داخل schema مخصص، غيّر `SUPABASE_DB_SCHEMA` بدل `public`.
 
 Render يوفّر متغيرات بيئة افتراضية مثل `RENDER=true` تلقائيًا. المصدر:
 - https://render.com/docs/environment-variables

@@ -4,18 +4,27 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataFile = path.join(__dirname, '..', 'data', 'db.json');
-const supabaseUrl = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
+const supabaseUrl = normalizeSupabaseUrl(process.env.SUPABASE_URL);
 const supabaseServiceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '');
 const supabaseDbTable = String(process.env.SUPABASE_DB_TABLE || 'app_state').trim() || 'app_state';
 const supabaseDbRowId = String(process.env.SUPABASE_DB_ROW_ID || 'default').trim() || 'default';
+const supabaseDbSchema = String(process.env.SUPABASE_DB_SCHEMA || 'public').trim() || 'public';
 const useSupabase = Boolean(supabaseUrl && supabaseServiceRoleKey);
 let queue = Promise.resolve();
+
+function normalizeSupabaseUrl(value) {
+  const raw = String(value || '').trim().replace(/\/+$/, '');
+  if (!raw) return '';
+  return raw.replace(/\/rest\/v1$/i, '');
+}
 
 function supabaseHeaders(extra = {}) {
   return {
     apikey: supabaseServiceRoleKey,
     Authorization: `Bearer ${supabaseServiceRoleKey}`,
     'Content-Type': 'application/json',
+    'Accept-Profile': supabaseDbSchema,
+    'Content-Profile': supabaseDbSchema,
     ...extra
   };
 }
@@ -43,7 +52,7 @@ async function readSupabaseDb() {
   );
 
   if (!response.ok) {
-    throw new Error(`Supabase read failed: ${response.status} ${response.statusText}`);
+    throw new Error(await buildSupabaseErrorMessage('read', response));
   }
 
   const rows = await response.json();
@@ -76,10 +85,28 @@ async function writeSupabaseDb(data) {
   );
 
   if (!response.ok) {
-    throw new Error(`Supabase write failed: ${response.status} ${response.statusText}`);
+    throw new Error(await buildSupabaseErrorMessage('write', response));
   }
 
   return data;
+}
+
+async function buildSupabaseErrorMessage(action, response) {
+  let details = '';
+
+  try {
+    const payload = await response.json();
+    details = payload?.message || payload?.error_description || payload?.hint || '';
+  } catch {
+    details = '';
+  }
+
+  if (response.status === 404) {
+    const endpoint = supabaseDbEndpoint();
+    return `Supabase ${action} failed: 404 Not Found. Check SUPABASE_URL (${supabaseUrl}) and ensure table ${supabaseDbSchema}.${supabaseDbTable} exists. If you pasted a URL ending with /rest/v1, it is supported now, but the base project URL is preferred. Endpoint: ${endpoint}${details ? ` | ${details}` : ''}`;
+  }
+
+  return `Supabase ${action} failed: ${response.status} ${response.statusText}${details ? ` | ${details}` : ''}`;
 }
 
 export async function readDb() {
