@@ -901,6 +901,27 @@ function buildAutomaticTasks(db, companyId) {
 async function prepareDb() {
   await mutateDb(async db => {
     initMetaCollections(db);
+    db.users ||= [];
+    db.employees ||= [];
+    db.leads ||= [];
+    db.students ||= [];
+    db.applications ||= [];
+    db.receptionLogs ||= [];
+    db.attendance ||= [];
+    db.invoices ||= [];
+    db.payments ||= [];
+    db.activities ||= [];
+    db.monthlyRevenue ||= [];
+    db.settings ||= {
+      companyName: 'EduGlobal CRM',
+      workspace: 'Global Hub',
+      currency: 'USD',
+      pipelineStages: [],
+      applicationStatuses: [],
+      documentTypes: [],
+      documentChecklistTemplates: [],
+      applicationWorkflowTemplates: []
+    };
     db.companies ||= [{
       id: defaultCompanyId,
       name: companyNameFromSettings(db),

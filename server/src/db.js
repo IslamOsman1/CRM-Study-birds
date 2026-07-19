@@ -38,6 +38,19 @@ async function readFileDb() {
   return JSON.parse(raw);
 }
 
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isValidAppDbShape(value) {
+  return isPlainObject(value)
+    && Array.isArray(value.users)
+    && Array.isArray(value.leads)
+    && Array.isArray(value.students)
+    && Array.isArray(value.applications)
+    && isPlainObject(value.settings);
+}
+
 async function writeFileDb(data) {
   const temp = `${dataFile}.tmp`;
   await fs.writeFile(temp, JSON.stringify(data, null, 2));
@@ -56,7 +69,7 @@ async function readSupabaseDb() {
   }
 
   const rows = await response.json();
-  if (rows[0]?.payload) return rows[0].payload;
+  if (isValidAppDbShape(rows[0]?.payload)) return rows[0].payload;
 
   try {
     const seeded = await readFileDb();
