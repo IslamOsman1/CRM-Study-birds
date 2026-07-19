@@ -3,7 +3,7 @@ services:
     name: eduglobal-crm-api
     runtime: node
     rootDir: server
-    buildCommand: npm install
+    buildCommand: npm ci
     startCommand: npm start
     autoDeploy: true
     healthCheckPath: /api/health
