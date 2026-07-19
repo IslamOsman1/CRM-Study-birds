@@ -10,6 +10,9 @@ create table if not exists public.app_state (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+grant usage on schema public to service_role;
+grant select, insert, update, delete on table public.app_state to service_role;
+
 create or replace function public.set_app_state_updated_at()
 returns trigger
 language plpgsql

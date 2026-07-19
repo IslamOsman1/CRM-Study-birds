@@ -17,6 +17,7 @@
 - إنشاء السجل الافتراضي `default`
 - إنشاء bucket عام باسم `crm-files`
 - ضبط حد رفع 12MB وأنواع الملفات الأساسية
+- منح `service_role` صلاحيات REST اللازمة على `public.app_state`
 
 إذا رغبت بالتنفيذ اليدوي فقط، فهذا الحد الأدنى:
 
@@ -73,6 +74,7 @@ META_WEBHOOK_URL=https://your-render-backend.onrender.com/api/integrations/meta/
 ```
 
 مهم: استخدم رابط المشروع الأساسي في `SUPABASE_URL` مثل `https://your-project-ref.supabase.co` وليس رابط `.../rest/v1` إن أمكن. وإذا كان الجدول داخل schema مخصص، غيّر `SUPABASE_DB_SCHEMA` بدل `public`.
+إذا كنت قد نفذت نسخة أقدم من ملف SQL قبل 19 يوليو 2026، أعد تنفيذ الملف الحالي مرة أخرى حتى تُطبَّق أوامر `grant` الجديدة.
 
 Render يوفّر متغيرات بيئة افتراضية مثل `RENDER=true` تلقائيًا. المصدر:
 - https://render.com/docs/environment-variables
