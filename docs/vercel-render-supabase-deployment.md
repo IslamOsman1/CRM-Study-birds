@@ -9,7 +9,16 @@
 
 ## 1. Supabase
 
-أنشئ جدول حالة التطبيق:
+يوجد ملف جاهز للتنفيذ داخل المشروع: [supabase/bootstrap.sql](/D:/international-educational/eduglobal-crm/supabase/bootstrap.sql)
+
+نفّذه مرة واحدة من داخل `Supabase SQL Editor`، وهو يقوم بـ:
+
+- إنشاء جدول `public.app_state`
+- إنشاء السجل الافتراضي `default`
+- إنشاء bucket عام باسم `crm-files`
+- ضبط حد رفع 12MB وأنواع الملفات الأساسية
+
+إذا رغبت بالتنفيذ اليدوي فقط، فهذا الحد الأدنى:
 
 ```sql
 create table if not exists public.app_state (
