@@ -85,6 +85,12 @@ Render يوفّر متغيرات بيئة افتراضية مثل `RENDER=true` 
 ## 3. Frontend على Vercel
 
 ملف [vercel.json](/D:/international-educational/eduglobal-crm/vercel.json) أصبح مخصصًا للواجهة فقط.
+ويوجد أيضًا ملف [client/vercel.json](/D:/international-educational/eduglobal-crm/client/vercel.json) لحالة كون `Root Directory` في Vercel مضبوطًا على `client`.
+
+أفضل إعدادين صالحين:
+
+- إما `Root Directory` = جذر المشروع مع `buildCommand` من [vercel.json](/D:/international-educational/eduglobal-crm/vercel.json)
+- أو `Root Directory` = `client` وسيستخدم Vercel ملف [client/vercel.json](/D:/international-educational/eduglobal-crm/client/vercel.json)
 
 أضف في Vercel:
 
