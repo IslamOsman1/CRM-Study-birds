@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AlarmClockCheck, BellRing, CheckCheck, CircleAlert, Plus, Search, Trash2 } from 'lucide-react';
 import { api, formatDate } from '../api.js';
 import { Badge, Button, Card, Field, Modal, Spinner, Toast } from '../components/UI.jsx';
@@ -16,6 +17,7 @@ const blankTask = {
 
 export default function TasksPage() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -33,13 +35,15 @@ export default function TasksPage() {
     load();
   }, []);
 
+  const initialKindFilter = searchParams.get('kind') || '';
+
   const filtered = useMemo(
     () =>
       tasks.filter(task =>
         [task.title, task.description, task.source, task.assignedRole, task.priority, task.status]
           .some(value => String(value || '').toLowerCase().includes(query.toLowerCase()))
-      ),
-    [tasks, query]
+      ).filter(task => !initialKindFilter || task.kind === initialKindFilter),
+    [initialKindFilter, tasks, query]
   );
 
   const alerts = filtered.filter(task => task.kind === 'alert');

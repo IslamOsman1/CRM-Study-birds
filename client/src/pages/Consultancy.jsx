@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   CalendarClock,
   CircleAlert,
@@ -58,6 +59,13 @@ const blank = {
   notes: ''
 };
 
+const filterBlank = {
+  consultantId: '',
+  priority: '',
+  targetCountry: '',
+  overdueOnly: false
+};
+
 function toDateTimeLocalValue(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -85,6 +93,7 @@ function whatsappLink(phone) {
 
 export default function Consultancy() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [leads, setLeads] = useState([]);
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -97,6 +106,9 @@ export default function Consultancy() {
   const [followUpValue, setFollowUpValue] = useState('');
   const [editingLead, setEditingLead] = useState(null);
   const [followUpLead, setFollowUpLead] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState(filterBlank);
+  const [focusedStage, setFocusedStage] = useState('');
   const [toast, setToast] = useState(null);
 
   const canCreateLead = can(user.role, 'createLead');
@@ -121,8 +133,8 @@ export default function Consultancy() {
   const stages = settings?.pipelineStages || [];
   const shown = useMemo(
     () =>
-      leads.filter(lead =>
-        [
+      leads.filter(lead => {
+        const matchesSearch = [
           lead.name,
           lead.phone,
           lead.email,
@@ -134,10 +146,27 @@ export default function Consultancy() {
           lead.budget,
           lead.currentLevel,
           lead.lostReason
-        ].some(value => String(value || '').toLowerCase().includes(search.toLowerCase()))
-      ),
-    [leads, search]
+        ].some(value => String(value || '').toLowerCase().includes(search.toLowerCase()));
+
+        const matchesConsultant = !filters.consultantId || lead.consultantId === filters.consultantId;
+        const matchesPriority = !filters.priority || lead.priority === filters.priority;
+        const matchesCountry = !filters.targetCountry || (lead.targetCountry || lead.country) === filters.targetCountry;
+        const matchesOverdue = !filters.overdueOnly || isOverdue(lead);
+        const matchesFocusedStage = !focusedStage || lead.stage === focusedStage;
+
+        return matchesSearch && matchesConsultant && matchesPriority && matchesCountry && matchesOverdue && matchesFocusedStage;
+      }),
+    [filters.consultantId, filters.overdueOnly, filters.priority, filters.targetCountry, focusedStage, leads, search]
   );
+
+  useEffect(() => {
+    const leadId = searchParams.get('leadId');
+    if (!leadId || !leads.length) return;
+    const target = leads.find(item => item.id === leadId);
+    if (!target) return;
+    setSearch(target.name || '');
+    if (target.stage) setFocusedStage(target.stage);
+  }, [leads, searchParams]);
 
   const move = async (id, stage) => {
     try {
@@ -248,6 +277,8 @@ export default function Consultancy() {
 
   if (loading) return <div className="loading-page"><Spinner />جارٍ تحميل مسار العملاء...</div>;
 
+  const activeFiltersCount = Number(Boolean(filters.consultantId)) + Number(Boolean(filters.priority)) + Number(Boolean(filters.targetCountry)) + Number(Boolean(filters.overdueOnly)) + Number(Boolean(focusedStage));
+
   return (
     <>
       <div className="toolbar">
@@ -256,13 +287,13 @@ export default function Consultancy() {
           <input value={search} onChange={event => setSearch(event.target.value)} placeholder="ابحث داخل مسار الاستشارات..." />
         </div>
         <div className="toolbar-right">
-          <Button variant="secondary" type="button"><SlidersHorizontal /> تصفية</Button>
+          <Button variant="secondary" onClick={() => setFiltersOpen(true)} type="button"><SlidersHorizontal /> تصفية {activeFiltersCount ? `(${activeFiltersCount})` : ''}</Button>
           {canCreateLead && <Button onClick={() => setOpen(true)} type="button"><Plus /> عميل جديد</Button>}
         </div>
       </div>
 
       <div className="pipeline-board">
-        {stages.map(stage => (
+        {stages.filter(stage => !focusedStage || stage === focusedStage).map(stage => (
           <section
             className="kanban-column"
             key={stage}
@@ -275,7 +306,21 @@ export default function Consultancy() {
                 <strong>{tr(stage)}</strong>
                 <span>{shown.filter(lead => lead.stage === stage).length}</span>
               </div>
-              <button type="button">...</button>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextStage = focusedStage === stage ? '' : stage;
+                  setFocusedStage(nextStage);
+                  setSearchParams(current => {
+                    const next = new URLSearchParams(current);
+                    next.delete('leadId');
+                    return next;
+                  });
+                }}
+                title={focusedStage === stage ? 'إظهار كل المراحل' : 'التركيز على هذه المرحلة'}
+              >
+                {focusedStage === stage ? 'الكل' : '...'}
+              </button>
             </header>
 
             <div className="kanban-stack">
@@ -356,6 +401,52 @@ export default function Consultancy() {
           </section>
         ))}
       </div>
+
+      <Modal open={filtersOpen} onClose={() => setFiltersOpen(false)} title="تصفية مسار الاستشارات" subtitle="اعرض البطاقات الأكثر أهمية فقط">
+        <div className="stack-form">
+          <Field label="المستشار المسؤول">
+            <select value={filters.consultantId} onChange={event => setFilters(current => ({ ...current, consultantId: event.target.value }))}>
+              <option value="">كل المستشارين</option>
+              {consultants.map(consultant => <option key={consultant.id} value={consultant.id}>{consultant.name}</option>)}
+            </select>
+          </Field>
+          <Field label="الأولوية">
+            <select value={filters.priority} onChange={event => setFilters(current => ({ ...current, priority: event.target.value }))}>
+              <option value="">كل الأولويات</option>
+              <option value="High">مرتفعة</option>
+              <option value="Medium">متوسطة</option>
+              <option value="Low">منخفضة</option>
+            </select>
+          </Field>
+          <Field label="الدولة المستهدفة">
+            <select value={filters.targetCountry} onChange={event => setFilters(current => ({ ...current, targetCountry: event.target.value }))}>
+              <option value="">كل الدول</option>
+              {targetCountryOptions.map(option => <option value={option} key={option}>{tr(option)}</option>)}
+            </select>
+          </Field>
+          <label className="check-row">
+            <input type="checkbox" checked={filters.overdueOnly} onChange={event => setFilters(current => ({ ...current, overdueOnly: event.target.checked }))} />
+            <span>
+              <strong>إظهار المتابعات المتأخرة فقط</strong>
+              <small>يعرض العملاء الذين تجاوزوا موعد المتابعة بدون نشاط جديد.</small>
+            </span>
+          </label>
+          <div className="form-actions">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setFilters(filterBlank);
+                setFocusedStage('');
+                setFiltersOpen(false);
+              }}
+            >
+              إعادة ضبط
+            </Button>
+            <Button type="button" onClick={() => setFiltersOpen(false)}>تطبيق</Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={open} onClose={() => setOpen(false)} title="إضافة عميل استشارات جديد" subtitle="سيظهر مباشرة داخل مسار الاستشارات." size="lg">
         <form className="form-grid" onSubmit={create}>

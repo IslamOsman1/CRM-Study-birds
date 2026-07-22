@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Building2, CheckCircle2, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
 import { useAuth } from '../auth.jsx';
+import studyBirdsLogo from '../assets/study-birds-logo.svg';
 
 const accounts = [
   ['admin@eduglobal.local', 'مسؤول النظام'],
@@ -33,10 +34,10 @@ export default function Login() {
     <div className="login-page">
       <section className="login-brand-panel">
         <div className="login-brand">
-          <div className="brand-mark large">E</div>
-          <div>
-            <strong>إيديو جلوبال CRM</strong>
-            <span>تشغيل متكامل لخدمات التعليم الدولي</span>
+          <img className="brand-logo brand-logo-large" src={studyBirdsLogo} alt="Study Birds" />
+          <div className="brand-copy">
+            <strong>STUDY BIRDS CRM</strong>
+            <span>Your Future. Our Guidance. Worldwide.</span>
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, CircleDot, Clock3, Eye, EyeOff, File, FilePlus2, FileUp, GraduationCap, History, KeyRound, Link as LinkIcon, Save, Search, ShieldCheck, Trash2, UploadCloud, WalletCards } from 'lucide-react';
 import { api, formatDate, initials } from '../api.js';
 import { Badge, Button, Card, Field, Modal, Progress, Spinner, Toast } from '../components/UI.jsx';
@@ -51,6 +52,7 @@ function getChecklistStatus(typeName, currentDocuments) {
 
 export default function Admissions() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [apps, setApps] = useState([]);
   const [settings, setSettings] = useState(null);
   const [students, setStudents] = useState([]);
@@ -119,6 +121,13 @@ export default function Admissions() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    const applicationId = searchParams.get('applicationId');
+    if (!applicationId || !apps.length) return;
+    const target = apps.find(item => item.id === applicationId);
+    if (target) selectApplication(target);
+  }, [apps, searchParams]);
 
   const shown = useMemo(() => {
     const base = apps.filter(app =>

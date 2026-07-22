@@ -1,0 +1,15 @@
+<svg width="640" height="220" viewBox="0 0 640 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="220" rx="24" fill="white"/>
+  <g transform="translate(40,18)">
+    <path d="M152 26C153 70 176 103 227 130C267 151 287 183 289 218C306 177 303 141 275 114C251 91 206 72 174 48C164 41 157 34 152 26Z" fill="#08265C"/>
+    <path d="M263 113C287 92 302 73 323 73C344 73 359 87 365 102C344 100 328 106 315 125C304 142 301 171 283 197C265 223 232 239 196 241C229 228 250 205 261 181C273 155 279 130 263 113Z" fill="#08265C"/>
+    <path d="M161 117L201 119L232 173C251 164 282 162 304 173C294 154 278 143 254 138C225 132 201 135 181 142L161 117Z" fill="#FF7A00"/>
+    <path d="M168 147L205 148L229 194C250 183 279 179 301 185C284 164 264 158 239 156C214 153 192 156 176 164L168 147Z" fill="#F36D00"/>
+    <path d="M364 102C376 101 389 103 401 110C388 110 377 113 366 120C363 114 363 108 364 102Z" fill="#08265C"/>
+  </g>
+  <text x="106" y="164" fill="#08265C" font-family="Arial, Helvetica, sans-serif" font-size="52" font-weight="800" letter-spacing="2">STUDY</text>
+  <text x="340" y="164" fill="#FF7A00" font-family="Arial, Helvetica, sans-serif" font-size="52" font-weight="800" letter-spacing="2">BIRDS</text>
+  <line x1="108" y1="186" x2="146" y2="186" stroke="#08265C" stroke-width="2"/>
+  <line x1="492" y1="186" x2="530" y2="186" stroke="#08265C" stroke-width="2"/>
+  <text x="160" y="192" fill="#08265C" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="500">Your Future. Our Guidance. Worldwide.</text>
+</svg>

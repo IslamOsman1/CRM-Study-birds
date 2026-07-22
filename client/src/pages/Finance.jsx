@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Banknote, CircleDollarSign, CreditCard, Eye, FilePlus2, FileText, Plus, ReceiptText, Search, Send, Stamp, WalletCards } from 'lucide-react';
 import { api, formatDate, formatMoney } from '../api.js';
 import { Badge, Button, Card, Field, Modal, Spinner, Toast } from '../components/UI.jsx';
@@ -166,6 +167,7 @@ function ReceiptSheet({ payment, invoice }) {
 
 export default function Finance() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [invoices, setInvoices] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -207,9 +209,22 @@ export default function Finance() {
           invoice.paymentStatement,
           invoice.computedStatus
         ].some(value => String(value || '').toLowerCase().includes(query.toLowerCase()))
-      ),
-    [invoices, query]
+      ).filter(invoice => {
+        const status = searchParams.get('status');
+        if (status === 'overdue') {
+          return invoice.balance > 0 && invoice.installments?.some(item => item.status !== 'Paid' && item.dueDate && item.dueDate < today);
+        }
+        return true;
+      }),
+    [invoices, query, searchParams]
   );
+
+  useEffect(() => {
+    const invoiceId = searchParams.get('invoiceId');
+    if (!invoiceId || !invoices.length) return;
+    const target = invoices.find(item => item.id === invoiceId);
+    if (target) setSelected(target);
+  }, [invoices, searchParams]);
 
   const totals = useMemo(() => ({
     total: invoices.reduce((sum, invoice) => sum + invoice.total, 0),

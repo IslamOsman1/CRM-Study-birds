@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowUpRight,
   BellRing,
@@ -47,8 +48,23 @@ function getAlertIcon(type) {
   }
 }
 
+function getAlertRoute(type) {
+  switch (type) {
+    case 'overdue_payment':
+      return '/finance?status=overdue';
+    case 'deadline':
+    case 'visa':
+      return '/admissions';
+    case 'complaint':
+      return '/students';
+    default:
+      return '/tasks?kind=alert';
+  }
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [error, setError] = useState('');
@@ -241,6 +257,9 @@ export default function Dashboard() {
                       <strong>{alert.title}</strong>
                       <p>{alert.description}</p>
                       <span>{alert.meta}</span>
+                      <button className="inline-link-btn" onClick={() => navigate(getAlertRoute(alert.type))} type="button">
+                        فتح القسم المرتبط
+                      </button>
                     </article>
                   );
                 })}
@@ -261,7 +280,11 @@ export default function Dashboard() {
           {cards.map((card, index) => {
             const Icon = icons[index];
             return (
-              <Card key={card[0]} className="kpi-card">
+              <Card
+                key={card[0]}
+                className="kpi-card kpi-card-clickable"
+                onClick={() => navigate(index === 0 ? '/consultancy' : index === 1 ? '/students' : index === 2 ? '/reports' : '/finance')}
+              >
                 <div className="kpi-icon"><Icon /></div>
                 <div className="kpi-meta">
                   <span>{card[0]}</span>
@@ -354,7 +377,7 @@ export default function Dashboard() {
           </div>
 
           <div className="dashboard-alerts-footer">
-            <a href="/tasks" className="btn btn-secondary">عرض كل المهام</a>
+            <Link to="/tasks" className="btn btn-secondary">عرض كل المهام</Link>
           </div>
         </Card>
 

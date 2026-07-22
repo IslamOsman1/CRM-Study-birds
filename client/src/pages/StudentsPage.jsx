@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FileText, GraduationCap, Mail, Phone, Receipt, Search, UserSquare2, WalletCards } from 'lucide-react';
 import { api, formatDate, formatMoney, initials } from '../api.js';
-import { Badge, Card, Progress, Spinner } from '../components/UI.jsx';
+import { Badge, Button, Card, Progress, Spinner } from '../components/UI.jsx';
 import { useAuth } from '../auth.jsx';
 import { tr } from '../i18n.js';
 
 export default function StudentsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -21,6 +24,11 @@ export default function StudentsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    const studentId = searchParams.get('studentId');
+    if (studentId) setSelectedId(studentId);
+  }, [searchParams]);
+
   const shown = useMemo(
     () =>
       students.filter(student =>
@@ -31,6 +39,7 @@ export default function StudentsPage() {
   );
 
   const selected = shown.find(student => student.id === selectedId) || students.find(student => student.id === selectedId) || null;
+  const selectedWhatsApp = String(selected?.phone || '').replace(/[^\d]/g, '');
   const totalApplications = students.reduce((sum, student) => sum + (student.applications?.length || 0), 0);
   const totalInvoices = students.reduce((sum, student) => sum + (student.invoices?.length || 0), 0);
   const outstanding = students.reduce(
@@ -134,6 +143,14 @@ export default function StudentsPage() {
               <div className="student-contact-grid">
                 <div><Phone size={16} /><span>{selected.phone || 'لا يوجد رقم هاتف'}</span></div>
                 <div><Mail size={16} /><span>{selected.email || 'لا يوجد بريد إلكتروني'}</span></div>
+              </div>
+
+              <div className="student-quick-actions">
+                {selected.phone && <a className="btn btn-secondary" href={`tel:${selected.phone}`}>اتصال</a>}
+                {selected.email && <a className="btn btn-secondary" href={`mailto:${selected.email}`}>إيميل</a>}
+                {selectedWhatsApp && <a className="btn btn-secondary" href={`https://wa.me/${selectedWhatsApp}`} target="_blank" rel="noreferrer">واتساب</a>}
+                {!!selected.applications?.length && <Button type="button" onClick={() => navigate(`/admissions?applicationId=${selected.applications[0].id}`)}>القبول</Button>}
+                {!!selected.invoices?.length && user.role !== 'admissions' && <Button type="button" onClick={() => navigate(`/finance?invoiceId=${selected.invoices[0].id}`)}>المالية</Button>}
               </div>
 
               <div className="student-section">

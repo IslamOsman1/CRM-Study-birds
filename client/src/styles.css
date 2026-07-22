@@ -14,6 +14,14 @@ th,.application-row,.profile-button,.demo-accounts button,.employee-card footer,
 .page-title,.topbar,.toolbar,.panel-toolbar,.section-head,.documents-head,.lead-top,.lead-card footer,.employee-head,.availability-list>div,.status-control,.modal-head,.form-actions{direction:rtl}
 .global-search,.search-box,.person-cell,.profile-button,.top-actions,.top-left,.login-brand,.login-features span,.login-quote,.activity-item,.audit-event>div:last-child>div{flex-direction:row-reverse}
 .chart-area{flex-direction:row-reverse}
+.brand-logo{width:68px;height:68px;object-fit:contain;display:block;flex:0 0 auto;border-radius:18px;background:#fff;padding:6px;box-shadow:0 10px 28px rgba(5,15,54,.18)}
+.brand-logo-large{width:92px;height:92px;padding:8px;border-radius:24px;box-shadow:0 18px 42px rgba(5,15,54,.24)}
+.brand-copy{min-width:0}
+.brand-copy strong{display:block;font-size:17px;letter-spacing:.02em}
+.brand-copy span{display:block;margin-top:4px;font-size:11px;color:#98a2c8;line-height:1.5}
+.login-brand .brand-copy strong{font-size:19px;letter-spacing:.08em}
+.login-brand .brand-copy span{font-size:10.5px;color:#bfc8e4}
+@media(max-width:620px){.brand-logo{width:58px;height:58px}.brand-logo-large{width:82px;height:82px}.brand-copy strong{font-size:15px}.brand-copy span{font-size:10px}}
 .chart-y{padding:0 0 22px 0}
 th{text-align:right}
 .application-main>div:first-child,.lead-card footer,.employee-card footer{flex-direction:row-reverse}
@@ -266,3 +274,19 @@ th{text-align:right}
 .live-popup p{font-size:10px;color:#546072;margin:8px 0 0;line-height:1.7}
 @media(max-width:1250px){.secondary-reception-grid{grid-template-columns:1fr}}
 @media(max-width:620px){.queue-item,.lookup-form{align-items:stretch;flex-direction:column}.lookup-status-grid{grid-template-columns:1fr}.live-popup{left:12px;right:12px;bottom:12px;width:auto}}
+.global-search-wrap{position:relative}
+.global-search-menu{position:absolute;top:48px;right:0;width:min(520px,calc(100vw - 40px));background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:8px;z-index:70}
+.global-search-item{width:100%;border:0;background:#fff;border-radius:12px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:right}
+.global-search-item:hover{background:#f8f9fc}
+.global-search-item strong,.global-search-item span,.global-search-item small{display:block}
+.global-search-item strong{font-size:11px;color:#141b2f}
+.global-search-item span{font-size:9px;color:#667085;margin-top:4px}
+.global-search-item small{font-size:9px;color:#4631ff;font-weight:800}
+.global-search-empty{padding:16px 12px;text-align:center}
+.global-search-empty strong,.global-search-empty span{display:block}
+.global-search-empty strong{font-size:10.5px;color:#141b2f}
+.global-search-empty span{font-size:8.5px;color:#8a92a1;margin-top:5px}
+.inline-link-btn{margin-top:10px;border:0;background:transparent;padding:0;color:#4631ff;font-size:10px;font-weight:800}
+.kpi-card-clickable{cursor:pointer}
+.student-quick-actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+@media(max-width:620px){.global-search-menu{left:0;right:0;width:auto}.student-quick-actions .btn{flex:1}}

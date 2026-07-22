@@ -1600,6 +1600,7 @@ async function prepareDb() {
     db.monthlyRevenue ||= [];
     db.executiveActions ||= [];
     db.broadcasts ||= [];
+    const companyId = req.user.companyId;
     db.userNotifications ||= [];
     db.leaveRequests ||= [];
     db.receptionState ||= {};
@@ -2304,7 +2305,7 @@ app.post('/api/conversations/:id/messages', async (req, res) => {
     const externalMessageId = providerResponse.messages?.[0]?.id || providerResponse.message_id || randomUUID();
     const message = {
       id: randomUUID(),
-      companyId: req.user.companyId,
+      companyId,
       conversationId: conversation.id,
       channelId: channel.id,
       externalMessageId,
@@ -2592,9 +2593,10 @@ app.post('/api/dashboard/broadcasts', allowRoles('admin', 'management'), async (
 
   const result = await mutateDb(db => {
     db.broadcasts ||= [];
+    const companyId = req.user.companyId;
     const broadcast = {
       id: randomUUID(),
-      companyId: req.user.companyId,
+      companyId,
       message,
       tone,
       createdAt: now(),
@@ -2602,6 +2604,18 @@ app.post('/api/dashboard/broadcasts', allowRoles('admin', 'management'), async (
     };
     db.broadcasts.unshift(broadcast);
     db.broadcasts = db.broadcasts.slice(0, 50);
+    getScopedItems(db.users, companyId)
+      .filter(user => user.id !== req.user.sub)
+      .forEach(user => {
+        createUserNotification(
+          db,
+          companyId,
+          user.id,
+          tone === 'critical' ? 'تعميم عاجل من الإدارة' : tone === 'warning' ? 'تنبيه إداري مهم' : 'إشعار من الإدارة',
+          message,
+          { type: 'broadcast', tone, broadcastId: broadcast.id }
+        );
+      });
     activity(db, req.user, 'created', 'broadcast', broadcast.id, `تم إرسال تعميم عاجل: ${message.slice(0, 60)}`);
     return broadcast;
   });

@@ -267,7 +267,7 @@
       "nextFollowUp": "2026-07-18",
       "notes": "Interested in January intake and scholarship options.",
       "createdAt": "2026-07-15T09:10:00Z",
-      "updatedAt": "2026-07-16T10:00:00Z",
+      "updatedAt": "2026-07-22T17:06:42.800Z",
       "companyId": "company-default",
       "targetCountry": "United Kingdom",
       "targetMajor": "MSc Data Science",
@@ -290,7 +290,7 @@
       "nextFollowUp": "2026-07-19",
       "notes": "Parents will attend the next meeting.",
       "createdAt": "2026-07-14T12:00:00Z",
-      "updatedAt": "2026-07-15T08:00:00Z",
+      "updatedAt": "2026-07-22T17:06:43.955Z",
       "companyId": "company-default",
       "targetCountry": "Canada",
       "targetMajor": "BBA",
@@ -313,7 +313,7 @@
       "nextFollowUp": "2026-07-17",
       "notes": "Needs language pathway advice.",
       "createdAt": "2026-07-10T08:30:00Z",
-      "updatedAt": "2026-07-16T15:45:00Z",
+      "updatedAt": "2026-07-22T17:06:36.802Z",
       "companyId": "company-default",
       "targetCountry": "Germany",
       "targetMajor": "Computer Engineering",
@@ -330,13 +330,13 @@
       "program": "Architecture",
       "university": "Istanbul Okan University",
       "source": "Referral",
-      "stage": "Consultation Completed",
+      "stage": "Awaiting Decision",
       "consultantId": "emp-lina",
       "priority": "Medium",
       "nextFollowUp": "2026-07-20",
       "notes": "Comparing three private universities.",
       "createdAt": "2026-07-08T08:30:00Z",
-      "updatedAt": "2026-07-16T13:45:00Z",
+      "updatedAt": "2026-07-22T17:06:49.657Z",
       "companyId": "company-default",
       "targetCountry": "Turkey",
       "targetMajor": "Architecture",
@@ -378,19 +378,20 @@
       "program": "MSc Marketing",
       "university": "Erasmus University",
       "source": "Website",
-      "stage": "Awaiting Decision",
+      "stage": "Closed / Won",
       "consultantId": "emp-mariam",
       "priority": "High",
       "nextFollowUp": "2026-07-18",
       "notes": "Passport and transcript received.",
       "createdAt": "2026-07-02T10:30:00Z",
-      "updatedAt": "2026-07-16T17:00:00Z",
+      "updatedAt": "2026-07-22T17:07:10.295Z",
       "companyId": "company-default",
       "targetCountry": "Netherlands",
       "targetMajor": "MSc Marketing",
       "budget": "",
       "currentLevel": "",
-      "lostReason": ""
+      "lostReason": "",
+      "studentId": "9c7b3f73-493d-4100-ab2f-664f153a4045"
     },
     {
       "id": "lead-7",
@@ -466,6 +467,17 @@
   ],
   "students": [
     {
+      "id": "9c7b3f73-493d-4100-ab2f-664f153a4045",
+      "companyId": "company-default",
+      "leadId": "lead-6",
+      "name": "Nada Sherif",
+      "phone": "+20 109 122 8762",
+      "email": "nada.s@example.com",
+      "nationality": "Netherlands",
+      "consultantId": "emp-mariam",
+      "createdAt": "2026-07-22T17:07:10.295Z"
+    },
+    {
       "id": "student-1",
       "leadId": "lead-7",
       "name": "Youssef Emad",
@@ -499,6 +511,32 @@
     }
   ],
   "applications": [
+    {
+      "id": "2dcf8955-11d8-4b98-902d-ec51ab60cd20",
+      "companyId": "company-default",
+      "studentId": "9c7b3f73-493d-4100-ab2f-664f153a4045",
+      "university": "Erasmus University",
+      "program": "MSc Marketing",
+      "country": "Netherlands",
+      "status": "Preparing Documents",
+      "intake": "أقرب فصل متاح",
+      "assignedTo": "",
+      "documentProgress": 0,
+      "followUpProgress": [],
+      "documents": [],
+      "notes": "",
+      "createdAt": "2026-07-22T17:07:10.295Z",
+      "updatedAt": "2026-07-22T17:07:10.295Z",
+      "applicationRefNo": "",
+      "portalUrl": "",
+      "portalUsername": "",
+      "portalPassword": "",
+      "offerType": "",
+      "offerConditions": "",
+      "rejectionReason": "",
+      "offerLetterUploadedAt": "",
+      "applicationFeeStatus": "Unpaid"
+    },
     {
       "id": "bd7ba116-4b7a-4fe7-9a52-337fca47e105",
       "companyId": "company-default",
@@ -1036,6 +1074,204 @@
   ],
   "activities": [
     {
+      "id": "3b32f46b-9a26-4283-907e-4f30e23ed8e5",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "created",
+      "entityType": "task",
+      "entityId": "aca5bd27-5b40-475f-94ba-fcc1e2792126",
+      "details": "تم إنشاء المهمة يبيب",
+      "createdAt": "2026-07-22T17:26:18.111Z"
+    },
+    {
+      "id": "fd21af6e-7ca5-4757-815b-f48d82a10690",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "created",
+      "entityType": "task",
+      "entityId": "a48d0ef6-9fbe-4ac4-b3fb-4c4180d58080",
+      "details": "تم إنشاء المهمة يبي",
+      "createdAt": "2026-07-22T17:26:03.163Z"
+    },
+    {
+      "id": "c68a8fe3-47b8-4361-b7db-e11c51b8c7b5",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "created",
+      "entityType": "task",
+      "entityId": "9e20bee8-33eb-4449-b478-b1af733bf2a5",
+      "details": "تم إنشاء المهمة ببيبيب",
+      "createdAt": "2026-07-22T17:25:46.008Z"
+    },
+    {
+      "id": "09bd3dbf-cd93-492d-bd7f-e74319abbb46",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "created",
+      "entityType": "broadcast",
+      "entityId": "0b21a150-c592-4264-a022-5b241530c2f9",
+      "details": "تم إرسال تعميم عاجل: بببب",
+      "createdAt": "2026-07-22T17:23:34.369Z"
+    },
+    {
+      "id": "1a62d5e9-9c2b-46c8-8f12-7aec483b3c9e",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "created",
+      "entityType": "broadcast",
+      "entityId": "31858800-63b7-46fb-a49e-ef69a8c1b7df",
+      "details": "تم إرسال تعميم عاجل: غغغعغ",
+      "createdAt": "2026-07-22T17:15:49.151Z"
+    },
+    {
+      "id": "a998729b-101d-43f3-9ddf-01ea902ca420",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "moved",
+      "entityType": "lead",
+      "entityId": "lead-6",
+      "details": "Nada Sherif: Consultation Completed -> Closed / Won",
+      "createdAt": "2026-07-22T17:07:10.295Z"
+    },
+    {
+      "id": "5914b847-5c11-4048-b7c2-eaa1ee4f4eb0",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "created",
+      "entityType": "application",
+      "entityId": "2dcf8955-11d8-4b98-902d-ec51ab60cd20",
+      "details": "تم إنشاء طلب قبول تلقائيًا للطالب Nada Sherif",
+      "createdAt": "2026-07-22T17:07:10.295Z"
+    },
+    {
+      "id": "5e9cc668-6fd4-4897-b39b-699a40b17786",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "moved",
+      "entityType": "lead",
+      "entityId": "lead-4",
+      "details": "Rana Adel: Awaiting Decision -> Awaiting Decision",
+      "createdAt": "2026-07-22T17:06:49.657Z"
+    },
+    {
+      "id": "0df8b49d-9683-4bf0-bb56-09dfc43d9c1d",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "moved",
+      "entityType": "lead",
+      "entityId": "lead-2",
+      "details": "Salma Hany: Contacted -> Initial Inquiry",
+      "createdAt": "2026-07-22T17:06:43.955Z"
+    },
+    {
+      "id": "cc2fdb3d-7b43-4f53-986b-ba22c7d9b432",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "moved",
+      "entityType": "lead",
+      "entityId": "lead-1",
+      "details": "Ahmed Mostafa: Contacted -> Initial Inquiry",
+      "createdAt": "2026-07-22T17:06:42.800Z"
+    },
+    {
+      "id": "2c007d68-d1cc-4054-a696-8f20d70c8dd3",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "moved",
+      "entityType": "lead",
+      "entityId": "lead-1",
+      "details": "Ahmed Mostafa: Initial Inquiry -> Contacted",
+      "createdAt": "2026-07-22T17:06:40.843Z"
+    },
+    {
+      "id": "7c0e2436-5fab-47dd-a21a-c4ba20059a57",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "moved",
+      "entityType": "lead",
+      "entityId": "lead-1",
+      "details": "Ahmed Mostafa: Contacted -> Initial Inquiry",
+      "createdAt": "2026-07-22T17:06:38.387Z"
+    },
+    {
+      "id": "0366de01-58d0-459b-b0cc-51020556c61f",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "moved",
+      "entityType": "lead",
+      "entityId": "lead-3",
+      "details": "Mohamed Yasser: Initial Inquiry -> Contacted",
+      "createdAt": "2026-07-22T17:06:36.802Z"
+    },
+    {
+      "id": "d80769d1-8b13-4ea5-a594-6d226ecf7049",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "moved",
+      "entityType": "lead",
+      "entityId": "lead-2",
+      "details": "Salma Hany: Initial Inquiry -> Contacted",
+      "createdAt": "2026-07-22T17:06:28.571Z"
+    },
+    {
+      "id": "c39d05d1-0522-4c22-be00-5ee04c45a0e3",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "moved",
+      "entityType": "lead",
+      "entityId": "lead-1",
+      "details": "Ahmed Mostafa: Initial Inquiry -> Contacted",
+      "createdAt": "2026-07-22T17:06:26.487Z"
+    },
+    {
+      "id": "b82127c4-6381-4532-9900-b153a411a280",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "moved",
+      "entityType": "lead",
+      "entityId": "lead-3",
+      "details": "Mohamed Yasser: Contacted -> Initial Inquiry",
+      "createdAt": "2026-07-22T17:06:25.167Z"
+    },
+    {
+      "id": "d3f44c09-04dc-4a35-9d2b-9493030bc98e",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "moved",
+      "entityType": "lead",
+      "entityId": "lead-4",
+      "details": "Rana Adel: Consultation Completed -> Awaiting Decision",
+      "createdAt": "2026-07-22T17:06:21.479Z"
+    },
+    {
+      "id": "55cfc060-2962-4d6e-9dd9-036d62dc75e3",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "moved",
+      "entityType": "lead",
+      "entityId": "lead-6",
+      "details": "Nada Sherif: Awaiting Decision -> Consultation Completed",
+      "createdAt": "2026-07-22T17:06:06.816Z"
+    },
+    {
       "id": "b0e51dd1-3c47-4dc0-9d72-650b610b53ea",
       "companyId": "company-default",
       "actorId": "usr-admin",
@@ -1253,7 +1489,50 @@
     "documentChecklistTemplates": [],
     "applicationWorkflowTemplates": []
   },
-  "tasks": [],
+  "tasks": [
+    {
+      "id": "aca5bd27-5b40-475f-94ba-fcc1e2792126",
+      "companyId": "company-default",
+      "title": "يبيب",
+      "description": "ي",
+      "dueDate": "2026-07-17",
+      "priority": "Medium",
+      "status": "open",
+      "kind": "manual",
+      "source": "task",
+      "assignedRole": "",
+      "createdBy": "Nour El-Din Hassan",
+      "createdAt": "2026-07-22T17:26:18.111Z"
+    },
+    {
+      "id": "a48d0ef6-9fbe-4ac4-b3fb-4c4180d58080",
+      "companyId": "company-default",
+      "title": "يبي",
+      "description": "يبيبي",
+      "dueDate": "2026-07-17",
+      "priority": "Low",
+      "status": "open",
+      "kind": "manual",
+      "source": "task",
+      "assignedRole": "",
+      "createdBy": "Nour El-Din Hassan",
+      "createdAt": "2026-07-22T17:26:03.163Z"
+    },
+    {
+      "id": "9e20bee8-33eb-4449-b478-b1af733bf2a5",
+      "companyId": "company-default",
+      "title": "ببيبيب",
+      "description": "يبيبي",
+      "dueDate": "2026-07-17",
+      "priority": "High",
+      "status": "open",
+      "kind": "manual",
+      "source": "task",
+      "assignedRole": "",
+      "createdBy": "Nour El-Din Hassan",
+      "createdAt": "2026-07-22T17:25:46.008Z"
+    }
+  ],
   "companies": [
     {
       "id": "company-default",
@@ -1348,7 +1627,24 @@
       }
     }
   ],
-  "broadcasts": [],
+  "broadcasts": [
+    {
+      "id": "0b21a150-c592-4264-a022-5b241530c2f9",
+      "companyId": "company-default",
+      "message": "بببب",
+      "tone": "warning",
+      "createdAt": "2026-07-22T17:23:34.369Z",
+      "createdBy": "Nour El-Din Hassan"
+    },
+    {
+      "id": "31858800-63b7-46fb-a49e-ef69a8c1b7df",
+      "companyId": "company-default",
+      "message": "غغغعغ",
+      "tone": "critical",
+      "createdAt": "2026-07-22T17:15:49.151Z",
+      "createdBy": "Nour El-Din Hassan"
+    }
+  ],
   "userNotifications": [],
   "receptionState": {},
   "leaveRequests": []
