@@ -22,7 +22,7 @@ const app = express();
 const port = Number(process.env.PORT || 4000);
 const uploadsDir = path.join(__dirname, '..', 'uploads');
 const isVercelRuntime = process.env.VERCEL === '1';
-const todayKey = '2026-07-17';
+const todayKey = () => new Date().toISOString().slice(0, 10);
 const supabaseUrl = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const supabaseServiceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '');
 const supabaseStorageBucket = String(process.env.SUPABASE_STORAGE_BUCKET || '').trim();
@@ -39,6 +39,188 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 12 
 const now = () => new Date().toISOString();
 const money = value => Number(value || 0);
 const defaultCompanyId = 'company-default';
+const executiveActionMeta = {
+  discount: { label: 'اعتماد الخصومات', decisionMode: 'approve-reject' },
+  refund: { label: 'اعتماد استرداد الأموال', decisionMode: 'approve-only' },
+  payment_plan: { label: 'تعديل خطة الدفع', decisionMode: 'approve-reject' },
+  reassignment: { label: 'نقل ملف طالب', decisionMode: 'approve-reject' },
+  document_waiver: { label: 'التجاوز عن مستند ناقص', decisionMode: 'approve-reject' },
+  broadcast: { label: 'إرسال تعميم عاجل', decisionMode: 'approve-only' }
+};
+const consultancyPipelineStages = [
+  'Initial Inquiry',
+  'Contacted',
+  'Consultation Completed',
+  'Awaiting Decision',
+  'Closed / Won',
+  'Lost'
+];
+const legacyLeadStageMap = {
+  'University Selection': 'Consultation Completed',
+  'Documents Collected': 'Awaiting Decision',
+  'Application Sent': 'Closed / Won',
+  Enrolled: 'Closed / Won'
+};
+const quickBudgetOptions = ['Less than $5,000', '$5,000 - $10,000', 'More than $10,000'];
+const currentLevelOptions = ['High School', 'Bachelor', 'Master'];
+const receptionLeadSourceOptions = ['Facebook Campaign', 'Instagram Campaign', 'Google Campaign', 'Friend Referral', 'Walk-in Without Appointment'];
+const receptionInterestOptions = ['Bachelor', 'Master', 'Foundation Year', 'Language Course'];
+const supportedCurrencies = ['EGP', 'USD', 'EUR', 'GBP'];
+const supportedPaymentMethods = ['Cash', 'Bank Transfer', 'Card', 'InstaPay', 'Vodafone Cash'];
+const hrManagedDepartments = ['Consultancy', 'Admissions', 'Reception', 'Human Resources', 'Finance'];
+
+function sanitizeCurrency(value, fallback = 'USD') {
+  return supportedCurrencies.includes(value) ? value : fallback;
+}
+
+function sanitizePaymentMethod(value, fallback = 'Bank Transfer') {
+  return supportedPaymentMethods.includes(value) ? value : fallback;
+}
+
+function decimalPart(value) {
+  return Math.round((Number(value || 0) - Math.trunc(Number(value || 0))) * 100);
+}
+
+function toArabicWordsBelowThousand(value) {
+  const ones = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة'];
+  const teens = ['عشرة', 'أحد عشر', 'اثنا عشر', 'ثلاثة عشر', 'أربعة عشر', 'خمسة عشر', 'ستة عشر', 'سبعة عشر', 'ثمانية عشر', 'تسعة عشر'];
+  const tens = ['', '', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
+  const hundreds = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
+  const num = Math.trunc(Number(value || 0));
+  if (!num) return '';
+  const parts = [];
+  const hundredPart = Math.trunc(num / 100);
+  const remainder = num % 100;
+
+  if (hundredPart) parts.push(hundreds[hundredPart]);
+  if (remainder >= 20) {
+    const unit = remainder % 10;
+    const ten = Math.trunc(remainder / 10);
+    const tail = [ones[unit], tens[ten]].filter(Boolean).join(' و ');
+    if (tail) parts.push(tail);
+  } else if (remainder >= 10) {
+    parts.push(teens[remainder - 10]);
+  } else if (remainder > 0) {
+    parts.push(ones[remainder]);
+  }
+
+  return parts.join(' و ');
+}
+
+function numberToArabicWords(value) {
+  const num = Math.round(Number(value || 0));
+  if (!num) return 'صفر';
+  const scales = [
+    { value: 1_000_000, singular: 'مليون', dual: 'مليونان', plural: 'ملايين' },
+    { value: 1_000, singular: 'ألف', dual: 'ألفان', plural: 'آلاف' }
+  ];
+  let remainder = num;
+  const parts = [];
+
+  for (const scale of scales) {
+    if (remainder < scale.value) continue;
+    const count = Math.trunc(remainder / scale.value);
+    remainder %= scale.value;
+    if (count === 1) parts.push(scale.singular);
+    else if (count === 2) parts.push(scale.dual);
+    else if (count >= 3 && count <= 10) parts.push(`${toArabicWordsBelowThousand(count)} ${scale.plural}`);
+    else parts.push(`${toArabicWordsBelowThousand(count)} ${scale.singular}`);
+  }
+
+  if (remainder) parts.push(toArabicWordsBelowThousand(remainder));
+  return parts.filter(Boolean).join(' و ');
+}
+
+function amountInWords(value, currency = 'USD') {
+  const currencyNames = {
+    EGP: { major: 'جنيه مصري', minor: 'قرش' },
+    USD: { major: 'دولار أمريكي', minor: 'سنت' },
+    EUR: { major: 'يورو', minor: 'سنت' },
+    GBP: { major: 'جنيه إسترليني', minor: 'بنس' }
+  };
+  const names = currencyNames[sanitizeCurrency(currency)] || currencyNames.USD;
+  const whole = Math.trunc(Number(value || 0));
+  const fraction = Math.abs(decimalPart(value));
+  const major = `${numberToArabicWords(whole)} ${names.major}`;
+  if (!fraction) return `${major} فقط لا غير`;
+  return `${major} و ${numberToArabicWords(fraction)} ${names.minor} فقط لا غير`;
+}
+
+function nextSerial(prefix, items, dateValue = now()) {
+  const year = new Date(dateValue).getFullYear();
+  const current = (items || []).filter(item => String(item?.number || item?.receiptNumber || '').startsWith(`${prefix}-${year}-`)).length + 1;
+  return `${prefix}-${year}-${String(current).padStart(3, '0')}`;
+}
+
+function sanitizeInstallments(items) {
+  return (items || [])
+    .map((item, index) => {
+      const amount = money(item?.amount);
+      if (amount <= 0) return null;
+      return {
+        id: String(item?.id || randomUUID()),
+        label: String(item?.label || `Installment ${index + 1}`).trim(),
+        dueDate: String(item?.dueDate || '').slice(0, 10),
+        amount,
+        status: item?.status === 'Paid' ? 'Paid' : 'Pending',
+        paidAmount: money(item?.paidAmount),
+        createdAt: item?.createdAt || now()
+      };
+    })
+    .filter(Boolean);
+}
+
+function summarizeInvoiceFinancials(invoice) {
+  const serviceFee = money(invoice.serviceFee ?? invoice.commission);
+  const universityFee = money(invoice.universityFee ?? invoice.subtotal);
+  const visaFee = money(invoice.visaFee);
+  const tax = money(invoice.tax);
+  const total = money(invoice.total || serviceFee + universityFee + visaFee + tax);
+  return {
+    serviceFee,
+    universityFee,
+    visaFee,
+    tax,
+    passThroughFees: universityFee + visaFee,
+    total
+  };
+}
+
+function enrichInvoice(db, invoice) {
+  const students = getScopedItems(db.students, invoice.companyId);
+  const employees = getScopedItems(db.employees, invoice.companyId);
+  const applications = getScopedItems(db.applications, invoice.companyId);
+  const payments = getScopedItems(db.payments, invoice.companyId).filter(payment => payment.invoiceId === invoice.id);
+  const student = students.find(item => item.id === invoice.studentId) || null;
+  const application = applications.find(item => item.studentId === invoice.studentId) || null;
+  const consultant = student?.consultantId ? employees.find(item => item.id === student.consultantId) || null : null;
+  const financials = summarizeInvoiceFinancials(invoice);
+  const paid = payments.reduce((sum, payment) => sum + money(payment.amount), 0);
+  const balance = Math.max(0, financials.total - paid);
+  const installments = sanitizeInstallments(invoice.installments).map(installment => {
+    const matchingPayments = payments.filter(payment => payment.installmentId === installment.id);
+    const paidAmount = matchingPayments.reduce((sum, payment) => sum + money(payment.amount), 0);
+    return {
+      ...installment,
+      paidAmount,
+      balance: Math.max(0, money(installment.amount) - paidAmount),
+      status: paidAmount >= money(installment.amount) ? 'Paid' : 'Pending'
+    };
+  });
+
+  return {
+    ...invoice,
+    ...financials,
+    student,
+    consultant,
+    application,
+    payments,
+    installments,
+    paid,
+    balance,
+    computedStatus: paid >= financials.total ? 'Paid' : paid > 0 ? 'Partial' : invoice.status || 'Unpaid'
+  };
+}
 
 function safeUploadName(originalName) {
   return `${Date.now()}-${randomUUID().slice(0, 8)}-${String(originalName || 'file').replace(/[^a-zA-Z0-9._-]/g, '_')}`;
@@ -294,6 +476,126 @@ function addDays(dateString, days) {
   return base.toISOString().slice(0, 10);
 }
 
+function addHours(dateString, hours) {
+  return new Date(new Date(dateString || now()).getTime() + Number(hours || 0) * 60 * 60 * 1000).toISOString();
+}
+
+function hoursUntil(dateString) {
+  return Math.round((new Date(dateString).getTime() - Date.now()) / (1000 * 60 * 60));
+}
+
+function hasPastDeadline(dateString) {
+  if (!dateString) return false;
+  return new Date(dateString).getTime() < Date.now();
+}
+
+function normalizePhone(value) {
+  return String(value || '').replace(/[^\d]/g, '');
+}
+
+function sameDay(dateA, dateB = now()) {
+  return String(dateA || '').slice(0, 10) === String(dateB || '').slice(0, 10);
+}
+
+function findUserByEmployee(db, employeeId, companyId) {
+  const employee = findScoped(db.employees, companyId, item => item.id === employeeId);
+  if (!employee) return null;
+  return findScoped(db.users, companyId, item => item.email?.toLowerCase() === employee.email?.toLowerCase()) || null;
+}
+
+function createUserNotification(db, companyId, userId, title, message, metadata = {}) {
+  db.userNotifications ||= [];
+  db.userNotifications.unshift({
+    id: randomUUID(),
+    companyId,
+    userId,
+    title,
+    message,
+    metadata,
+    readAt: '',
+    createdAt: now()
+  });
+  db.userNotifications = db.userNotifications.slice(0, 500);
+}
+
+function computeConsultantLiveStatus(db, companyId, consultantId) {
+  const employee = findScoped(db.employees, companyId, item => item.id === consultantId);
+  if (!employee) return { code: 'available', label: 'Available' };
+  const explicit = String(employee.liveStatus || '').trim();
+  if (explicit) return { code: explicit, label: explicit === 'busy' ? 'Busy' : explicit === 'break' ? 'On Break' : 'Available' };
+  const todayAttendance = getScopedItems(db.attendance, companyId).find(item => item.employeeId === consultantId && sameDay(item.date));
+  if (todayAttendance?.status === 'Leave') return { code: 'break', label: 'On Break' };
+  return { code: 'available', label: 'Available' };
+}
+
+function buildReceptionConsultantSnapshot(db, companyId) {
+  const consultants = getScopedItems(db.employees, companyId).filter(employee => employee.department === 'Consultancy');
+  const logs = getScopedItems(db.receptionLogs, companyId);
+  return consultants.map(consultant => {
+    const status = computeConsultantLiveStatus(db, companyId, consultant.id);
+    const todayTransfers = logs.filter(log => log.consultantId === consultant.id && sameDay(log.createdAt)).length;
+    return {
+      id: consultant.id,
+      name: consultant.name,
+      title: consultant.title,
+      branch: consultant.branch || '',
+      status: status.code,
+      statusLabel: status.label,
+      todayTransfers
+    };
+  });
+}
+
+function pickNextReceptionConsultant(db, companyId, branch = '') {
+  const consultants = buildReceptionConsultantSnapshot(db, companyId)
+    .filter(item => item.status === 'available')
+    .filter(item => !branch || item.branch === branch);
+  if (!consultants.length) return null;
+  db.receptionState ||= {};
+  db.receptionState.roundRobinIndex ||= 0;
+  const pick = consultants[db.receptionState.roundRobinIndex % consultants.length];
+  db.receptionState.roundRobinIndex = (db.receptionState.roundRobinIndex + 1) % consultants.length;
+  return pick;
+}
+
+function buildReceptionStudentLookup(db, companyId, query) {
+  const normalizedQuery = String(query || '').trim().toLowerCase();
+  if (!normalizedQuery) return null;
+  const students = getScopedItems(db.students, companyId);
+  const applications = getScopedItems(db.applications, companyId);
+  const settings = db.settings || {};
+  const student = students.find(item =>
+    [item.name, item.phone, item.email].some(value => String(value || '').toLowerCase().includes(normalizedQuery))
+  );
+  if (!student) return null;
+  const studentApplications = applications
+    .filter(item => item.studentId === student.id)
+    .map(item => buildApplicationState(item, settings));
+  const latestApplication = studentApplications[0] || null;
+  return {
+    id: student.id,
+    name: student.name,
+    phone: student.phone,
+    email: student.email,
+    acceptanceStatus: latestApplication
+      ? latestApplication.status === 'Final Acceptance'
+        ? 'Acceptance Letter Ready'
+        : latestApplication.status === 'Application Submitted' || latestApplication.status === 'Under Review'
+          ? 'Following Up With University'
+          : latestApplication.status
+      : 'No Active Application',
+    checklistStatus: latestApplication
+      ? latestApplication.docsSummary?.missingTypes?.length
+        ? `Missing: ${latestApplication.docsSummary.missingTypes.join(', ')}`
+        : 'Ready For Consultant'
+      : 'No Documents Yet',
+    documents: latestApplication?.effectiveDocumentTypes?.map(item => ({
+      type: item.name,
+      status: latestApplication.docsSummary?.missingTypes?.includes(item.name) ? 'missing' : 'uploaded'
+    })) || []
+  };
+}
+
 function computeApplicationWorkflowState(application, settings) {
   const workflowTemplate = resolveWorkflowTemplate(application, settings);
   const effectiveFollowUpStages = workflowTemplate?.stages || [];
@@ -390,9 +692,155 @@ function buildApplicationState(application, settings) {
   const workflowState = computeApplicationWorkflowState(application, settings);
   return {
     ...application,
+    portalPasswordMasked: application.portalPassword ? '••••••••' : '',
     ...documentState,
     ...workflowState
   };
+}
+
+function computeApplicationFeeStatus(db, companyId, studentId) {
+  const invoices = getScopedItems(db.invoices, companyId).filter(invoice => invoice.studentId === studentId);
+  if (!invoices.length) return 'Unpaid';
+  const hasPayment = getScopedItems(db.payments, companyId).some(payment => invoices.some(invoice => invoice.id === payment.invoiceId) && money(payment.amount) > 0);
+  return hasPayment ? 'Paid' : 'Unpaid';
+}
+
+function notifyConsultantAboutOffer(db, companyId, application, source = 'offer_update') {
+  const student = findScoped(db.students, companyId, item => item.id === application.studentId);
+  if (!student?.consultantId) return;
+  const consultantUser = findUserByEmployee(db, student.consultantId, companyId);
+  if (!consultantUser) return;
+  createUserNotification(
+    db,
+    companyId,
+    consultantUser.id,
+    'تحديث جديد على خطاب القبول',
+    `${student.name} - ${application.university || 'جامعة غير محددة'} - ${application.offerType === 'Conditional Offer' ? 'قبول مشروط' : application.offerType === 'Unconditional Offer' ? 'قبول نهائي' : 'تم تحديث حالة القبول'}.`,
+    { type: source, applicationId: application.id, studentId: student.id }
+  );
+}
+
+function workingDaysBetween(startDate, endDate) {
+  if (!startDate || !endDate) return 0;
+  const start = new Date(`${String(startDate).slice(0, 10)}T00:00:00Z`);
+  const end = new Date(`${String(endDate).slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return 0;
+  let count = 0;
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const day = cursor.getUTCDay();
+    if (day !== 5 && day !== 6) count += 1;
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return count;
+}
+
+function monthKey(value = now()) {
+  return String(value).slice(0, 7);
+}
+
+function buildHrTargets(db, companyId) {
+  const employees = getScopedItems(db.employees, companyId);
+  const leads = getScopedItems(db.leads, companyId);
+  const invoices = getScopedItems(db.invoices, companyId);
+  const payments = getScopedItems(db.payments, companyId);
+  const currentMonth = monthKey();
+
+  return employees
+    .filter(employee => employee.department === 'Consultancy')
+    .map(employee => {
+      const closedDeals = leads.filter(lead => lead.consultantId === employee.id && lead.stage === 'Closed / Won' && monthKey(lead.updatedAt || lead.createdAt) === currentMonth).length;
+      const target = Number(employee.monthlyTarget || 0);
+      const targetProgress = target ? Math.min(100, Math.round((closedDeals / target) * 100)) : 0;
+      const employeeStudentIds = getScopedItems(db.students, companyId).filter(student => student.consultantId === employee.id).map(student => student.id);
+      const employeeInvoices = invoices.filter(invoice => employeeStudentIds.includes(invoice.studentId));
+      const collected = payments
+        .filter(payment => employeeInvoices.some(invoice => invoice.id === payment.invoiceId))
+        .reduce((sum, payment) => sum + money(payment.amount), 0);
+      const commissionDue = closedDeals * Number(employee.commissionPerContract || 0);
+      return {
+        employeeId: employee.id,
+        employeeName: employee.name,
+        title: employee.title,
+        monthlyTarget: target,
+        closedDeals,
+        targetProgress,
+        commissionPerContract: Number(employee.commissionPerContract || 0),
+        commissionDue,
+        collected
+      };
+    });
+}
+
+function buildPayrollRows(db, companyId) {
+  const employees = getScopedItems(db.employees, companyId);
+  const leaveRequests = getScopedItems(db.leaveRequests || [], companyId);
+  const targetRows = buildHrTargets(db, companyId);
+  const month = monthKey();
+
+  return employees.map(employee => {
+    const targetRow = targetRows.find(item => item.employeeId === employee.id);
+    const bonus = Number(employee.currentBonus || 0);
+    const deductions = Number(employee.currentDeductions || 0);
+    const advances = Number(employee.currentAdvances || 0);
+    const approvedLeavesThisMonth = leaveRequests.filter(item => item.employeeId === employee.id && item.status === 'Approved' && monthKey(item.startDate) === month);
+    const unpaidDays = approvedLeavesThisMonth.filter(item => item.leaveType === 'Unpaid Leave').reduce((sum, item) => sum + Number(item.days || 0), 0);
+    const absenceDeduction = Number(employee.dailySalaryDeduction || 0) * unpaidDays;
+    const netSalary = Number(employee.basicSalary || 0) + Number(targetRow?.commissionDue || 0) + bonus - deductions - advances - absenceDeduction;
+
+    return {
+      employeeId: employee.id,
+      employeeName: employee.name,
+      department: employee.department,
+      basicSalary: Number(employee.basicSalary || 0),
+      commissions: Number(targetRow?.commissionDue || 0),
+      bonuses: bonus,
+      deductions,
+      advances,
+      unpaidLeaveDays: unpaidDays,
+      absenceDeduction,
+      netSalary,
+      month
+    };
+  });
+}
+
+function buildHrTasks(db, companyId) {
+  const leaveRequests = getScopedItems(db.leaveRequests || [], companyId);
+  const payrollRows = buildPayrollRows(db, companyId);
+  const month = monthKey();
+
+  const leaveAlerts = leaveRequests
+    .filter(item => item.status === 'Pending')
+    .map(item => ({
+      id: `hr-leave-${item.id}`,
+      title: `مراجعة طلب إجازة ${item.employeeName}`,
+      description: `${item.leaveType} · من ${item.startDate} إلى ${item.endDate}`,
+      dueDate: item.startDate,
+      priority: 'High',
+      status: 'open',
+      kind: 'alert',
+      source: 'leave',
+      assignedRole: 'hr',
+      companyId
+    }));
+
+  const payrollAlerts = payrollRows
+    .filter(item => item.netSalary > 0)
+    .map(item => ({
+      id: `hr-payroll-${item.employeeId}-${month}`,
+      title: `مراجعة راتب ${item.employeeName}`,
+      description: `صافي الشهر ${item.month} · ${Math.round(item.netSalary)}`,
+      dueDate: `${month}-28`,
+      priority: 'Medium',
+      status: 'open',
+      kind: 'alert',
+      source: 'payroll',
+      assignedRole: 'hr',
+      companyId
+    }));
+
+  return [...leaveAlerts, ...payrollAlerts];
 }
 
 function getMetaIntegrationForCompany(db, companyId) {
@@ -622,12 +1070,17 @@ function resolveContactForInbound(db, companyId, normalizedMessage) {
     email: '',
     country: '',
     program: '',
+    targetCountry: '',
+    targetMajor: '',
+    budget: '',
+    currentLevel: '',
     university: '',
     source: normalizedMessage.channelType === 'facebook' ? 'Facebook' : normalizedMessage.channelType === 'instagram' ? 'Instagram' : 'WhatsApp',
     stage: 'Initial Inquiry',
     consultantId: '',
     priority: 'Medium',
     nextFollowUp: '',
+    lostReason: '',
     notes: 'تم إنشاؤه تلقائيًا من تكامل Meta.',
     createdAt: now(),
     updatedAt: now()
@@ -823,21 +1276,236 @@ function initials(name) {
     .toUpperCase();
 }
 
+function ensureExecutiveSeedData(db, companyId) {
+  db.executiveActions ||= [];
+  db.broadcasts ||= [];
+
+  const companyActions = getScopedItems(db.executiveActions, companyId);
+  if (!companyActions.length) {
+    db.executiveActions.push(
+      {
+        id: randomUUID(),
+        companyId,
+        type: 'discount',
+        status: 'pending',
+        title: 'خصم استثنائي 12% على رسوم التقديم',
+        summary: 'طلب مقدم من فريق المبيعات للحفاظ على العميل قبل تحويله لمنافس.',
+        subjectName: 'Ahmed Mostafa',
+        requestedBy: 'Lina Ahmed',
+        requestedAt: '2026-07-22T08:15:00Z',
+        meta: { amount: 420, currency: 'USD' }
+      },
+      {
+        id: randomUUID(),
+        companyId,
+        type: 'refund',
+        status: 'pending',
+        title: 'استرداد رسوم حجز الملف',
+        summary: 'إلغاء التعاقد بعد تأخر الموافقة النهائية من الجامعة.',
+        subjectName: 'Youssef Emad',
+        requestedBy: 'Youssef Adel',
+        requestedAt: '2026-07-22T08:45:00Z',
+        meta: { amount: 1000, currency: 'USD' }
+      },
+      {
+        id: randomUUID(),
+        companyId,
+        type: 'payment_plan',
+        status: 'pending',
+        title: 'تقسيط غير معتاد على 4 دفعات',
+        summary: 'طلب تقسيط مخصص لحين وصول التحويل البنكي من ولي الأمر.',
+        subjectName: 'Hassan Nabil',
+        requestedBy: 'Youssef Adel',
+        requestedAt: '2026-07-22T09:10:00Z',
+        meta: { installments: 4 }
+      },
+      {
+        id: randomUUID(),
+        companyId,
+        type: 'reassignment',
+        status: 'pending',
+        title: 'إعادة توزيع الملف على مستشار آخر',
+        summary: 'نقل الملف لتقليل التأخير بعد ضغط جدول المتابعة الحالي.',
+        subjectName: 'Salma Hany',
+        requestedBy: 'Maya Roberts',
+        requestedAt: '2026-07-22T09:30:00Z',
+        meta: { from: 'Ziad Mahmoud', to: 'Lina Ahmed' }
+      },
+      {
+        id: randomUUID(),
+        companyId,
+        type: 'document_waiver',
+        status: 'pending',
+        title: 'تقديم الملف رغم تأخر شهادة اللغة',
+        summary: 'الجامعة تسمح مؤقتاً باستلام المستند بعد فتح الملف إذا تمت الموافقة الإدارية.',
+        subjectName: 'Hassan Nabil',
+        requestedBy: 'Omar Khaled',
+        requestedAt: '2026-07-22T10:00:00Z',
+        meta: { missingDocument: 'English Certificate' }
+      }
+    );
+  }
+
+  const appReady = findScoped(db.applications, companyId, item => item.status === 'Ready to Submit');
+  if (appReady && !appReady.submissionDeadline) appReady.submissionDeadline = '2026-07-23T17:00:00Z';
+
+  const submittedApp = findScoped(db.applications, companyId, item => item.status === 'Application Submitted');
+  if (submittedApp) {
+    if (!submittedApp.submittedAt) submittedApp.submittedAt = '2026-07-14T10:00:00Z';
+    if (!Number.isFinite(Number(submittedApp.responseSlaDays))) submittedApp.responseSlaDays = 5;
+  }
+
+  const visaCase = findScoped(db.applications, companyId, item => item.id === 'app-2');
+  if (visaCase && !visaCase.visaStatus) {
+    visaCase.visaStatus = 'Delayed';
+    visaCase.visaUpdatedAt = '2026-07-22T07:50:00Z';
+  }
+
+  const complaintLead = findScoped(db.leads, companyId, item => item.id === 'lead-5');
+  if (complaintLead && !complaintLead.clientAlertFlag) {
+    complaintLead.clientAlertFlag = 'dissatisfied';
+    complaintLead.clientAlertAt = '2026-07-22T09:55:00Z';
+  }
+}
+
+function getExecutiveActions(db, companyId) {
+  return getScopedItems(db.executiveActions || [], companyId)
+    .map(action => ({
+      ...action,
+      label: executiveActionMeta[action.type]?.label || action.type,
+      decisionMode: executiveActionMeta[action.type]?.decisionMode || 'approve-reject'
+    }))
+    .sort((left, right) => String(right.requestedAt || '').localeCompare(String(left.requestedAt || '')));
+}
+
+function buildEmergencyAlerts(db, companyId) {
+  const leads = getScopedItems(db.leads, companyId);
+  const students = getScopedItems(db.students, companyId);
+  const applications = getScopedItems(db.applications, companyId);
+  const invoices = getScopedItems(db.invoices, companyId);
+  const studentLookup = new Map(students.map(student => [student.id, student]));
+
+  const deadlineAlerts = applications
+    .filter(application => application.submissionDeadline)
+    .filter(application => !['Application Submitted', 'Under Review', 'Conditional Acceptance', 'Final Acceptance', 'Rejected', 'Deferred'].includes(application.status))
+    .map(application => {
+      const remainingHours = hoursUntil(application.submissionDeadline);
+      if (remainingHours < 0 || remainingHours > 48) return null;
+      const student = studentLookup.get(application.studentId);
+      return {
+        id: `deadline-${application.id}`,
+        type: 'deadline',
+        severity: remainingHours <= 24 ? 'critical' : 'warning',
+        title: 'اقتراب الموعد النهائي للتقديم',
+        description: `${student?.name || 'طالب غير محدد'} - ${application.university || 'جامعة غير محددة'} خلال ${remainingHours} ساعة`,
+        meta: `آخر موعد ${String(application.submissionDeadline).slice(0, 10)}`,
+        createdAt: application.submissionDeadline
+      };
+    })
+    .filter(Boolean);
+
+  const visaAlerts = applications
+    .filter(application => ['Delayed', 'Rejected'].includes(application.visaStatus))
+    .map(application => {
+      const student = studentLookup.get(application.studentId);
+      return {
+        id: `visa-${application.id}`,
+        type: 'visa',
+        severity: application.visaStatus === 'Rejected' ? 'critical' : 'warning',
+        title: application.visaStatus === 'Rejected' ? 'رفض فيزا يحتاج تصعيداً' : 'تأخير فيزا يحتاج متابعة',
+        description: `${student?.name || 'طالب غير محدد'} - ${application.university || 'جامعة غير محددة'}`,
+        meta: application.visaUpdatedAt ? String(application.visaUpdatedAt).slice(0, 10) : 'تم تسجيل الحالة اليوم',
+        createdAt: application.visaUpdatedAt || now()
+      };
+    });
+
+  const uncontactedLeadAlerts = leads
+    .filter(lead => lead.stage === 'Initial Inquiry')
+    .filter(lead => !lead.contactedAt)
+    .filter(lead => hasPastDeadline(addHours(lead.createdAt, 24)))
+    .map(lead => ({
+      id: `uncontacted-${lead.id}`,
+      type: 'uncontacted',
+      severity: lead.priority === 'High' ? 'critical' : 'warning',
+      title: 'عملاء جدد بلا تواصل خلال 24 ساعة',
+      description: `${lead.name} - ${lead.country || 'وجهة غير محددة'} - ${lead.source || 'مصدر مباشر'}`,
+      meta: `منذ ${Math.max(24, Math.abs(hoursUntil(lead.createdAt)))} ساعة`,
+      createdAt: lead.createdAt
+    }));
+
+  const universityDelayAlerts = applications
+    .filter(application => ['Application Submitted', 'Under Review'].includes(application.status))
+    .filter(application => Number.isFinite(Number(application.responseSlaDays)) && application.submittedAt && !application.universityResponseReceivedAt)
+    .map(application => {
+      const deadline = addDays(application.submittedAt, application.responseSlaDays);
+      if (!hasPastDeadline(deadline)) return null;
+      const student = studentLookup.get(application.studentId);
+      return {
+        id: `university-delay-${application.id}`,
+        type: 'university_delay',
+        severity: 'warning',
+        title: 'تأخر رد الجامعة عن المدة المحددة',
+        description: `${student?.name || 'طالب غير محدد'} - ${application.university || 'جامعة غير محددة'}`,
+        meta: `تجاوز SLA (${application.responseSlaDays} أيام)`,
+        createdAt: deadline
+      };
+    })
+    .filter(Boolean);
+
+  const overduePaymentAlerts = invoices
+    .filter(invoice => invoice.status !== 'Paid')
+    .filter(invoice => invoice.dueDate && invoice.dueDate < todayKey())
+    .map(invoice => {
+      const student = studentLookup.get(invoice.studentId);
+      return {
+        id: `payment-${invoice.id}`,
+        type: 'overdue_payment',
+        severity: 'critical',
+        title: 'دفعة مستحقة متأخرة',
+        description: `${student?.name || 'طالب غير محدد'} - ${invoice.number}`,
+        meta: `استحقاق ${invoice.dueDate}`,
+        createdAt: `${invoice.dueDate}T00:00:00Z`
+      };
+    });
+
+  const complaintAlerts = leads
+    .filter(lead => ['dissatisfied', 'cancel_request'].includes(lead.clientAlertFlag))
+    .map(lead => ({
+      id: `complaint-${lead.id}`,
+      type: 'complaint',
+      severity: lead.clientAlertFlag === 'cancel_request' ? 'critical' : 'warning',
+      title: lead.clientAlertFlag === 'cancel_request' ? 'طلب إلغاء من العميل' : 'عميل غير راضٍ يحتاج تدخل المدير',
+      description: `${lead.name} - ${lead.university || lead.country || 'ملف يحتاج مراجعة'}`,
+      meta: lead.notes || 'تم وضع علامة تنبيه داخل الملف',
+      createdAt: lead.clientAlertAt || lead.updatedAt || now()
+    }));
+
+  return [...deadlineAlerts, ...visaAlerts, ...uncontactedLeadAlerts, ...universityDelayAlerts, ...overduePaymentAlerts, ...complaintAlerts]
+    .sort((left, right) => {
+      const severityScore = { critical: 0, warning: 1 };
+      if (severityScore[left.severity] !== severityScore[right.severity]) {
+        return severityScore[left.severity] - severityScore[right.severity];
+      }
+      return String(right.createdAt || '').localeCompare(String(left.createdAt || ''));
+    });
+}
+
 function buildAutomaticTasks(db, companyId) {
   const leads = getScopedItems(db.leads, companyId);
   const applications = getScopedItems(db.applications, companyId);
   const invoices = getScopedItems(db.invoices, companyId);
   const students = getScopedItems(db.students, companyId);
+  const currentDay = todayKey();
 
   const leadTasks = leads
-    .filter(lead => lead.nextFollowUp && lead.nextFollowUp <= todayKey)
+    .filter(lead => lead.nextFollowUp && lead.nextFollowUp <= currentDay)
     .filter(lead => !['Enrolled', 'Lost'].includes(lead.stage))
     .map(lead => ({
       id: `auto-lead-${lead.id}`,
       title: `متابعة ${lead.name}`,
       description: `${lead.program || 'برنامج غير محدد'} · ${lead.country || 'وجهة غير محددة'}`,
       dueDate: lead.nextFollowUp,
-      priority: lead.nextFollowUp < todayKey ? 'High' : 'Medium',
+      priority: lead.nextFollowUp < currentDay ? 'High' : 'Medium',
       status: 'open',
       kind: 'alert',
       source: 'lead'
@@ -851,7 +1519,7 @@ function buildAutomaticTasks(db, companyId) {
         id: `auto-app-${item.id}`,
         title: `استكمال مستندات ${student?.name || 'الطالب'}`,
         description: `${item.university} · ${item.documentProgress}%`,
-        dueDate: item.updatedAt?.slice(0, 10) || todayKey,
+        dueDate: item.updatedAt?.slice(0, 10) || currentDay,
         priority: Number(item.documentProgress || 0) < 50 ? 'High' : 'Medium',
         status: 'open',
         kind: 'alert',
@@ -879,7 +1547,7 @@ function buildAutomaticTasks(db, companyId) {
 
   const invoiceTasks = invoices
     .filter(invoice => invoice.status !== 'Paid')
-    .filter(invoice => invoice.dueDate && invoice.dueDate <= todayKey)
+    .filter(invoice => invoice.dueDate && invoice.dueDate <= currentDay)
     .map(invoice => {
       const student = students.find(item => item.id === invoice.studentId);
       return {
@@ -887,7 +1555,7 @@ function buildAutomaticTasks(db, companyId) {
         title: `تحصيل ${invoice.number}`,
         description: `${student?.name || 'طالب غير معروف'} · ${invoice.dueDate}`,
         dueDate: invoice.dueDate,
-        priority: invoice.dueDate < todayKey ? 'High' : 'Medium',
+        priority: invoice.dueDate < currentDay ? 'High' : 'Medium',
         status: 'open',
         kind: 'alert',
         source: 'invoice',
@@ -895,7 +1563,25 @@ function buildAutomaticTasks(db, companyId) {
       };
     });
 
-  return [...leadTasks, ...documentTasks, ...workflowTasks, ...invoiceTasks].map(task => ({ ...task, companyId }));
+  const installmentTasks = invoices.flatMap(invoice => {
+    const student = students.find(item => item.id === invoice.studentId);
+    return sanitizeInstallments(invoice.installments)
+      .filter(installment => installment.dueDate && installment.dueDate <= currentDay)
+      .filter(installment => money(installment.paidAmount) < money(installment.amount))
+      .map(installment => ({
+        id: `auto-installment-${invoice.id}-${installment.id}`,
+        title: `تحصيل ${installment.label}`,
+        description: `${student?.name || 'طالب غير معروف'} · ${invoice.number}`,
+        dueDate: installment.dueDate,
+        priority: installment.dueDate < currentDay ? 'High' : 'Medium',
+        status: 'open',
+        kind: 'alert',
+        source: 'installment',
+        companyId
+      }));
+  });
+
+  return [...leadTasks, ...documentTasks, ...workflowTasks, ...invoiceTasks, ...installmentTasks].map(task => ({ ...task, companyId }));
 }
 
 async function prepareDb() {
@@ -912,6 +1598,11 @@ async function prepareDb() {
     db.payments ||= [];
     db.activities ||= [];
     db.monthlyRevenue ||= [];
+    db.executiveActions ||= [];
+    db.broadcasts ||= [];
+    db.userNotifications ||= [];
+    db.leaveRequests ||= [];
+    db.receptionState ||= {};
     db.settings ||= {
       companyName: 'EduGlobal CRM',
       workspace: 'Global Hub',
@@ -942,6 +1633,15 @@ async function prepareDb() {
     ensureCompanyOwnership(db.payments, fallbackCompanyId);
     ensureCompanyOwnership(db.activities, fallbackCompanyId);
     ensureCompanyOwnership(db.tasks, fallbackCompanyId);
+    ensureCompanyOwnership(db.executiveActions, fallbackCompanyId);
+    ensureCompanyOwnership(db.broadcasts, fallbackCompanyId);
+    ensureCompanyOwnership(db.userNotifications, fallbackCompanyId);
+    ensureCompanyOwnership(db.leaveRequests, fallbackCompanyId);
+    ensureExecutiveSeedData(db, fallbackCompanyId);
+
+    if (!Array.isArray(db.settings.pipelineStages) || !db.settings.pipelineStages.length || db.settings.pipelineStages.some(stage => legacyLeadStageMap[stage])) {
+      db.settings.pipelineStages = [...consultancyPipelineStages];
+    }
 
     db.tasks ||= [];
     for (const user of db.users) {
@@ -951,6 +1651,114 @@ async function prepareDb() {
         user.passwordHash = await bcrypt.hash(user.password, 10);
         delete user.password;
       }
+    }
+
+    for (const lead of db.leads) {
+      lead.stage = legacyLeadStageMap[lead.stage] || lead.stage || 'Initial Inquiry';
+      lead.targetCountry ||= lead.country || '';
+      lead.targetMajor ||= lead.program || '';
+      lead.budget = quickBudgetOptions.includes(lead.budget) ? lead.budget : '';
+      lead.currentLevel = currentLevelOptions.includes(lead.currentLevel) ? lead.currentLevel : '';
+      lead.nextFollowUp ||= '';
+      lead.lostReason ||= '';
+    }
+
+    for (const employee of db.employees) {
+      if (employee.department === 'Consultancy' && !employee.liveStatus) {
+        employee.liveStatus = employee.id === 'emp-ziad' ? 'busy' : employee.id === 'emp-mariam' ? 'break' : 'available';
+      }
+      employee.annualLeaveBalance ??= 21;
+      employee.monthlyTarget ??= employee.department === 'Consultancy' ? 8 : 0;
+      employee.commissionPerContract ??= employee.department === 'Consultancy' ? 500 : 0;
+      employee.basicSalary ??= employee.department === 'Consultancy' ? 18000 : employee.department === 'Admissions' ? 15000 : 12000;
+      employee.currentBonus ??= 0;
+      employee.currentDeductions ??= 0;
+      employee.currentAdvances ??= 0;
+      employee.dailySalaryDeduction ??= Math.round(Number(employee.basicSalary || 0) / 30);
+      employee.documents ||= [];
+    }
+
+    for (const request of db.leaveRequests) {
+      request.days ||= workingDaysBetween(request.startDate, request.endDate);
+      request.status ||= 'Pending';
+      request.leaveType ||= 'Annual Leave';
+      request.reason ||= '';
+      request.companyId ||= fallbackCompanyId;
+    }
+
+    for (const log of db.receptionLogs) {
+      log.branch ||= 'Cairo HQ';
+      log.queueStatus ||= log.type === 'Walk-in' ? 'waiting' : 'assigned';
+      log.notifiedAt ||= '';
+      log.consultantNotified ||= false;
+      if (!receptionLeadSourceOptions.includes(log.source)) {
+        log.source = log.source === 'Phone'
+          ? 'Walk-in Without Appointment'
+          : log.source === 'Referral'
+            ? 'Friend Referral'
+            : log.source === 'Google Ads'
+              ? 'Google Campaign'
+              : log.source === 'Instagram'
+                ? 'Instagram Campaign'
+                : log.source === 'Facebook'
+                  ? 'Facebook Campaign'
+                : 'Walk-in Without Appointment';
+      }
+    }
+
+    for (const invoice of db.invoices) {
+      const financials = summarizeInvoiceFinancials(invoice);
+      invoice.currency = sanitizeCurrency(invoice.currency);
+      invoice.exchangeRate = money(invoice.exchangeRate) || 1;
+      invoice.serviceFee = financials.serviceFee;
+      invoice.universityFee = financials.universityFee;
+      invoice.visaFee = financials.visaFee;
+      invoice.tax = financials.tax;
+      invoice.passThroughFees = financials.passThroughFees;
+      invoice.total = financials.total;
+      invoice.installments = sanitizeInstallments(invoice.installments);
+      invoice.description ||= 'Educational consultancy services';
+      invoice.paymentStatement ||= invoice.description;
+      invoice.notes ||= '';
+      invoice.status ||= 'Unpaid';
+      invoice.locked ||= false;
+    }
+
+    const paymentReceiptCounter = new Map();
+    for (const payment of db.payments) {
+      payment.method = sanitizePaymentMethod(payment.method);
+      payment.currency = sanitizeCurrency(payment.currency || db.invoices.find(invoice => invoice.id === payment.invoiceId)?.currency || 'USD');
+      payment.exchangeRate = money(payment.exchangeRate) || 1;
+      payment.reference ||= '';
+      payment.notes ||= '';
+      const paymentYear = new Date(payment.createdAt || payment.date || now()).getFullYear();
+      const nextReceiptIndex = (paymentReceiptCounter.get(paymentYear) || 0) + 1;
+      paymentReceiptCounter.set(paymentYear, nextReceiptIndex);
+      payment.receiptNumber ||= `REC-${paymentYear}-${String(nextReceiptIndex).padStart(3, '0')}`;
+      payment.statement ||= db.invoices.find(invoice => invoice.id === payment.invoiceId)?.paymentStatement || '';
+      payment.amountInWords ||= amountInWords(payment.amount, payment.currency);
+      payment.locked = payment.locked !== false;
+      payment.lockedAt ||= payment.createdAt || now();
+      payment.attachment ||= null;
+      payment.installmentId ||= '';
+    }
+
+    for (const application of db.applications) {
+      application.applicationRefNo ||= '';
+      application.portalUrl ||= '';
+      application.portalUsername ||= '';
+      application.portalPassword ||= '';
+      application.offerType ||= application.status === 'Conditional Acceptance'
+        ? 'Conditional Offer'
+        : application.status === 'Final Acceptance'
+          ? 'Unconditional Offer'
+          : application.status === 'Rejected'
+            ? 'Rejected'
+            : '';
+      application.offerConditions ||= '';
+      application.rejectionReason ||= '';
+      application.offerLetterUploadedAt ||= '';
+      application.applicationFeeStatus ||= computeApplicationFeeStatus(db, application.companyId || fallbackCompanyId, application.studentId);
     }
   });
 }
@@ -1613,7 +2421,11 @@ app.get('/api/dashboard', async (req, res) => {
     stageDistribution: db.settings.pipelineStages.map(stage => ({ stage, count: leads.filter(lead => lead.stage === stage).length })),
     consultantStats,
     recentActivity: activities.slice(0, 8),
-    recentReception: receptionLogs.slice(0, 5)
+    recentReception: receptionLogs.slice(0, 5),
+    executiveActions: getExecutiveActions(db, companyId),
+    emergencyAlerts: buildEmergencyAlerts(db, companyId),
+    latestBroadcast: getScopedItems(db.broadcasts || [], companyId)
+      .sort((left, right) => String(right.createdAt || '').localeCompare(String(left.createdAt || '')))[0] || null
   });
 });
 
@@ -1743,9 +2555,58 @@ app.patch('/api/users/:id', allowRoles('admin', 'management'), async (req, res) 
 
 app.get('/api/tasks', async (req, res) => {
   const db = await readDb();
-  const automaticTasks = buildAutomaticTasks(db, req.user.companyId);
+  const automaticTasks = req.user.role === 'hr' ? buildHrTasks(db, req.user.companyId) : buildAutomaticTasks(db, req.user.companyId);
   const manualTasks = getScopedItems(db.tasks || [], req.user.companyId).filter(task => !task.assignedRole || task.assignedRole === req.user.role || ['admin', 'management'].includes(req.user.role));
   res.json([...automaticTasks, ...manualTasks]);
+});
+
+app.post('/api/dashboard/executive-actions/:id/decision', allowRoles('admin', 'management'), async (req, res) => {
+  const decision = req.body?.decision === 'rejected' ? 'rejected' : 'approved';
+
+  const result = await mutateDb(db => {
+    db.executiveActions ||= [];
+    const action = db.executiveActions.find(item => item.id === req.params.id && item.companyId === req.user.companyId);
+    if (!action) throw Object.assign(new Error('طلب الإجراء غير موجود'), { status: 404 });
+    if (action.status !== 'pending') throw Object.assign(new Error('تم اتخاذ قرار على هذا الطلب بالفعل'), { status: 409 });
+
+    action.status = decision;
+    action.decidedAt = now();
+    action.decidedBy = req.user.name;
+    action.decisionNote = String(req.body?.note || '').trim();
+    activity(db, req.user, 'updated', 'executive-action', action.id, `${executiveActionMeta[action.type]?.label || action.type} - ${decision}`);
+
+    return {
+      ...action,
+      label: executiveActionMeta[action.type]?.label || action.type,
+      decisionMode: executiveActionMeta[action.type]?.decisionMode || 'approve-reject'
+    };
+  });
+
+  res.json(result);
+});
+
+app.post('/api/dashboard/broadcasts', allowRoles('admin', 'management'), async (req, res) => {
+  const message = String(req.body?.message || '').trim();
+  const tone = ['critical', 'warning', 'info'].includes(req.body?.tone) ? req.body.tone : 'critical';
+  if (!message) return res.status(400).json({ message: 'نص التعميم مطلوب' });
+
+  const result = await mutateDb(db => {
+    db.broadcasts ||= [];
+    const broadcast = {
+      id: randomUUID(),
+      companyId: req.user.companyId,
+      message,
+      tone,
+      createdAt: now(),
+      createdBy: req.user.name
+    };
+    db.broadcasts.unshift(broadcast);
+    db.broadcasts = db.broadcasts.slice(0, 50);
+    activity(db, req.user, 'created', 'broadcast', broadcast.id, `تم إرسال تعميم عاجل: ${message.slice(0, 60)}`);
+    return broadcast;
+  });
+
+  res.status(201).json(result);
 });
 
 app.post('/api/tasks', async (req, res) => {
@@ -1814,7 +2675,7 @@ app.get('/api/leads', async (req, res) => {
   const db = await readDb();
   let leads = getScopedItems(db.leads, req.user.companyId);
   const q = String(req.query.q || '').trim().toLowerCase();
-  if (q) leads = leads.filter(lead => [lead.name, lead.phone, lead.email, lead.country, lead.program, lead.source].some(value => String(value || '').toLowerCase().includes(q)));
+  if (q) leads = leads.filter(lead => [lead.name, lead.phone, lead.email, lead.country, lead.program, lead.source, lead.targetCountry, lead.targetMajor, lead.budget, lead.currentLevel, lead.lostReason].some(value => String(value || '').toLowerCase().includes(q)));
   res.json(leads);
 });
 
@@ -1834,12 +2695,17 @@ app.post('/api/leads', allowRoles('admin', 'management', 'consultant', 'receptio
       email: payload.email || '',
       country: payload.country || '',
       program: payload.program || '',
+      targetCountry: payload.targetCountry || payload.country || '',
+      targetMajor: payload.targetMajor || payload.program || '',
+      budget: quickBudgetOptions.includes(payload.budget) ? payload.budget : '',
+      currentLevel: currentLevelOptions.includes(payload.currentLevel) ? payload.currentLevel : '',
       university: payload.university || '',
       source: payload.source || 'Direct',
       stage: payload.stage || 'Initial Inquiry',
       consultantId: payload.consultantId || '',
       priority: payload.priority || 'Medium',
       nextFollowUp: payload.nextFollowUp || '',
+      lostReason: payload.lostReason || '',
       notes: payload.notes || '',
       createdAt: now(),
       updatedAt: now()
@@ -1858,6 +2724,11 @@ app.patch('/api/leads/:id', allowRoles('admin', 'management', 'consultant', 'rec
     const lead = db.leads.find(item => item.id === req.params.id && item.companyId === req.user.companyId);
     if (!lead) throw Object.assign(new Error('العميل المحتمل غير موجود'), { status: 404 });
     Object.assign(lead, req.body, { updatedAt: now() });
+    lead.targetCountry ||= lead.country || '';
+    lead.targetMajor ||= lead.program || '';
+    if (!quickBudgetOptions.includes(lead.budget)) lead.budget = '';
+    if (!currentLevelOptions.includes(lead.currentLevel)) lead.currentLevel = '';
+    lead.lostReason ||= '';
     activity(db, req.user, 'updated', 'lead', lead.id, `تم تحديث بيانات ${lead.name}`);
     return lead;
   });
@@ -1876,7 +2747,7 @@ app.post('/api/leads/:id/move', allowRoles('admin', 'management', 'consultant'),
     lead.stage = stage;
     lead.updatedAt = now();
 
-    if (stage === 'Application Sent' && !lead.studentId) {
+    if (stage === 'Closed / Won' && !lead.studentId) {
       const student = {
         id: randomUUID(),
         companyId: req.user.companyId,
@@ -1931,12 +2802,24 @@ app.delete('/api/leads/:id', allowRoles('admin', 'management'), async (req, res)
   res.status(204).end();
 });
 
-app.get('/api/students', async (req, res) => {
+app.get('/api/students', allowRoles('admin', 'management', 'consultant', 'admissions', 'finance'), async (req, res) => {
   const db = await readDb();
   const students = getScopedItems(db.students, req.user.companyId);
   const applications = getScopedItems(db.applications, req.user.companyId);
   const invoices = getScopedItems(db.invoices, req.user.companyId);
-  res.json(students.map(student => ({ ...student, applications: applications.filter(item => item.studentId === student.id), invoices: invoices.filter(item => item.studentId === student.id) })));
+  res.json(students.map(student => {
+    const paymentStatus = computeApplicationFeeStatus(db, req.user.companyId, student.id);
+    return {
+      ...student,
+      applications: applications.filter(item => item.studentId === student.id).map(item => ({
+        ...buildApplicationState(item, db.settings),
+        applicationFeeStatus: paymentStatus
+      })),
+      invoices: req.user.role === 'admissions'
+        ? invoices.filter(item => item.studentId === student.id).map(() => ({ paymentStatus }))
+        : invoices.filter(item => item.studentId === student.id)
+    };
+  }));
 });
 
 app.get('/api/applications', async (req, res) => {
@@ -1944,6 +2827,7 @@ app.get('/api/applications', async (req, res) => {
   res.json(
     getScopedItems(db.applications, req.user.companyId).map(application => ({
       ...buildApplicationState(application, db.settings),
+      applicationFeeStatus: computeApplicationFeeStatus(db, req.user.companyId, application.studentId),
       student: db.students.find(student => student.id === application.studentId && student.companyId === req.user.companyId) || null
     }))
   );
@@ -1952,6 +2836,9 @@ app.get('/api/applications', async (req, res) => {
 app.post('/api/applications', allowRoles('admin', 'management', 'admissions', 'consultant'), async (req, res) => {
   const result = await mutateDb(db => {
     let student = db.students.find(item => item.id === req.body.studentId && item.companyId === req.user.companyId);
+    if (!student && req.user.role === 'admissions') {
+      throw Object.assign(new Error('موظف القبول لا يمكنه إنشاء طالب جديد من هذه الشاشة'), { status: 403 });
+    }
     if (!student && req.body.studentName) {
       student = {
         id: randomUUID(),
@@ -1976,6 +2863,14 @@ app.post('/api/applications', allowRoles('admin', 'management', 'admissions', 'c
       country: req.body.country || '',
       status: req.body.status || 'Preparing Documents',
       intake: req.body.intake || '',
+      applicationRefNo: req.body.applicationRefNo || '',
+      portalUrl: req.body.portalUrl || '',
+      portalUsername: req.body.portalUsername || '',
+      portalPassword: req.body.portalPassword || '',
+      offerType: req.body.offerType || '',
+      offerConditions: req.body.offerConditions || '',
+      rejectionReason: req.body.rejectionReason || '',
+      offerLetterUploadedAt: '',
       assignedTo: req.body.assignedTo || '',
       documentProgress: 0,
       followUpProgress: [],
@@ -1987,7 +2882,7 @@ app.post('/api/applications', allowRoles('admin', 'management', 'admissions', 'c
 
     db.applications.unshift(application);
     activity(db, req.user, 'created', 'application', application.id, `تم إنشاء طلب قبول للطالب ${student.name}`);
-    return { ...buildApplicationState(application, db.settings), student };
+    return { ...buildApplicationState(application, db.settings), applicationFeeStatus: computeApplicationFeeStatus(db, req.user.companyId, student.id), student };
   });
 
   res.status(201).json(result);
@@ -1997,11 +2892,33 @@ app.patch('/api/applications/:id', allowRoles('admin', 'management', 'admissions
   const result = await mutateDb(db => {
     const application = db.applications.find(item => item.id === req.params.id);
     if (!application) throw Object.assign(new Error('طلب القبول غير موجود'), { status: 404 });
-    Object.assign(application, req.body, { updatedAt: now() });
+    const nextStatus = req.body.status || application.status;
+    const nextOfferType = req.body.offerType ?? application.offerType ?? '';
+    const nextOfferConditions = req.body.offerConditions ?? application.offerConditions ?? '';
+    const nextRejectionReason = req.body.rejectionReason ?? application.rejectionReason ?? '';
+    if (['Conditional Acceptance', 'Final Acceptance', 'Rejected'].includes(nextStatus) && !nextOfferType) {
+      throw Object.assign(new Error('نوع القبول أو الرفض مطلوب قبل حفظ الحالة'), { status: 400 });
+    }
+    if (nextOfferType === 'Conditional Offer' && !String(nextOfferConditions || '').trim()) {
+      throw Object.assign(new Error('يجب كتابة شروط القبول المشروط'), { status: 400 });
+    }
+    if (nextOfferType === 'Rejected' && !String(nextRejectionReason || '').trim()) {
+      throw Object.assign(new Error('يجب كتابة سبب الرفض'), { status: 400 });
+    }
+    Object.assign(application, req.body, {
+      offerType: nextOfferType,
+      offerConditions: nextOfferType === 'Conditional Offer' ? String(nextOfferConditions || '').trim() : '',
+      rejectionReason: nextOfferType === 'Rejected' ? String(nextRejectionReason || '').trim() : '',
+      applicationFeeStatus: computeApplicationFeeStatus(db, req.user.companyId, application.studentId),
+      updatedAt: now()
+    });
     activity(db, req.user, 'updated', 'application', application.id, `تم تحديث حالة الطلب إلى ${application.status}`);
     const nextState = buildApplicationState(application, db.settings);
     application.documentProgress = nextState.documentProgress;
-    return nextState;
+    if (['Conditional Acceptance', 'Final Acceptance'].includes(application.status)) {
+      notifyConsultantAboutOffer(db, req.user.companyId, application, 'offer_status_changed');
+    }
+    return { ...nextState, applicationFeeStatus: computeApplicationFeeStatus(db, req.user.companyId, application.studentId) };
   });
 
   res.json(result);
@@ -2037,6 +2954,10 @@ app.patch('/api/applications/:id/follow-up/:stageId', allowRoles('admin', 'manag
     }
 
     application.updatedAt = now();
+    if (document.type === 'Acceptance Letter') {
+      application.offerLetterUploadedAt = now();
+      notifyConsultantAboutOffer(db, req.user.companyId, application, 'offer_letter_uploaded');
+    }
     const nextState = buildApplicationState(application, db.settings);
     application.documentProgress = nextState.documentProgress;
     activity(db, req.user, 'updated', 'application-follow-up', `${application.id}:${stage.id}`, `${application.id} - ${stage.title} - ${done ? 'completed' : 'reopened'}`);
@@ -2047,6 +2968,7 @@ app.patch('/api/applications/:id/follow-up/:stageId', allowRoles('admin', 'manag
 });
 
 app.post('/api/applications/:id/documents', allowRoles('admin', 'management', 'admissions', 'consultant'), upload.single('file'), async (req, res) => {
+  const storedFile = req.file ? await storeUploadedFile(req.file) : null;
   if (!req.file) return res.status(400).json({ message: 'الملف مطلوب' });
 
   const result = await mutateDb(db => {
@@ -2091,7 +3013,7 @@ app.post('/api/applications/:id/documents', allowRoles('admin', 'management', 'a
     application.documentProgress = nextState.documentProgress;
     application.updatedAt = now();
     activity(db, req.user, 'uploaded', 'document', document.id, `تم رفع ${document.type} للطلب ${application.id.slice(0, 8)}`);
-    return { document, application: nextState };
+    return { document, application: { ...nextState, applicationFeeStatus: computeApplicationFeeStatus(db, req.user.companyId, application.studentId) } };
   });
 
   res.status(201).json(result);
@@ -2104,6 +3026,9 @@ app.patch('/api/applications/:appId/documents/:docId', allowRoles('admin', 'mana
     const document = application.documents.find(item => item.id === req.params.docId);
     if (!document) throw Object.assign(new Error('المستند غير موجود'), { status: 404 });
 
+    if (req.body.status === 'Rejected' && !String(req.body.reviewNote || '').trim()) {
+      throw Object.assign(new Error('يجب كتابة سبب رفض المستند'), { status: 400 });
+    }
     document.status = req.body.status || document.status;
     document.reviewNote = req.body.reviewNote ?? document.reviewNote;
     document.reviewedBy = req.user.name;
@@ -2138,9 +3063,34 @@ app.delete('/api/applications/:appId/documents/:docId', allowRoles('admin', 'man
   res.status(204).end();
 });
 
-app.get('/api/reception', async (_req, res) => {
+app.get('/api/reception', allowRoles('admin', 'management', 'reception'), async (req, res) => {
   const db = await readDb();
-  res.json(db.receptionLogs);
+  const companyId = req.user.companyId;
+  const logs = getScopedItems(db.receptionLogs, companyId);
+  const consultants = buildReceptionConsultantSnapshot(db, companyId);
+  const queue = logs
+    .filter(log => log.type === 'Walk-in')
+    .filter(log => ['waiting', 'notified'].includes(log.queueStatus || 'waiting'))
+    .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+  res.json({ logs, consultants, queue });
+});
+
+app.get('/api/reception/duplicate-check', allowRoles('admin', 'management', 'reception'), async (req, res) => {
+  const db = await readDb();
+  const companyId = req.user.companyId;
+  const normalizedPhone = normalizePhone(req.query.phone);
+  if (!normalizedPhone) return res.json({ duplicate: false });
+  const duplicate = getScopedItems(db.leads, companyId).find(lead => normalizePhone(lead.phone) === normalizedPhone);
+  if (!duplicate) return res.json({ duplicate: false });
+  const consultant = findScoped(db.employees, companyId, item => item.id === duplicate.consultantId);
+  res.json({ duplicate: true, leadId: duplicate.id, consultantName: consultant?.name || 'غير مسند', stage: duplicate.stage });
+});
+
+app.get('/api/reception/student-lookup', allowRoles('admin', 'management', 'reception'), async (req, res) => {
+  const db = await readDb();
+  const result = buildReceptionStudentLookup(db, req.user.companyId, req.query.q);
+  if (!result) return res.status(404).json({ message: 'لم يتم العثور على الطالب' });
+  res.json(result);
 });
 
 app.post('/api/reception', allowRoles('admin', 'management', 'reception'), async (req, res) => {
@@ -2148,38 +3098,57 @@ app.post('/api/reception', allowRoles('admin', 'management', 'reception'), async
     const payload = req.body || {};
     if (!payload.name || !payload.phone) throw Object.assign(new Error('الاسم ورقم الهاتف مطلوبان'), { status: 400 });
 
+    if (!receptionLeadSourceOptions.includes(payload.source)) throw Object.assign(new Error('مصدر العميل مطلوب'), { status: 400 });
+    if (payload.interest && !receptionInterestOptions.includes(payload.interest)) throw Object.assign(new Error('اهتمام الدراسة غير صالح'), { status: 400 });
+    const companyId = req.user.companyId;
+    const branch = String(payload.branch || 'Cairo HQ');
+    const autoAssigned = payload.autoAssign ? pickNextReceptionConsultant(db, companyId, branch) : null;
+    const duplicate = getScopedItems(db.leads, companyId).find(lead => normalizePhone(lead.phone) === normalizePhone(payload.phone) || (payload.email && lead.email === payload.email));
+    const consultantId = autoAssigned?.id || payload.consultantId || duplicate?.consultantId || '';
+    if (!consultantId) throw Object.assign(new Error('لا يوجد مستشار متاح حالياً للإسناد'), { status: 400 });
+
     const log = {
       id: randomUUID(),
+      companyId,
       type: payload.type || 'Walk-in',
       name: payload.name,
       phone: payload.phone,
       email: payload.email || '',
       interest: payload.interest || '',
-      source: payload.source || 'Front Desk',
-      consultantId: payload.consultantId || '',
+      source: payload.source,
+      consultantId,
+      branch,
       notes: payload.notes || '',
-      status: 'Assigned',
+      status: duplicate ? 'Existing Lead' : 'Assigned',
+      queueStatus: payload.type === 'Walk-in' ? 'waiting' : 'assigned',
+      consultantNotified: false,
+      notifiedAt: '',
       createdBy: req.user.name,
       createdAt: now()
     };
 
     db.receptionLogs.unshift(log);
     if (payload.createLead !== false) {
-      const duplicate = db.leads.find(lead => lead.phone === payload.phone || (payload.email && lead.email === payload.email));
       if (!duplicate) {
         const lead = {
           id: randomUUID(),
+          companyId,
           name: payload.name,
           phone: payload.phone,
           email: payload.email || '',
           country: payload.country || '',
           program: payload.interest || '',
+          targetCountry: payload.country || '',
+          targetMajor: payload.interest || '',
+          budget: '',
+          currentLevel: '',
           university: '',
-          source: payload.source || payload.type || 'Front Desk',
+          source: payload.source || payload.type || 'Walk-in Without Appointment',
           stage: 'Initial Inquiry',
-          consultantId: payload.consultantId || '',
+          consultantId,
           priority: payload.priority || 'Medium',
           nextFollowUp: payload.nextFollowUp || '',
+          lostReason: '',
           notes: payload.notes || '',
           createdAt: now(),
           updatedAt: now()
@@ -2188,15 +3157,61 @@ app.post('/api/reception', allowRoles('admin', 'management', 'reception'), async
         log.leadId = lead.id;
       } else {
         log.leadId = duplicate.id;
-        log.status = 'Existing Lead';
       }
     }
 
     activity(db, req.user, 'logged', 'reception', log.id, `${log.type}: ${log.name}`);
-    return log;
+    return { ...log, autoAssigned: autoAssigned?.name || '' };
   });
 
   res.status(201).json(result);
+});
+
+app.post('/api/reception/:id/notify-consultant', allowRoles('admin', 'management', 'reception'), async (req, res) => {
+  const result = await mutateDb(db => {
+    const companyId = req.user.companyId;
+    const log = findScoped(db.receptionLogs, companyId, item => item.id === req.params.id);
+    if (!log) throw Object.assign(new Error('سجل الاستقبال غير موجود'), { status: 404 });
+    if (!log.consultantId) throw Object.assign(new Error('لا يوجد مستشار مسند لهذا العميل'), { status: 400 });
+    const consultantUser = findUserByEmployee(db, log.consultantId, companyId);
+    if (!consultantUser) throw Object.assign(new Error('تعذر العثور على حساب المستشار'), { status: 404 });
+    createUserNotification(
+      db,
+      companyId,
+      consultantUser.id,
+      'عميل بانتظارك في الاستقبال',
+      `${log.name} بانتظارك خارج المكتب منذ ${log.createdAt}.`,
+      { type: 'walk_in_queue', receptionLogId: log.id }
+    );
+    log.consultantNotified = true;
+    log.notifiedAt = now();
+    log.queueStatus = 'notified';
+    activity(db, req.user, 'updated', 'reception', log.id, `تم إشعار المستشار بانتظار ${log.name}`);
+    return log;
+  });
+
+  res.json(result);
+});
+
+app.get('/api/notifications', async (req, res) => {
+  const db = await readDb();
+  const notifications = getScopedItems(db.userNotifications || [], req.user.companyId)
+    .filter(item => item.userId === req.user.sub)
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    .slice(0, 10);
+  res.json(notifications);
+});
+
+app.post('/api/notifications/:id/read', async (req, res) => {
+  const result = await mutateDb(db => {
+    db.userNotifications ||= [];
+    const notification = db.userNotifications.find(item => item.id === req.params.id && item.companyId === req.user.companyId && item.userId === req.user.sub);
+    if (!notification) throw Object.assign(new Error('الإشعار غير موجود'), { status: 404 });
+    notification.readAt = notification.readAt || now();
+    return notification;
+  });
+
+  res.json(result);
 });
 
 app.get('/api/employees', async (_req, res) => {
@@ -2214,7 +3229,7 @@ app.post('/api/employees', allowRoles('admin', 'management', 'hr'), async (req, 
       department: req.body.department || 'Consultancy',
       title: req.body.title || '',
       status: 'Active',
-      joinDate: req.body.joinDate || todayKey,
+      joinDate: req.body.joinDate || todayKey(),
       attendanceRate: 100,
       performance: Number(req.body.performance || 75),
       branch: req.body.branch || 'Cairo HQ',
@@ -2236,7 +3251,7 @@ app.post('/api/attendance', allowRoles('admin', 'management', 'hr'), async (req,
     const record = {
       id: randomUUID(),
       employeeId: employee.id,
-      date: req.body.date || todayKey,
+      date: req.body.date || todayKey(),
       checkIn: req.body.checkIn || '',
       checkOut: req.body.checkOut || '',
       status: req.body.status || 'Present',
@@ -2258,73 +3273,305 @@ app.get('/api/attendance', async (_req, res) => {
   res.json(db.attendance.map(item => ({ ...item, employee: db.employees.find(employee => employee.id === item.employeeId) || null })));
 });
 
+app.get('/api/hr', allowRoles('admin', 'management', 'hr'), async (req, res) => {
+  const db = await readDb();
+  const companyId = req.user.companyId;
+  const employees = getScopedItems(db.employees, companyId).map(employee => ({
+    ...employee,
+    documents: employee.documents || [],
+    targetSnapshot: buildHrTargets(db, companyId).find(item => item.employeeId === employee.id) || null,
+    payrollSnapshot: buildPayrollRows(db, companyId).find(item => item.employeeId === employee.id) || null
+  }));
+  const attendance = getScopedItems(db.attendance, companyId).map(item => ({ ...item, employee: db.employees.find(employee => employee.id === item.employeeId) || null }));
+  const leaveRequests = getScopedItems(db.leaveRequests || [], companyId).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  res.json({
+    employees,
+    attendance,
+    leaveRequests,
+    targets: buildHrTargets(db, companyId),
+    payroll: buildPayrollRows(db, companyId)
+  });
+});
+
+app.post('/api/hr/leave-requests', async (req, res) => {
+  const result = await mutateDb(db => {
+    const companyId = req.user.companyId;
+    const employeeId = req.body.employeeId || findScoped(db.employees, companyId, item => item.email?.toLowerCase() === req.user.email?.toLowerCase())?.id;
+    const employee = findScoped(db.employees, companyId, item => item.id === employeeId);
+    if (!employee) throw Object.assign(new Error('الموظف غير موجود'), { status: 404 });
+    const startDate = String(req.body.startDate || '').slice(0, 10);
+    const endDate = String(req.body.endDate || '').slice(0, 10);
+    const days = workingDaysBetween(startDate, endDate);
+    if (!startDate || !endDate || days <= 0) throw Object.assign(new Error('بيانات الإجازة غير مكتملة'), { status: 400 });
+    const request = {
+      id: randomUUID(),
+      companyId,
+      employeeId: employee.id,
+      employeeName: employee.name,
+      leaveType: req.body.leaveType || 'Annual Leave',
+      startDate,
+      endDate,
+      days,
+      reason: req.body.reason || '',
+      status: 'Pending',
+      createdAt: now(),
+      createdBy: req.user.name
+    };
+    db.leaveRequests.unshift(request);
+    activity(db, req.user, 'created', 'leave-request', request.id, `تم تقديم طلب إجازة للموظف ${employee.name}`);
+    return request;
+  });
+
+  res.status(201).json(result);
+});
+
+app.patch('/api/hr/leave-requests/:id', allowRoles('admin', 'management', 'hr'), async (req, res) => {
+  const result = await mutateDb(db => {
+    const companyId = req.user.companyId;
+    const request = findScoped(db.leaveRequests || [], companyId, item => item.id === req.params.id);
+    if (!request) throw Object.assign(new Error('طلب الإجازة غير موجود'), { status: 404 });
+    const employee = findScoped(db.employees, companyId, item => item.id === request.employeeId);
+    if (!employee) throw Object.assign(new Error('الموظف غير موجود'), { status: 404 });
+    const nextStatus = req.body.status === 'Rejected' ? 'Rejected' : 'Approved';
+    if (request.status !== 'Pending') throw Object.assign(new Error('تمت معالجة هذا الطلب بالفعل'), { status: 409 });
+    request.status = nextStatus;
+    request.reviewedAt = now();
+    request.reviewedBy = req.user.name;
+    request.hrNote = req.body.hrNote || '';
+    if (nextStatus === 'Approved' && request.leaveType === 'Annual Leave') {
+      employee.annualLeaveBalance = Math.max(0, Number(employee.annualLeaveBalance || 0) - Number(request.days || 0));
+    }
+    activity(db, req.user, 'updated', 'leave-request', request.id, `تم ${nextStatus === 'Approved' ? 'اعتماد' : 'رفض'} طلب إجازة ${employee.name}`);
+    return request;
+  });
+
+  res.json(result);
+});
+
+app.patch('/api/hr/employees/:id', allowRoles('admin', 'management', 'hr'), async (req, res) => {
+  const result = await mutateDb(db => {
+    const employee = findScoped(db.employees, req.user.companyId, item => item.id === req.params.id);
+    if (!employee) throw Object.assign(new Error('الموظف غير موجود'), { status: 404 });
+    const payload = req.body || {};
+    employee.monthlyTarget = Number(payload.monthlyTarget ?? employee.monthlyTarget ?? 0);
+    employee.commissionPerContract = Number(payload.commissionPerContract ?? employee.commissionPerContract ?? 0);
+    employee.basicSalary = Number(payload.basicSalary ?? employee.basicSalary ?? 0);
+    employee.currentBonus = Number(payload.currentBonus ?? employee.currentBonus ?? 0);
+    employee.currentDeductions = Number(payload.currentDeductions ?? employee.currentDeductions ?? 0);
+    employee.currentAdvances = Number(payload.currentAdvances ?? employee.currentAdvances ?? 0);
+    employee.annualLeaveBalance = Number(payload.annualLeaveBalance ?? employee.annualLeaveBalance ?? 21);
+    activity(db, req.user, 'updated', 'employee-hr', employee.id, `تم تحديث بيانات HR للموظف ${employee.name}`);
+    return employee;
+  });
+
+  res.json(result);
+});
+
+app.post('/api/hr/employees/:id/documents', allowRoles('admin', 'management', 'hr'), upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'الملف مطلوب' });
+  const storedFile = await storeUploadedFile(req.file);
+  const result = await mutateDb(db => {
+    const employee = findScoped(db.employees, req.user.companyId, item => item.id === req.params.id);
+    if (!employee) throw Object.assign(new Error('الموظف غير موجود'), { status: 404 });
+    employee.documents ||= [];
+    const document = {
+      id: randomUUID(),
+      type: req.body.type || 'Employee Document',
+      originalName: req.file.originalname,
+      fileName: storedFile.fileName,
+      url: storedFile.url,
+      size: storedFile.size,
+      storageProvider: storedFile.storageProvider,
+      uploadedBy: req.user.name,
+      uploadedAt: now()
+    };
+    employee.documents.unshift(document);
+    activity(db, req.user, 'uploaded', 'employee-document', document.id, `تم رفع ${document.type} للموظف ${employee.name}`);
+    return document;
+  });
+
+  res.status(201).json(result);
+});
+
 app.get('/api/invoices', async (req, res) => {
   const db = await readDb();
-  const invoices = getScopedItems(db.invoices, req.user.companyId);
-  const payments = getScopedItems(db.payments, req.user.companyId);
-  const students = getScopedItems(db.students, req.user.companyId);
-  res.json(
-    invoices.map(invoice => {
-      const invoicePayments = payments.filter(payment => payment.invoiceId === invoice.id);
-      const paid = invoicePayments.reduce((sum, payment) => sum + money(payment.amount), 0);
-      const student = students.find(item => item.id === invoice.studentId) || null;
-      return { ...invoice, student, payments: invoicePayments, paid, balance: Math.max(0, money(invoice.total) - paid), computedStatus: paid >= money(invoice.total) ? 'Paid' : paid > 0 ? 'Partial' : invoice.status };
-    })
-  );
+  res.json(getScopedItems(db.invoices, req.user.companyId).map(invoice => enrichInvoice(db, invoice)));
 });
 
 app.post('/api/invoices', allowRoles('admin', 'management', 'finance'), async (req, res) => {
   const result = await mutateDb(db => {
     const student = db.students.find(item => item.id === req.body.studentId);
     if (!student) throw Object.assign(new Error('الطالب مطلوب'), { status: 400 });
-    const year = new Date(todayKey).getFullYear();
+    const currency = sanitizeCurrency(req.body.currency);
+    const serviceFee = money(req.body.serviceFee ?? req.body.commission);
+    const universityFee = money(req.body.universityFee ?? req.body.subtotal);
+    const visaFee = money(req.body.visaFee);
+    const tax = money(req.body.tax);
+    const total = money(req.body.total || (serviceFee + universityFee + visaFee + tax));
+    const installments = sanitizeInstallments(req.body.installments);
     const invoice = {
       id: randomUUID(),
-      number: `INV-${year}-${String(db.invoices.length + 1).padStart(4, '0')}`,
+      number: nextSerial('INV', db.invoices),
       studentId: student.id,
       description: req.body.description || 'Educational consultancy services',
-      currency: req.body.currency || 'USD',
-      subtotal: money(req.body.subtotal),
-      tax: money(req.body.tax),
-      total: money(req.body.total || (money(req.body.subtotal) + money(req.body.tax))),
-      commission: money(req.body.commission),
-      dueDate: req.body.dueDate || '',
+      paymentStatement: req.body.paymentStatement || req.body.description || 'Student payment',
+      currency,
+      exchangeRate: money(req.body.exchangeRate) || 1,
+      serviceFee,
+      universityFee,
+      visaFee,
+      subtotal: universityFee,
+      tax,
+      total,
+      commission: serviceFee,
+      passThroughFees: universityFee + visaFee,
+      dueDate: installments.at(-1)?.dueDate || req.body.dueDate || '',
       status: 'Unpaid',
       notes: req.body.notes || '',
+      locked: false,
+      installments,
       createdAt: now()
     };
     db.invoices.unshift(invoice);
     activity(db, req.user, 'created', 'invoice', invoice.id, `تم إنشاء الفاتورة ${invoice.number} للطالب ${student.name}`);
-    return invoice;
+    return enrichInvoice(db, invoice);
   });
 
   res.status(201).json(result);
 });
 
-app.post('/api/invoices/:id/payments', allowRoles('admin', 'management', 'finance'), async (req, res) => {
+app.post('/api/invoices/:id/payments', allowRoles('admin', 'management', 'finance'), upload.single('attachment'), async (req, res) => {
+  const attachment = req.file ? await storeUploadedFile(req.file) : null;
   const result = await mutateDb(db => {
     const invoice = db.invoices.find(item => item.id === req.params.id);
     if (!invoice) throw Object.assign(new Error('الفاتورة غير موجودة'), { status: 404 });
+    const before = enrichInvoice(db, invoice);
+    const amount = money(req.body.amount);
+    if (amount <= 0) throw Object.assign(new Error('المبلغ مطلوب'), { status: 400 });
+    if (amount > before.balance) throw Object.assign(new Error('مبلغ الدفعة أكبر من المتبقي على الفاتورة'), { status: 400 });
+    const installmentId = req.body.installmentId || '';
+    const currency = sanitizeCurrency(req.body.currency || invoice.currency);
+    const student = db.students.find(item => item.id === invoice.studentId) || null;
+    const application = db.applications.find(item => item.studentId === invoice.studentId) || null;
+    const consultant = student?.consultantId ? db.employees.find(item => item.id === student.consultantId) || null : null;
     const payment = {
       id: randomUUID(),
       invoiceId: invoice.id,
-      amount: money(req.body.amount),
-      method: req.body.method || 'Bank Transfer',
+      installmentId,
+      receiptNumber: nextSerial('REC', db.payments),
+      amount,
+      currency,
+      exchangeRate: money(req.body.exchangeRate) || money(invoice.exchangeRate) || 1,
+      amountInWords: amountInWords(amount, currency),
+      method: sanitizePaymentMethod(req.body.method),
       reference: req.body.reference || '',
-      date: req.body.date || todayKey,
+      date: req.body.date || todayKey(),
+      statement: req.body.statement || invoice.paymentStatement || invoice.description,
       notes: req.body.notes || '',
+      attachment: attachment
+        ? {
+            ...attachment,
+            originalName: req.file.originalname,
+            mimetype: req.file.mimetype,
+            uploadedAt: now(),
+            uploadedBy: req.user.name
+          }
+        : null,
+      studentSnapshot: student
+        ? {
+            name: student.name,
+            phone: student.phone || '',
+            referenceCode: student.id,
+            targetCountry: application?.country || '',
+            targetMajor: application?.program || '',
+            consultantName: consultant?.name || ''
+          }
+        : null,
       receivedBy: req.user.name,
+      locked: true,
+      lockedAt: now(),
       createdAt: now()
     };
     if (payment.amount <= 0) throw Object.assign(new Error('يجب أن يكون مبلغ الدفعة أكبر من صفر'), { status: 400 });
+    if (installmentId) {
+      const installment = sanitizeInstallments(invoice.installments).find(item => item.id === installmentId);
+      if (!installment) throw Object.assign(new Error('القسط المحدد غير موجود'), { status: 400 });
+      const installmentPaid = getScopedItems(db.payments, req.user.companyId)
+        .filter(item => item.invoiceId === invoice.id && item.installmentId === installmentId)
+        .reduce((sum, item) => sum + money(item.amount), 0);
+      if (amount > money(installment.amount) - installmentPaid) {
+        throw Object.assign(new Error('مبلغ الدفعة أكبر من رصيد القسط'), { status: 400 });
+      }
+    }
     db.payments.unshift(payment);
-    const paid = db.payments.filter(item => item.invoiceId === invoice.id).reduce((sum, item) => sum + money(item.amount), 0);
-    invoice.status = paid >= money(invoice.total) ? 'Paid' : 'Partial';
+    const after = enrichInvoice(db, invoice);
+    invoice.status = after.paid >= money(invoice.total) ? 'Paid' : 'Partial';
+    invoice.locked = after.computedStatus === 'Paid';
+    invoice.installments = after.installments.map(installment => ({
+      id: installment.id,
+      label: installment.label,
+      dueDate: installment.dueDate,
+      amount: installment.amount,
+      status: installment.status,
+      paidAmount: installment.paidAmount,
+      createdAt: installment.createdAt
+    }));
     activity(db, req.user, 'created', 'payment', payment.id, `تم تسجيل دفعة على الفاتورة ${invoice.number} بقيمة ${payment.amount} ${invoice.currency}`);
-    return payment;
+    return {
+      ...payment,
+      financialSummary: {
+        invoiceNumber: invoice.number,
+        totalDue: after.total,
+        totalPaid: after.paid,
+        remainingBalance: after.balance
+      }
+    };
   });
 
   res.status(201).json(result);
+});
+
+app.patch('/api/payments/:id', allowRoles('admin', 'management'), async (req, res) => {
+  const result = await mutateDb(db => {
+    const payment = db.payments.find(item => item.id === req.params.id && item.companyId === req.user.companyId);
+    if (!payment) throw Object.assign(new Error('السند غير موجود'), { status: 404 });
+    if (typeof req.body.notes === 'string') payment.notes = req.body.notes;
+    if (typeof req.body.reference === 'string') payment.reference = req.body.reference;
+    payment.adminUpdatedAt = now();
+    payment.adminUpdatedBy = req.user.name;
+    activity(db, req.user, 'updated', 'payment', payment.id, `تم تحديث سند القبض ${payment.receiptNumber}`);
+    return payment;
+  });
+
+  res.json(result);
+});
+
+app.delete('/api/payments/:id', allowRoles('admin', 'management'), async (req, res) => {
+  const result = await mutateDb(async db => {
+    const index = db.payments.findIndex(item => item.id === req.params.id && item.companyId === req.user.companyId);
+    if (index === -1) throw Object.assign(new Error('السند غير موجود'), { status: 404 });
+    const [payment] = db.payments.splice(index, 1);
+    if (payment.attachment) await removeUploadedFile(payment.attachment);
+    const invoice = db.invoices.find(item => item.id === payment.invoiceId);
+    if (invoice) {
+      const after = enrichInvoice(db, invoice);
+      invoice.status = after.computedStatus === 'Paid' ? 'Paid' : after.paid > 0 ? 'Partial' : 'Unpaid';
+      invoice.locked = false;
+      invoice.installments = after.installments.map(installment => ({
+        id: installment.id,
+        label: installment.label,
+        dueDate: installment.dueDate,
+        amount: installment.amount,
+        status: installment.status,
+        paidAmount: installment.paidAmount,
+        createdAt: installment.createdAt
+      }));
+    }
+    activity(db, req.user, 'deleted', 'payment', payment.id, `تم إلغاء سند القبض ${payment.receiptNumber}`);
+    return { ok: true };
+  });
+
+  res.json(result);
 });
 
 app.get('/api/activities', async (req, res) => {

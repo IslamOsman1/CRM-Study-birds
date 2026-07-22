@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, CircleDot, Clock3, File, FilePlus2, FileUp, GraduationCap, History, MessageSquareWarning, Search, ShieldCheck, Trash2, UploadCloud } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, CircleDot, Clock3, Eye, EyeOff, File, FilePlus2, FileUp, GraduationCap, History, KeyRound, Link as LinkIcon, Save, Search, ShieldCheck, Trash2, UploadCloud, WalletCards } from 'lucide-react';
 import { api, formatDate, initials } from '../api.js';
 import { Badge, Button, Card, Field, Modal, Progress, Spinner, Toast } from '../components/UI.jsx';
 import { useAuth } from '../auth.jsx';
@@ -7,30 +7,37 @@ import { tr } from '../i18n.js';
 import { can } from '../permissions.js';
 
 const tone = status => (status.includes('Acceptance') ? 'green' : status.includes('Rejected') ? 'red' : status.includes('Submitted') || status.includes('Review') ? 'blue' : 'amber');
-const documentTone = status => (
-  status === 'Approved'
-    ? 'green'
-    : status === 'Rejected'
-      ? 'red'
-      : status === 'Needs Resubmission'
-        ? 'amber'
-        : 'blue'
-);
+const seasons = ['Fall', 'Spring', 'Summer'];
+const currentYear = 2026;
 
 const createBlank = {
   studentId: '',
   university: '',
   program: '',
   country: '',
-  intake: '',
+  intakeSeason: 'Fall',
+  intakeYear: String(currentYear),
+  applicationRefNo: '',
+  portalUrl: '',
+  portalUsername: '',
+  portalPassword: '',
   assignedTo: '',
   status: 'Preparing Documents',
+  offerType: '',
+  offerConditions: '',
+  rejectionReason: '',
   notes: ''
 };
 
 const reviewBlank = {
   status: 'Approved',
   reviewNote: ''
+};
+
+const joinIntake = (season, year) => `${season} ${year}`.trim();
+const splitIntake = intake => {
+  const [season = 'Fall', year = String(currentYear)] = String(intake || '').split(' ');
+  return { intakeSeason: seasons.includes(season) ? season : 'Fall', intakeYear: year || String(currentYear) };
 };
 
 function getChecklistStatus(typeName, currentDocuments) {
@@ -49,6 +56,7 @@ export default function Admissions() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+  const [detailForm, setDetailForm] = useState(null);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -59,6 +67,8 @@ export default function Admissions() {
   const [activeDocument, setActiveDocument] = useState(null);
   const [reviewForm, setReviewForm] = useState(reviewBlank);
   const [createForm, setCreateForm] = useState(createBlank);
+  const [showPortalPassword, setShowPortalPassword] = useState(false);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [toast, setToast] = useState(null);
 
   const canCreateApplication = can(user.role, 'createApplication');
@@ -68,18 +78,40 @@ export default function Admissions() {
   const canDeleteDocument = can(user.role, 'deleteDocument');
   const canManageFollowUp = can(user.role, 'manageApplicationFollowUp');
 
+  const applySelection = applications => {
+    const nextSelected = selected ? applications.find(item => item.id === selected.id) || applications[0] || null : applications[0] || null;
+    setSelected(nextSelected);
+    if (nextSelected) {
+      const intake = splitIntake(nextSelected.intake);
+      setDetailForm({
+        university: nextSelected.university || '',
+        program: nextSelected.program || '',
+        country: nextSelected.country || '',
+        status: nextSelected.status || 'Preparing Documents',
+        assignedTo: nextSelected.assignedTo || '',
+        applicationRefNo: nextSelected.applicationRefNo || '',
+        portalUrl: nextSelected.portalUrl || '',
+        portalUsername: nextSelected.portalUsername || '',
+        portalPassword: nextSelected.portalPassword || '',
+        intakeSeason: intake.intakeSeason,
+        intakeYear: intake.intakeYear,
+        offerType: nextSelected.offerType || '',
+        offerConditions: nextSelected.offerConditions || '',
+        rejectionReason: nextSelected.rejectionReason || '',
+        notes: nextSelected.notes || ''
+      });
+    } else {
+      setDetailForm(null);
+    }
+  };
+
   const load = () =>
     Promise.all([api('/api/applications'), api('/api/settings'), api('/api/students')])
       .then(([applications, settingData, studentData]) => {
         setApps(applications);
         setSettings(settingData);
         setStudents(studentData);
-        if (selected) {
-          const updated = applications.find(item => item.id === selected.id);
-          setSelected(updated || applications[0] || null);
-        } else {
-          setSelected(applications[0] || null);
-        }
+        applySelection(applications);
       })
       .catch(error => setToast({ type: 'error', message: error.message }))
       .finally(() => setLoading(false));
@@ -90,14 +122,20 @@ export default function Admissions() {
 
   const shown = useMemo(() => {
     const base = apps.filter(app =>
-      [app.student?.name, app.university, app.program, app.country, app.status, app.checklistTemplate?.name, app.workflowTemplate?.name]
-        .some(value => String(value || '').toLowerCase().includes(query.toLowerCase()))
+      [
+        app.student?.name,
+        app.university,
+        app.program,
+        app.country,
+        app.status,
+        app.applicationRefNo,
+        app.intake
+      ].some(value => String(value || '').toLowerCase().includes(query.toLowerCase()))
     );
 
     if (statusFilter === 'missing') return base.filter(app => (app.docsSummary?.missingTypes || []).length > 0);
-    if (statusFilter === 'rejected') return base.filter(app => (app.docsSummary?.rejectedCount || 0) > 0);
-    if (statusFilter === 'ready') return base.filter(app => (app.docsSummary?.missingTypes || []).length === 0 && (app.docsSummary?.rejectedCount || 0) === 0);
-
+    if (statusFilter === 'rejected') return base.filter(app => (app.docsSummary?.rejectedCount || 0) > 0 || app.status === 'Rejected');
+    if (statusFilter === 'accepted') return base.filter(app => ['Conditional Acceptance', 'Final Acceptance'].includes(app.status));
     return base;
   }, [apps, query, statusFilter]);
 
@@ -120,11 +158,54 @@ export default function Admissions() {
     }
   }, [type, uploadOptions]);
 
-  const updateStatus = async (appId, status) => {
+  const selectApplication = application => {
+    setSelected(application);
+    const intake = splitIntake(application.intake);
+    setDetailForm({
+      university: application.university || '',
+      program: application.program || '',
+      country: application.country || '',
+      status: application.status || 'Preparing Documents',
+      assignedTo: application.assignedTo || '',
+      applicationRefNo: application.applicationRefNo || '',
+      portalUrl: application.portalUrl || '',
+      portalUsername: application.portalUsername || '',
+      portalPassword: application.portalPassword || '',
+      intakeSeason: intake.intakeSeason,
+      intakeYear: intake.intakeYear,
+      offerType: application.offerType || '',
+      offerConditions: application.offerConditions || '',
+      rejectionReason: application.rejectionReason || '',
+      notes: application.notes || ''
+    });
+    setShowPortalPassword(false);
+  };
+
+  const saveApplicationDetails = async event => {
+    event.preventDefault();
+    if (!selected || !detailForm) return;
+
+    const payload = {
+      university: detailForm.university,
+      program: detailForm.program,
+      country: detailForm.country,
+      status: detailForm.status,
+      assignedTo: detailForm.assignedTo,
+      applicationRefNo: detailForm.applicationRefNo,
+      portalUrl: detailForm.portalUrl,
+      portalUsername: detailForm.portalUsername,
+      portalPassword: detailForm.portalPassword,
+      intake: joinIntake(detailForm.intakeSeason, detailForm.intakeYear),
+      offerType: detailForm.offerType,
+      offerConditions: detailForm.offerConditions,
+      rejectionReason: detailForm.rejectionReason,
+      notes: detailForm.notes
+    };
+
     try {
-      await api(`/api/applications/${appId}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+      await api(`/api/applications/${selected.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
       await load();
-      setToast({ message: 'تم تحديث حالة الطلب' });
+      setToast({ message: 'تم حفظ بيانات الطلب الجامعي.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
@@ -142,7 +223,7 @@ export default function Admissions() {
       setUploadOpen(false);
       setFile(null);
       await load();
-      setToast({ message: 'تم رفع المستند بنجاح' });
+      setToast({ message: 'تم رفع المستند بنجاح.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
@@ -151,11 +232,17 @@ export default function Admissions() {
   const createApplication = async event => {
     event.preventDefault();
     try {
-      await api('/api/applications', { method: 'POST', body: JSON.stringify(createForm) });
+      await api('/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...createForm,
+          intake: joinIntake(createForm.intakeSeason, createForm.intakeYear)
+        })
+      });
       setCreateOpen(false);
       setCreateForm(createBlank);
       await load();
-      setToast({ message: 'تم إنشاء طلب القبول بنجاح' });
+      setToast({ message: 'تم إنشاء طلب تقديم جديد داخل ملف الطالب.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
@@ -168,7 +255,7 @@ export default function Admissions() {
     try {
       await api(`/api/applications/${selected.id}/documents/${document.id}`, { method: 'DELETE' });
       await load();
-      setToast({ message: 'تم حذف المستند' });
+      setToast({ message: 'تم حذف المستند.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
@@ -186,6 +273,10 @@ export default function Admissions() {
   const submitReview = async event => {
     event.preventDefault();
     if (!selected || !activeDocument) return;
+    if (reviewForm.status === 'Rejected' && !reviewForm.reviewNote.trim()) {
+      setToast({ type: 'error', message: 'سبب الرفض مطلوب عند رفض المستند.' });
+      return;
+    }
 
     try {
       await api(`/api/applications/${selected.id}/documents/${activeDocument.id}`, {
@@ -195,7 +286,7 @@ export default function Admissions() {
       setReviewOpen(false);
       setActiveDocument(null);
       await load();
-      setToast({ message: 'تم حفظ مراجعة المستند' });
+      setToast({ message: 'تم حفظ مراجعة المستند.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
@@ -209,13 +300,13 @@ export default function Admissions() {
         body: JSON.stringify({ done: !stage.done, note: stage.note || '' })
       });
       await load();
-      setToast({ message: stage.done ? 'تمت إعادة فتح المرحلة' : 'تم إكمال المرحلة' });
+      setToast({ message: stage.done ? 'تمت إعادة فتح المرحلة.' : 'تم إكمال المرحلة.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
   };
 
-  if (loading) return <div className="loading-page"><Spinner />جارٍ تحميل الطلبات...</div>;
+  if (loading) return <div className="loading-page"><Spinner />جارٍ تحميل طلبات القبول...</div>;
 
   return (
     <>
@@ -224,10 +315,10 @@ export default function Admissions() {
           <div className="panel-toolbar">
             <div className="search-box">
               <Search />
-              <input value={query} onChange={event => setQuery(event.target.value)} placeholder="ابحث عن طلب..." />
+              <input value={query} onChange={event => setQuery(event.target.value)} placeholder="ابحث عن طلب أو جامعة..." />
             </div>
             <div className="toolbar-right">
-              <Badge tone="purple">{shown.length} سجل</Badge>
+              <Badge tone="purple">{shown.length} طلب</Badge>
               {canCreateApplication && <Button onClick={() => setCreateOpen(true)} type="button"><FilePlus2 /> طلب جديد</Button>}
             </div>
           </div>
@@ -237,7 +328,7 @@ export default function Admissions() {
               ['all', 'كل الطلبات'],
               ['missing', 'الناقصة'],
               ['rejected', 'المرفوضة'],
-              ['ready', 'الجاهزة']
+              ['accepted', 'المقبولة']
             ].map(([value, label]) => (
               <button key={value} type="button" className={statusFilter === value ? 'filter-chip active' : 'filter-chip'} onClick={() => setStatusFilter(value)}>
                 {label}
@@ -247,7 +338,7 @@ export default function Admissions() {
 
           <div className="applications-list">
             {shown.map(app => (
-              <button key={app.id} onClick={() => setSelected(app)} className={`application-row ${selected?.id === app.id ? 'selected' : ''}`} type="button">
+              <button key={app.id} onClick={() => selectApplication(app)} className={`application-row ${selected?.id === app.id ? 'selected' : ''}`} type="button">
                 <div className="avatar soft">{initials(app.student?.name)}</div>
                 <div className="application-main">
                   <div>
@@ -256,19 +347,19 @@ export default function Admissions() {
                   </div>
                   <p>{app.program}</p>
                   <span>{app.university} · {app.country}</span>
-                  {app.workflowTemplate?.name && <small>متابعة: {app.workflowTemplate.name}</small>}
+                  <small>{app.applicationRefNo || 'بدون رقم مرجعي'} · {app.intake || 'Intake غير محدد'}</small>
                   <div className="row-progress">
                     <Progress value={app.documentProgress} />
                     <small>{app.documentProgress}% اكتمال المستندات</small>
                   </div>
                   <div className="application-flags">
                     {(app.docsSummary?.missingTypes || []).length > 0 && <Badge tone="amber">ناقص {app.docsSummary.missingTypes.length}</Badge>}
-                    {(app.followUpSummary?.pending || 0) > 0 && <Badge tone="blue">متابعة {app.followUpSummary.pending}</Badge>}
-                    {(app.docsSummary?.approvedCount || 0) > 0 && <Badge tone="green">معتمد {app.docsSummary.approvedCount}</Badge>}
+                    {(app.docsSummary?.rejectedCount || 0) > 0 && <Badge tone="red">مرفوض {app.docsSummary.rejectedCount}</Badge>}
+                    <Badge tone={app.applicationFeeStatus === 'Paid' ? 'green' : 'red'}>{app.applicationFeeStatus === 'Paid' ? 'رسوم التقديم مدفوعة' : 'رسوم التقديم غير مدفوعة'}</Badge>
                   </div>
                 </div>
                 <div className="app-date">
-                  <span>{app.intake}</span>
+                  <span>{app.offerType ? tr(app.offerType) : app.intake}</span>
                   <small>{formatDate(app.updatedAt)}</small>
                 </div>
               </button>
@@ -277,12 +368,12 @@ export default function Admissions() {
         </Card>
 
         <Card className="application-detail">
-          {selected ? (
+          {selected && detailForm ? (
             <>
               <div className="detail-hero">
                 <div className="hero-icon"><GraduationCap /></div>
                 <div>
-                  <p className="eyebrow">طلب الطالب</p>
+                  <p className="eyebrow">طلب تقديم جامعي مستقل</p>
                   <h2>{selected.student?.name}</h2>
                   <span>{selected.program} في {selected.university}</span>
                 </div>
@@ -290,24 +381,88 @@ export default function Admissions() {
               </div>
 
               <div className="detail-grid">
-                <div><span>الوجهة</span><strong>{selected.country}</strong></div>
-                <div><span>الفصل الدراسي</span><strong>{selected.intake}</strong></div>
+                <div><span>رقم الطلب</span><strong>{selected.applicationRefNo || '—'}</strong></div>
+                <div><span>الفصل الدراسي</span><strong>{selected.intake || '—'}</strong></div>
                 <div><span>المسؤول المختص</span><strong>{settings?.employees.find(employee => employee.id === selected.assignedTo)?.name || 'غير مسند'}</strong></div>
-                <div><span>آخر تحديث</span><strong>{formatDate(selected.updatedAt)}</strong></div>
+                <div><span>رسوم التقديم</span><strong>{selected.applicationFeeStatus === 'Paid' ? 'مدفوع' : 'غير مدفوع'}</strong></div>
               </div>
 
-              <div className="status-control">
+              <form className="form-grid admissions-edit-grid" onSubmit={saveApplicationDetails}>
+                <Field label="الجامعة"><input required value={detailForm.university} onChange={event => setDetailForm({ ...detailForm, university: event.target.value })} /></Field>
+                <Field label="البرنامج"><input required value={detailForm.program} onChange={event => setDetailForm({ ...detailForm, program: event.target.value })} /></Field>
+                <Field label="الدولة"><input required value={detailForm.country} onChange={event => setDetailForm({ ...detailForm, country: event.target.value })} /></Field>
+                <Field label="رقم الطلب في الجامعة"><input value={detailForm.applicationRefNo} onChange={event => setDetailForm({ ...detailForm, applicationRefNo: event.target.value })} /></Field>
+                <Field label="Intake">
+                  <div className="dual-input">
+                    <select value={detailForm.intakeSeason} onChange={event => setDetailForm({ ...detailForm, intakeSeason: event.target.value })}>
+                      {seasons.map(option => <option value={option} key={option}>{option}</option>)}
+                    </select>
+                    <input type="number" min="2026" value={detailForm.intakeYear} onChange={event => setDetailForm({ ...detailForm, intakeYear: event.target.value })} />
+                  </div>
+                </Field>
+                <Field label="المسؤول المختص">
+                  <select value={detailForm.assignedTo} onChange={event => setDetailForm({ ...detailForm, assignedTo: event.target.value })}>
+                    <option value="">غير مسند</option>
+                    {admissionsEmployees.map(employee => <option key={employee.id} value={employee.id}>{employee.name}</option>)}
+                  </select>
+                </Field>
                 <Field label="حالة الطلب">
-                  <select disabled={!canUpdateStatus} value={selected.status} onChange={event => updateStatus(selected.id, event.target.value)}>
+                  <select disabled={!canUpdateStatus} value={detailForm.status} onChange={event => setDetailForm({ ...detailForm, status: event.target.value })}>
                     {settings?.applicationStatuses.map(status => <option key={status} value={status}>{tr(status)}</option>)}
                   </select>
                 </Field>
-                <div>
-                  <span>اكتمال المستندات</span>
-                  <strong>{selected.documentProgress}%</strong>
-                  <Progress value={selected.documentProgress} />
+                <Field label="رابط بورتال الجامعة">
+                  <div className="inline-icon-input">
+                    <LinkIcon size={15} />
+                    <input value={detailForm.portalUrl} onChange={event => setDetailForm({ ...detailForm, portalUrl: event.target.value })} placeholder="https://..." />
+                  </div>
+                </Field>
+                <Field label="Username البورتال">
+                  <div className="inline-icon-input">
+                    <KeyRound size={15} />
+                    <input value={detailForm.portalUsername} onChange={event => setDetailForm({ ...detailForm, portalUsername: event.target.value })} />
+                  </div>
+                </Field>
+                <Field label="Password البورتال">
+                  <div className="password-field">
+                    <input type={showPortalPassword ? 'text' : 'password'} value={detailForm.portalPassword} onChange={event => setDetailForm({ ...detailForm, portalPassword: event.target.value })} />
+                    <button className="icon-btn small" type="button" onClick={() => setShowPortalPassword(value => !value)}>
+                      {showPortalPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </Field>
+
+                {['Conditional Acceptance', 'Final Acceptance', 'Rejected'].includes(detailForm.status) && (
+                  <Field label="نوع قرار الجامعة" className="field-full">
+                    <select value={detailForm.offerType} onChange={event => setDetailForm({ ...detailForm, offerType: event.target.value })}>
+                      <option value="">اختر نوع القرار</option>
+                      <option value="Conditional Offer">Conditional Offer</option>
+                      <option value="Unconditional Offer">Unconditional Offer</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                  </Field>
+                )}
+
+                {detailForm.offerType === 'Conditional Offer' && (
+                  <Field label="شروط القبول المشروط" className="field-full">
+                    <textarea value={detailForm.offerConditions} onChange={event => setDetailForm({ ...detailForm, offerConditions: event.target.value })} />
+                  </Field>
+                )}
+
+                {detailForm.offerType === 'Rejected' && (
+                  <Field label="سبب الرفض" className="field-full">
+                    <textarea value={detailForm.rejectionReason} onChange={event => setDetailForm({ ...detailForm, rejectionReason: event.target.value })} />
+                  </Field>
+                )}
+
+                <Field label="ملاحظات داخلية" className="field-full">
+                  <textarea value={detailForm.notes} onChange={event => setDetailForm({ ...detailForm, notes: event.target.value })} />
+                </Field>
+
+                <div className="form-actions field-full">
+                  <Button type="submit"><Save /> حفظ بيانات الطلب</Button>
                 </div>
-              </div>
+              </form>
 
               <div className="admissions-summary-grid">
                 <div className="summary-tile">
@@ -320,17 +475,12 @@ export default function Admissions() {
                 </div>
                 <div className="summary-tile soft">
                   <Clock3 />
-                  <div><strong>{selected.followUpSummary?.pending || 0}</strong><span>مهام متابعة مفتوحة</span></div>
+                  <div><strong>{selected.followUpSummary?.pending || 0}</strong><span>مهام متابعة</span></div>
                 </div>
                 <div className="summary-tile soft">
-                  <History />
-                  <div><strong>{archivedDocuments.length}</strong><span>نسخ سابقة</span></div>
+                  <WalletCards />
+                  <div><strong>{selected.applicationFeeStatus === 'Paid' ? 'مدفوع' : 'غير مدفوع'}</strong><span>حالة سداد رسوم التقديم</span></div>
                 </div>
-              </div>
-
-              <div className="notes-box">
-                <strong>{selected.checklistTemplate?.name ? 'القالب المطبق على هذا الطلب' : 'المتطلبات الافتراضية المطبقة'}</strong>
-                <p>{selected.checklistTemplate?.name ? `${selected.checklistTemplate.name} · ${selected.checklistTemplate.university || 'كل الجامعات'} · ${selected.checklistTemplate.program || 'كل البرامج'} · ${selected.checklistTemplate.country || 'كل الدول'}` : 'لا يوجد قالب مخصص مطابق، لذلك يتم استخدام قائمة المستندات الافتراضية.'}</p>
               </div>
 
               <div className="document-grid checklist-grid">
@@ -356,10 +506,16 @@ export default function Admissions() {
                 })}
               </div>
 
-              <div className="notes-box">
-                <strong>{selected.workflowTemplate?.name ? 'قالب المتابعة المطبق' : 'لا توجد مراحل متابعة مخصصة'}</strong>
-                <p>{selected.workflowTemplate?.name ? `${selected.workflowTemplate.name} · تُحوّل المراحل غير المكتملة تلقائيًا إلى مهام داخل النظام.` : 'يمكنك إضافة قالب متابعة من صفحة الإعدادات لربط الجامعة بخطوات تشغيلية تلقائية.'}</p>
-              </div>
+              {!!selected.offerType && (
+                <div className="notes-box">
+                  <strong>قرار القبول الحالي</strong>
+                  <p>
+                    {selected.offerType === 'Conditional Offer' && `قبول مشروط: ${selected.offerConditions || 'لم تُكتب الشروط بعد'}`}
+                    {selected.offerType === 'Unconditional Offer' && 'قبول نهائي غير مشروط.'}
+                    {selected.offerType === 'Rejected' && `مرفوض: ${selected.rejectionReason || 'لم يُكتب السبب بعد'}`}
+                  </p>
+                </div>
+              )}
 
               {!!effectiveFollowUpStages.length && (
                 <div className="templates-stack">
@@ -372,10 +528,8 @@ export default function Admissions() {
                         </div>
                         <div className="document-badges">
                           <Badge tone={stage.done ? 'green' : 'blue'}>{stage.done ? 'مكتملة' : 'مفتوحة'}</Badge>
-                          <Badge tone="neutral">بعد {stage.dueOffsetDays || 0} يوم</Badge>
                         </div>
                       </div>
-                      {stage.completedAt && <small>اكتملت في {formatDate(stage.completedAt)} بواسطة {stage.completedBy}</small>}
                       {canManageFollowUp && (
                         <div className="task-actions">
                           <Button type="button" variant={stage.done ? 'secondary' : 'ghost'} onClick={() => toggleFollowUpStage(stage)}>
@@ -388,19 +542,12 @@ export default function Admissions() {
                 </div>
               )}
 
-              {!!selected.docsSummary?.missingTypes?.length && (
-                <div className="notes-box">
-                  <strong>المستندات المطلوبة الناقصة</strong>
-                  <p>{selected.docsSummary.missingTypes.map(typeName => tr(typeName)).join('، ')}</p>
-                </div>
-              )}
-
               <div className="documents-head">
                 <div>
                   <h3>المستندات الحالية</h3>
-                  <span>النسخة الأحدث من كل مستند تظهر هنا مع حالة المراجعة.</span>
+                  <span>كل طلب له مستنداته الخاصة بصورة مستقلة.</span>
                 </div>
-                {canUploadDocument && <Button onClick={() => setUploadOpen(true)} type="button"><FileUp /> رفع ملف</Button>}
+                {canUploadDocument && <Button onClick={() => setUploadOpen(true)} type="button"><FileUp /> رفع مستند</Button>}
               </div>
 
               <div className="document-grid">
@@ -411,7 +558,7 @@ export default function Admissions() {
                       <div className="document-line">
                         <strong>{tr(doc.type)}</strong>
                         <div className="document-badges">
-                          <Badge tone={documentTone(doc.status)}>{tr(doc.status)}</Badge>
+                          <Badge tone={doc.status === 'Approved' ? 'green' : doc.status === 'Rejected' ? 'red' : 'blue'}>{tr(doc.status)}</Badge>
                           <Badge tone="neutral">v{doc.version || 1}</Badge>
                         </div>
                       </div>
@@ -421,8 +568,8 @@ export default function Admissions() {
                     </div>
                     <div className="document-actions">
                       {doc.url ? <a target="_blank" rel="noreferrer" href={doc.url}>فتح</a> : <Badge tone="neutral">بدون ملف</Badge>}
-                      {canReviewDocument && <button className="icon-btn small" onClick={() => openReview(doc)} type="button" title="مراجعة المستند"><ShieldCheck size={14} /></button>}
-                      {canDeleteDocument && <button className="icon-btn small danger" onClick={() => deleteDocument(doc)} type="button" title="حذف المستند"><Trash2 size={14} /></button>}
+                      {canReviewDocument && <button className="icon-btn small" onClick={() => openReview(doc)} type="button"><ShieldCheck size={14} /></button>}
+                      {canDeleteDocument && <button className="icon-btn small danger" onClick={() => deleteDocument(doc)} type="button"><Trash2 size={14} /></button>}
                     </div>
                   </article>
                 ))}
@@ -431,7 +578,7 @@ export default function Admissions() {
                   <div className="document-empty">
                     <UploadCloud />
                     <strong>لا توجد مستندات مرفوعة</strong>
-                    <span>ابدأ بجواز السفر أو كشف الدرجات حسب متطلبات الجامعة.</span>
+                    <span>يمكنك رفع مستندات هذا الطلب بشكل مستقل عن باقي طلبات الطالب.</span>
                   </div>
                 )}
               </div>
@@ -440,8 +587,8 @@ export default function Admissions() {
                 <div className="student-section">
                   <div className="documents-head compact-head">
                     <div>
-                      <h3>سجل النسخ السابقة</h3>
-                      <span>كل رفع جديد لنفس النوع يحتفظ بالنسخ الأقدم للرجوع إليها.</span>
+                      <h3>النسخ السابقة</h3>
+                      <span>الاحتفاظ بالإصدارات القديمة للمستندات.</span>
                     </div>
                   </div>
                   <div className="document-grid">
@@ -461,28 +608,26 @@ export default function Admissions() {
                   </div>
                 </div>
               )}
-
-              {selected.notes && <div className="notes-box"><strong>ملاحظة داخلية</strong><p>{selected.notes}</p></div>}
             </>
           ) : (
             <div className="select-placeholder">
               <GraduationCap />
               <h3>اختر طلبًا</h3>
-              <p>اختر طالبًا من القائمة لمراجعة المستندات وتحديث حالة التقديم الجامعي.</p>
+              <p>اختر أحد طلبات الطالب لمراجعة القبول والمستندات وبيانات بوابة الجامعة.</p>
             </div>
           )}
         </Card>
       </div>
 
-      <Modal open={uploadOpen} onClose={() => setUploadOpen(false)} title="رفع مستند للطالب" subtitle={selected ? `إرفاق ملف في طلب ${selected.student?.name}.` : ''}>
+      <Modal open={uploadOpen} onClose={() => setUploadOpen(false)} title="رفع مستند للطلب" subtitle={selected ? `${selected.student?.name} · ${selected.university}` : ''}>
         <form className="stack-form" onSubmit={upload}>
           <Field label="نوع المستند">
             <select value={type} onChange={event => setType(event.target.value)}>
               {uploadOptions.map(item => <option key={item.name} value={item.name}>{tr(item.name)}</option>)}
             </select>
           </Field>
-          <Field label="اختر الملف" hint="إذا كان هناك مستند من نفس النوع فسيتم حفظه كإصدار جديد">
-            <input required type="file" onChange={event => setFile(event.target.files[0])} />
+          <Field label="اختر الملف">
+            <input required type="file" onChange={event => setFile(event.target.files?.[0] || null)} />
           </Field>
           <div className="form-actions">
             <Button type="button" variant="secondary" onClick={() => setUploadOpen(false)}>إلغاء</Button>
@@ -501,7 +646,7 @@ export default function Admissions() {
               <option value="Needs Resubmission">يحتاج إعادة رفع</option>
             </select>
           </Field>
-          <Field label="ملاحظة المراجع">
+          <Field label="ملاحظة المراجعة">
             <textarea value={reviewForm.reviewNote} onChange={event => setReviewForm({ ...reviewForm, reviewNote: event.target.value })} />
           </Field>
           <div className="form-actions">
@@ -511,7 +656,7 @@ export default function Admissions() {
         </form>
       </Modal>
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="إنشاء طلب قبول جديد" subtitle="إضافة طلب يدوي لطالب موجود في النظام" size="lg">
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="إنشاء طلب تقديم جديد" subtitle="الطالب الواحد يمكنه امتلاك أكثر من طلب مستقل" size="lg">
         <form className="form-grid" onSubmit={createApplication}>
           <Field label="الطالب" className="field-full">
             <select required value={createForm.studentId} onChange={event => setCreateForm({ ...createForm, studentId: event.target.value })}>
@@ -522,12 +667,30 @@ export default function Admissions() {
           <Field label="الجامعة"><input required value={createForm.university} onChange={event => setCreateForm({ ...createForm, university: event.target.value })} /></Field>
           <Field label="البرنامج"><input required value={createForm.program} onChange={event => setCreateForm({ ...createForm, program: event.target.value })} /></Field>
           <Field label="الدولة"><input required value={createForm.country} onChange={event => setCreateForm({ ...createForm, country: event.target.value })} /></Field>
-          <Field label="الفصل الدراسي"><input value={createForm.intake} onChange={event => setCreateForm({ ...createForm, intake: event.target.value })} placeholder="مثال: Spring 2027" /></Field>
+          <Field label="رقم الطلب في الجامعة"><input value={createForm.applicationRefNo} onChange={event => setCreateForm({ ...createForm, applicationRefNo: event.target.value })} /></Field>
+          <Field label="Intake">
+            <div className="dual-input">
+              <select value={createForm.intakeSeason} onChange={event => setCreateForm({ ...createForm, intakeSeason: event.target.value })}>
+                {seasons.map(option => <option value={option} key={option}>{option}</option>)}
+              </select>
+              <input type="number" min="2026" value={createForm.intakeYear} onChange={event => setCreateForm({ ...createForm, intakeYear: event.target.value })} />
+            </div>
+          </Field>
           <Field label="المسؤول المختص">
             <select value={createForm.assignedTo} onChange={event => setCreateForm({ ...createForm, assignedTo: event.target.value })}>
               <option value="">غير مسند</option>
               {admissionsEmployees.map(employee => <option key={employee.id} value={employee.id}>{employee.name}</option>)}
             </select>
+          </Field>
+          <Field label="رابط البورتال"><input value={createForm.portalUrl} onChange={event => setCreateForm({ ...createForm, portalUrl: event.target.value })} /></Field>
+          <Field label="Username البورتال"><input value={createForm.portalUsername} onChange={event => setCreateForm({ ...createForm, portalUsername: event.target.value })} /></Field>
+          <Field label="Password البورتال">
+            <div className="password-field">
+              <input type={showCreatePassword ? 'text' : 'password'} value={createForm.portalPassword} onChange={event => setCreateForm({ ...createForm, portalPassword: event.target.value })} />
+              <button className="icon-btn small" type="button" onClick={() => setShowCreatePassword(value => !value)}>
+                {showCreatePassword ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
           </Field>
           <Field label="حالة الطلب">
             <select value={createForm.status} onChange={event => setCreateForm({ ...createForm, status: event.target.value })}>

@@ -2,9 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FileText, GraduationCap, Mail, Phone, Receipt, Search, UserSquare2, WalletCards } from 'lucide-react';
 import { api, formatDate, formatMoney, initials } from '../api.js';
 import { Badge, Card, Progress, Spinner } from '../components/UI.jsx';
+import { useAuth } from '../auth.jsx';
 import { tr } from '../i18n.js';
 
 export default function StudentsPage() {
+  const { user } = useAuth();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -185,6 +187,21 @@ export default function StudentsPage() {
                 <div className="student-stack">
                   {selected.invoices?.length ? (
                     selected.invoices.map(invoice => {
+                      if (user.role === 'admissions') {
+                        return (
+                          <div className="student-card-row" key={`${selected.id}-${invoice.paymentStatus || 'status'}`}>
+                            <div>
+                              <strong>رسوم التقديم الجامعي</strong>
+                              <span>المعروض لموظف القبول: حالة السداد فقط</span>
+                            </div>
+                            <div className="student-finance-meta">
+                              <Badge tone={invoice.paymentStatus === 'Paid' ? 'green' : 'red'}>
+                                {invoice.paymentStatus === 'Paid' ? 'مدفوع' : 'غير مدفوع'}
+                              </Badge>
+                            </div>
+                          </div>
+                        );
+                      }
                       const paid = (invoice.payments || []).reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
                       const balance = Math.max(0, Number(invoice.total || 0) - paid);
                       return (

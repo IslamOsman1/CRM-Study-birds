@@ -92,7 +92,17 @@
       "performance": 92,
       "branch": "Cairo HQ",
       "avatar": "LA",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "liveStatus": "available",
+      "annualLeaveBalance": 21,
+      "monthlyTarget": 8,
+      "commissionPerContract": 500,
+      "basicSalary": 18000,
+      "currentBonus": 0,
+      "currentDeductions": 0,
+      "currentAdvances": 0,
+      "dailySalaryDeduction": 600,
+      "documents": []
     },
     {
       "id": "emp-ziad",
@@ -107,7 +117,17 @@
       "performance": 84,
       "branch": "Cairo HQ",
       "avatar": "ZM",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "liveStatus": "busy",
+      "annualLeaveBalance": 21,
+      "monthlyTarget": 8,
+      "commissionPerContract": 503,
+      "basicSalary": 18000,
+      "currentBonus": 0,
+      "currentDeductions": 0,
+      "currentAdvances": 0,
+      "dailySalaryDeduction": 600,
+      "documents": []
     },
     {
       "id": "emp-mariam",
@@ -122,7 +142,17 @@
       "performance": 79,
       "branch": "Alexandria",
       "avatar": "MT",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "liveStatus": "break",
+      "annualLeaveBalance": 21,
+      "monthlyTarget": 8,
+      "commissionPerContract": 500,
+      "basicSalary": 18000,
+      "currentBonus": 0,
+      "currentDeductions": 0,
+      "currentAdvances": 0,
+      "dailySalaryDeduction": 600,
+      "documents": []
     },
     {
       "id": "emp-omar",
@@ -137,7 +167,16 @@
       "performance": 90,
       "branch": "Cairo HQ",
       "avatar": "OK",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "annualLeaveBalance": 21,
+      "monthlyTarget": 0,
+      "commissionPerContract": 0,
+      "basicSalary": 15000,
+      "currentBonus": 0,
+      "currentDeductions": 0,
+      "currentAdvances": 0,
+      "dailySalaryDeduction": 500,
+      "documents": []
     },
     {
       "id": "emp-sara",
@@ -152,7 +191,16 @@
       "performance": 86,
       "branch": "Cairo HQ",
       "avatar": "SA",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "annualLeaveBalance": 21,
+      "monthlyTarget": 0,
+      "commissionPerContract": 0,
+      "basicSalary": 12000,
+      "currentBonus": 0,
+      "currentDeductions": 0,
+      "currentAdvances": 0,
+      "dailySalaryDeduction": 400,
+      "documents": []
     },
     {
       "id": "emp-farah",
@@ -167,7 +215,16 @@
       "performance": 88,
       "branch": "Cairo HQ",
       "avatar": "FS",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "annualLeaveBalance": 21,
+      "monthlyTarget": 0,
+      "commissionPerContract": 0,
+      "basicSalary": 12000,
+      "currentBonus": 0,
+      "currentDeductions": 0,
+      "currentAdvances": 0,
+      "dailySalaryDeduction": 400,
+      "documents": []
     },
     {
       "id": "emp-youssef",
@@ -182,7 +239,16 @@
       "performance": 89,
       "branch": "Cairo HQ",
       "avatar": "YA",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "annualLeaveBalance": 21,
+      "monthlyTarget": 0,
+      "commissionPerContract": 0,
+      "basicSalary": 12000,
+      "currentBonus": 0,
+      "currentDeductions": 0,
+      "currentAdvances": 0,
+      "dailySalaryDeduction": 400,
+      "documents": []
     }
   ],
   "leads": [
@@ -202,7 +268,12 @@
       "notes": "Interested in January intake and scholarship options.",
       "createdAt": "2026-07-15T09:10:00Z",
       "updatedAt": "2026-07-16T10:00:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "targetCountry": "United Kingdom",
+      "targetMajor": "MSc Data Science",
+      "budget": "",
+      "currentLevel": "",
+      "lostReason": ""
     },
     {
       "id": "lead-2",
@@ -220,7 +291,12 @@
       "notes": "Parents will attend the next meeting.",
       "createdAt": "2026-07-14T12:00:00Z",
       "updatedAt": "2026-07-15T08:00:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "targetCountry": "Canada",
+      "targetMajor": "BBA",
+      "budget": "",
+      "currentLevel": "",
+      "lostReason": ""
     },
     {
       "id": "lead-3",
@@ -238,7 +314,12 @@
       "notes": "Needs language pathway advice.",
       "createdAt": "2026-07-10T08:30:00Z",
       "updatedAt": "2026-07-16T15:45:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "targetCountry": "Germany",
+      "targetMajor": "Computer Engineering",
+      "budget": "",
+      "currentLevel": "",
+      "lostReason": ""
     },
     {
       "id": "lead-4",
@@ -249,14 +330,19 @@
       "program": "Architecture",
       "university": "Istanbul Okan University",
       "source": "Referral",
-      "stage": "University Selection",
+      "stage": "Consultation Completed",
       "consultantId": "emp-lina",
       "priority": "Medium",
       "nextFollowUp": "2026-07-20",
       "notes": "Comparing three private universities.",
       "createdAt": "2026-07-08T08:30:00Z",
       "updatedAt": "2026-07-16T13:45:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "targetCountry": "Turkey",
+      "targetMajor": "Architecture",
+      "budget": "",
+      "currentLevel": "",
+      "lostReason": ""
     },
     {
       "id": "lead-5",
@@ -267,14 +353,21 @@
       "program": "MBA",
       "university": "University of Birmingham",
       "source": "Google Ads",
-      "stage": "University Selection",
+      "stage": "Consultation Completed",
       "consultantId": "emp-ziad",
       "priority": "High",
       "nextFollowUp": "2026-07-18",
       "notes": "Waiting for budget confirmation.",
       "createdAt": "2026-07-05T10:30:00Z",
       "updatedAt": "2026-07-15T13:45:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "clientAlertFlag": "dissatisfied",
+      "clientAlertAt": "2026-07-22T09:55:00Z",
+      "targetCountry": "United Kingdom",
+      "targetMajor": "MBA",
+      "budget": "",
+      "currentLevel": "",
+      "lostReason": ""
     },
     {
       "id": "lead-6",
@@ -285,14 +378,19 @@
       "program": "MSc Marketing",
       "university": "Erasmus University",
       "source": "Website",
-      "stage": "Documents Collected",
+      "stage": "Awaiting Decision",
       "consultantId": "emp-mariam",
       "priority": "High",
       "nextFollowUp": "2026-07-18",
       "notes": "Passport and transcript received.",
       "createdAt": "2026-07-02T10:30:00Z",
       "updatedAt": "2026-07-16T17:00:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "targetCountry": "Netherlands",
+      "targetMajor": "MSc Marketing",
+      "budget": "",
+      "currentLevel": "",
+      "lostReason": ""
     },
     {
       "id": "lead-7",
@@ -303,7 +401,7 @@
       "program": "MEng Software",
       "university": "Concordia University",
       "source": "WhatsApp",
-      "stage": "Application Sent",
+      "stage": "Closed / Won",
       "consultantId": "emp-lina",
       "priority": "High",
       "nextFollowUp": "2026-07-25",
@@ -311,7 +409,12 @@
       "studentId": "student-1",
       "createdAt": "2026-06-19T10:30:00Z",
       "updatedAt": "2026-07-16T17:00:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "targetCountry": "Canada",
+      "targetMajor": "MEng Software",
+      "budget": "",
+      "currentLevel": "",
+      "lostReason": ""
     },
     {
       "id": "lead-8",
@@ -322,7 +425,7 @@
       "program": "Medicine",
       "university": "Medipol University",
       "source": "Referral",
-      "stage": "Enrolled",
+      "stage": "Closed / Won",
       "consultantId": "emp-ziad",
       "priority": "High",
       "nextFollowUp": "",
@@ -330,7 +433,12 @@
       "studentId": "student-2",
       "createdAt": "2026-05-11T10:30:00Z",
       "updatedAt": "2026-07-10T17:00:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "targetCountry": "Turkey",
+      "targetMajor": "Medicine",
+      "budget": "",
+      "currentLevel": "",
+      "lostReason": ""
     },
     {
       "id": "lead-9",
@@ -348,7 +456,12 @@
       "notes": "Paused due to budget.",
       "createdAt": "2026-06-11T10:30:00Z",
       "updatedAt": "2026-07-01T17:00:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "targetCountry": "Italy",
+      "targetMajor": "Design",
+      "budget": "",
+      "currentLevel": "",
+      "lostReason": ""
     }
   ],
   "students": [
@@ -401,7 +514,17 @@
       "documents": [],
       "notes": "",
       "createdAt": "2026-07-18T12:20:13.256Z",
-      "updatedAt": "2026-07-18T12:20:13.256Z"
+      "updatedAt": "2026-07-18T12:20:13.256Z",
+      "submissionDeadline": "2026-07-23T17:00:00Z",
+      "applicationRefNo": "",
+      "portalUrl": "",
+      "portalUsername": "",
+      "portalPassword": "",
+      "offerType": "",
+      "offerConditions": "",
+      "rejectionReason": "",
+      "offerLetterUploadedAt": "",
+      "applicationFeeStatus": "Paid"
     },
     {
       "id": "app-1",
@@ -451,7 +574,18 @@
       "notes": "University fee paid. Waiting for file review.",
       "createdAt": "2026-07-01T10:00:00Z",
       "updatedAt": "2026-07-16T10:00:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "submittedAt": "2026-07-14T10:00:00Z",
+      "responseSlaDays": 5,
+      "applicationRefNo": "",
+      "portalUrl": "",
+      "portalUsername": "",
+      "portalPassword": "",
+      "offerType": "",
+      "offerConditions": "",
+      "rejectionReason": "",
+      "offerLetterUploadedAt": "",
+      "applicationFeeStatus": "Paid"
     },
     {
       "id": "app-2",
@@ -512,7 +646,18 @@
       "notes": "Final acceptance issued; enrollment completed.",
       "createdAt": "2026-06-01T10:00:00Z",
       "updatedAt": "2026-07-10T10:00:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "visaStatus": "Delayed",
+      "visaUpdatedAt": "2026-07-22T07:50:00Z",
+      "applicationRefNo": "",
+      "portalUrl": "",
+      "portalUsername": "",
+      "portalPassword": "",
+      "offerType": "Unconditional Offer",
+      "offerConditions": "",
+      "rejectionReason": "",
+      "offerLetterUploadedAt": "",
+      "applicationFeeStatus": "Paid"
     },
     {
       "id": "app-3",
@@ -540,7 +685,16 @@
       "notes": "Transcript and English certificate are missing.",
       "createdAt": "2026-07-11T10:00:00Z",
       "updatedAt": "2026-07-16T10:00:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "applicationRefNo": "",
+      "portalUrl": "",
+      "portalUsername": "",
+      "portalPassword": "",
+      "offerType": "",
+      "offerConditions": "",
+      "rejectionReason": "",
+      "offerLetterUploadedAt": "",
+      "applicationFeeStatus": "Unpaid"
     }
   ],
   "receptionLogs": [
@@ -551,14 +705,18 @@
       "phone": "+20 102 330 5552",
       "email": "salma.h@example.com",
       "interest": "BBA in Canada",
-      "source": "Walk-in",
+      "source": "Walk-in Without Appointment",
       "consultantId": "emp-ziad",
       "notes": "Visited with her mother.",
       "status": "Assigned",
       "createdBy": "Sara Ali",
       "leadId": "lead-2",
       "createdAt": "2026-07-16T11:20:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "branch": "Cairo HQ",
+      "queueStatus": "waiting",
+      "notifiedAt": "",
+      "consultantNotified": false
     },
     {
       "id": "rec-2",
@@ -567,13 +725,17 @@
       "phone": "+20 127 450 1920",
       "email": "",
       "interest": "Foundation year in the UK",
-      "source": "Phone",
+      "source": "Walk-in Without Appointment",
       "consultantId": "emp-lina",
       "notes": "Requested a callback after 6 PM.",
       "status": "Assigned",
       "createdBy": "Sara Ali",
       "createdAt": "2026-07-16T09:42:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "branch": "Cairo HQ",
+      "queueStatus": "assigned",
+      "notifiedAt": "",
+      "consultantNotified": false
     },
     {
       "id": "rec-3",
@@ -582,13 +744,17 @@
       "phone": "+20 101 771 8332",
       "email": "omar.a@example.com",
       "interest": "Engineering in Germany",
-      "source": "WhatsApp",
+      "source": "Walk-in Without Appointment",
       "consultantId": "emp-mariam",
       "notes": "Sent high school grades.",
       "status": "Assigned",
       "createdBy": "Sara Ali",
       "createdAt": "2026-07-15T15:10:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "branch": "Cairo HQ",
+      "queueStatus": "assigned",
+      "notifiedAt": "",
+      "consultantNotified": false
     }
   ],
   "attendance": [
@@ -678,7 +844,15 @@
       "status": "Partial",
       "notes": "Second installment due before acceptance.",
       "createdAt": "2026-07-02T10:00:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "exchangeRate": 1,
+      "serviceFee": 400,
+      "universityFee": 2200,
+      "visaFee": 0,
+      "passThroughFees": 2200,
+      "installments": [],
+      "paymentStatement": "Application package and university submission fees",
+      "locked": false
     },
     {
       "id": "inv-2",
@@ -694,7 +868,15 @@
       "status": "Paid",
       "notes": "Paid in full.",
       "createdAt": "2026-06-02T10:00:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "exchangeRate": 1,
+      "serviceFee": 900,
+      "universityFee": 5000,
+      "visaFee": 0,
+      "passThroughFees": 5000,
+      "installments": [],
+      "paymentStatement": "Medical university admission and enrollment package",
+      "locked": false
     },
     {
       "id": "inv-3",
@@ -710,10 +892,105 @@
       "status": "Unpaid",
       "notes": "Awaiting first deposit.",
       "createdAt": "2026-07-13T10:00:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "exchangeRate": 1,
+      "serviceFee": 300,
+      "universityFee": 1800,
+      "visaFee": 0,
+      "passThroughFees": 1800,
+      "installments": [],
+      "paymentStatement": "UK university application package",
+      "locked": false
     }
   ],
   "payments": [
+    {
+      "id": "2ccb18eb-3bad-4bcf-9fc6-297f9cb631eb",
+      "invoiceId": "inv-1",
+      "installmentId": "",
+      "receiptNumber": "REC-2026-005",
+      "amount": 1200,
+      "currency": "USD",
+      "exchangeRate": 1,
+      "amountInWords": "ألف و مائتان دولار أمريكي فقط لا غير",
+      "method": "Bank Transfer",
+      "reference": "",
+      "date": "2026-07-22",
+      "statement": "Application package and university submission fees",
+      "notes": "",
+      "attachment": null,
+      "studentSnapshot": {
+        "name": "Youssef Emad",
+        "phone": "+20 106 884 5322",
+        "referenceCode": "student-1",
+        "targetCountry": "ddd",
+        "targetMajor": "ddd",
+        "consultantName": "Lina Ahmed"
+      },
+      "receivedBy": "Nour El-Din Hassan",
+      "locked": true,
+      "lockedAt": "2026-07-22T12:51:17.820Z",
+      "createdAt": "2026-07-22T12:51:17.820Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "12a9bbc9-379f-442b-8de9-976706742391",
+      "invoiceId": "inv-1",
+      "installmentId": "",
+      "receiptNumber": "REC-2026-004",
+      "amount": 1200,
+      "currency": "USD",
+      "exchangeRate": 1,
+      "amountInWords": "ألف و مائتان دولار أمريكي فقط لا غير",
+      "method": "Bank Transfer",
+      "reference": "jjj",
+      "date": "2026-07-22",
+      "statement": "Application package and university submission fees",
+      "notes": "",
+      "attachment": null,
+      "studentSnapshot": {
+        "name": "Youssef Emad",
+        "phone": "+20 106 884 5322",
+        "referenceCode": "student-1",
+        "targetCountry": "ddd",
+        "targetMajor": "ddd",
+        "consultantName": "Lina Ahmed"
+      },
+      "receivedBy": "Nour El-Din Hassan",
+      "locked": true,
+      "lockedAt": "2026-07-22T12:50:48.072Z",
+      "createdAt": "2026-07-22T12:50:48.072Z",
+      "companyId": "company-default"
+    },
+    {
+      "id": "266502f7-720b-4735-9ae2-dfccd3dfb606",
+      "invoiceId": "inv-1",
+      "installmentId": "",
+      "receiptNumber": "REC-2026-003",
+      "amount": 1200,
+      "currency": "USD",
+      "exchangeRate": 1,
+      "amountInWords": "ألف و مائتان دولار أمريكي فقط لا غير",
+      "method": "Bank Transfer",
+      "reference": "",
+      "date": "2026-07-22",
+      "statement": "Application package and university submission fees",
+      "notes": "",
+      "attachment": null,
+      "studentSnapshot": {
+        "name": "Youssef Emad",
+        "phone": "+20 106 884 5322",
+        "referenceCode": "student-1",
+        "targetCountry": "ddd",
+        "targetMajor": "ddd",
+        "consultantName": "Lina Ahmed"
+      },
+      "receivedBy": "Nour El-Din Hassan",
+      "locked": true,
+      "lockedAt": "2026-07-22T12:49:52.506Z",
+      "createdAt": "2026-07-22T12:49:52.506Z",
+      "companyId": "company-default"
+    },
     {
       "id": "pay-1",
       "invoiceId": "inv-1",
@@ -724,7 +1001,16 @@
       "notes": "First installment",
       "receivedBy": "Youssef Adel",
       "createdAt": "2026-07-05T12:00:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "currency": "USD",
+      "exchangeRate": 1,
+      "receiptNumber": "REC-2026-001",
+      "statement": "Application package and university submission fees",
+      "amountInWords": "ألف دولار أمريكي فقط لا غير",
+      "locked": true,
+      "lockedAt": "2026-07-05T12:00:00Z",
+      "attachment": null,
+      "installmentId": ""
     },
     {
       "id": "pay-2",
@@ -736,10 +1022,85 @@
       "notes": "Full settlement",
       "receivedBy": "Youssef Adel",
       "createdAt": "2026-06-12T12:00:00Z",
-      "companyId": "company-default"
+      "companyId": "company-default",
+      "currency": "USD",
+      "exchangeRate": 1,
+      "receiptNumber": "REC-2026-002",
+      "statement": "Medical university admission and enrollment package",
+      "amountInWords": "خمسة آلاف دولار أمريكي فقط لا غير",
+      "locked": true,
+      "lockedAt": "2026-06-12T12:00:00Z",
+      "attachment": null,
+      "installmentId": ""
     }
   ],
   "activities": [
+    {
+      "id": "b0e51dd1-3c47-4dc0-9d72-650b610b53ea",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "updated",
+      "entityType": "employee-hr",
+      "entityId": "emp-ziad",
+      "details": "تم تحديث بيانات HR للموظف Ziad Mahmoud",
+      "createdAt": "2026-07-22T16:19:19.618Z"
+    },
+    {
+      "id": "26c5bc36-3b15-4edc-984c-e55c4705edd5",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "updated",
+      "entityType": "employee-hr",
+      "entityId": "emp-ziad",
+      "details": "تم تحديث بيانات HR للموظف Ziad Mahmoud",
+      "createdAt": "2026-07-22T16:19:06.039Z"
+    },
+    {
+      "id": "9859c970-30c0-478e-babb-e693080ed1c3",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "updated",
+      "entityType": "employee-hr",
+      "entityId": "emp-lina",
+      "details": "تم تحديث بيانات HR للموظف Lina Ahmed",
+      "createdAt": "2026-07-22T16:18:38.339Z"
+    },
+    {
+      "id": "75b67618-c3f3-4ff7-9ced-1fd83855ff01",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "created",
+      "entityType": "payment",
+      "entityId": "2ccb18eb-3bad-4bcf-9fc6-297f9cb631eb",
+      "details": "تم تسجيل دفعة على الفاتورة INV-2026-0001 بقيمة 1200 USD",
+      "createdAt": "2026-07-22T12:51:17.820Z"
+    },
+    {
+      "id": "f4a97ce7-467a-402f-8d64-5d78c3cd4605",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "created",
+      "entityType": "payment",
+      "entityId": "12a9bbc9-379f-442b-8de9-976706742391",
+      "details": "تم تسجيل دفعة على الفاتورة INV-2026-0001 بقيمة 1200 USD",
+      "createdAt": "2026-07-22T12:50:48.072Z"
+    },
+    {
+      "id": "ca83db29-6930-4f6f-80f4-607945aa304d",
+      "companyId": "company-default",
+      "actorId": "usr-admin",
+      "actorName": "Nour El-Din Hassan",
+      "action": "created",
+      "entityType": "payment",
+      "entityId": "266502f7-720b-4735-9ae2-dfccd3dfb606",
+      "details": "تم تسجيل دفعة على الفاتورة INV-2026-0001 بقيمة 1200 USD",
+      "createdAt": "2026-07-22T12:49:52.506Z"
+    },
     {
       "id": "7b080854-d84d-47b2-ab65-563751fe7ef5",
       "companyId": "company-default",
@@ -840,10 +1201,9 @@
     "pipelineStages": [
       "Initial Inquiry",
       "Contacted",
-      "University Selection",
-      "Documents Collected",
-      "Application Sent",
-      "Enrolled",
+      "Consultation Completed",
+      "Awaiting Decision",
+      "Closed / Won",
       "Lost"
     ],
     "applicationStatuses": [
@@ -912,5 +1272,84 @@
   "webhookEvents": [],
   "whatsAppTemplates": [],
   "integrationAuditLogs": [],
-  "contactChannelIdentities": []
+  "contactChannelIdentities": [],
+  "executiveActions": [
+    {
+      "id": "63431dc8-dadf-499d-8143-88940c89f3b3",
+      "companyId": "company-default",
+      "type": "discount",
+      "status": "pending",
+      "title": "خصم استثنائي 12% على رسوم التقديم",
+      "summary": "طلب مقدم من فريق المبيعات للحفاظ على العميل قبل تحويله لمنافس.",
+      "subjectName": "Ahmed Mostafa",
+      "requestedBy": "Lina Ahmed",
+      "requestedAt": "2026-07-22T08:15:00Z",
+      "meta": {
+        "amount": 420,
+        "currency": "USD"
+      }
+    },
+    {
+      "id": "70d27f82-e8ea-4818-a48e-cb8aae013aa3",
+      "companyId": "company-default",
+      "type": "refund",
+      "status": "pending",
+      "title": "استرداد رسوم حجز الملف",
+      "summary": "إلغاء التعاقد بعد تأخر الموافقة النهائية من الجامعة.",
+      "subjectName": "Youssef Emad",
+      "requestedBy": "Youssef Adel",
+      "requestedAt": "2026-07-22T08:45:00Z",
+      "meta": {
+        "amount": 1000,
+        "currency": "USD"
+      }
+    },
+    {
+      "id": "cd4de5ec-16bd-49e3-9140-298c268ca14a",
+      "companyId": "company-default",
+      "type": "payment_plan",
+      "status": "pending",
+      "title": "تقسيط غير معتاد على 4 دفعات",
+      "summary": "طلب تقسيط مخصص لحين وصول التحويل البنكي من ولي الأمر.",
+      "subjectName": "Hassan Nabil",
+      "requestedBy": "Youssef Adel",
+      "requestedAt": "2026-07-22T09:10:00Z",
+      "meta": {
+        "installments": 4
+      }
+    },
+    {
+      "id": "5e917353-c9ff-4447-8542-006e5c792bbb",
+      "companyId": "company-default",
+      "type": "reassignment",
+      "status": "pending",
+      "title": "إعادة توزيع الملف على مستشار آخر",
+      "summary": "نقل الملف لتقليل التأخير بعد ضغط جدول المتابعة الحالي.",
+      "subjectName": "Salma Hany",
+      "requestedBy": "Maya Roberts",
+      "requestedAt": "2026-07-22T09:30:00Z",
+      "meta": {
+        "from": "Ziad Mahmoud",
+        "to": "Lina Ahmed"
+      }
+    },
+    {
+      "id": "147fbbc1-2f66-4eaf-abb9-fda0c746e319",
+      "companyId": "company-default",
+      "type": "document_waiver",
+      "status": "pending",
+      "title": "تقديم الملف رغم تأخر شهادة اللغة",
+      "summary": "الجامعة تسمح مؤقتاً باستلام المستند بعد فتح الملف إذا تمت الموافقة الإدارية.",
+      "subjectName": "Hassan Nabil",
+      "requestedBy": "Omar Khaled",
+      "requestedAt": "2026-07-22T10:00:00Z",
+      "meta": {
+        "missingDocument": "English Certificate"
+      }
+    }
+  ],
+  "broadcasts": [],
+  "userNotifications": [],
+  "receptionState": {},
+  "leaveRequests": []
 }

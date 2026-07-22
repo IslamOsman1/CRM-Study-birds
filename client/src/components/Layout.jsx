@@ -5,7 +5,7 @@ import { api, formatDate } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { tr } from '../i18n.js';
 
-const REFRESH_MS = 60_000;
+const REFRESH_MS = 10_000;
 const HIGHLIGHT_MS = 8_000;
 
 const modules = [
@@ -46,9 +46,23 @@ export default function Layout() {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [hasNewAlerts, setHasNewAlerts] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [popupNotification, setPopupNotification] = useState(null);
   const highlightTimeoutRef = useRef(null);
   const knownTaskIdsRef = useRef(new Set());
-  const allowed = useMemo(() => modules.filter(item => item.roles.includes(user.role)), [user.role]);
+  const seenNotificationIdsRef = useRef(new Set());
+  const allowed = useMemo(() => {
+    if (user.role === 'reception') {
+      return modules.filter(item => ['/reception', '/inbox', '/tasks'].includes(item.to));
+    }
+    if (user.role === 'finance') {
+      return modules.filter(item => ['/finance', '/reports', '/tasks'].includes(item.to));
+    }
+    if (user.role === 'hr') {
+      return modules.filter(item => ['/hr', '/tasks'].includes(item.to));
+    }
+    return modules.filter(item => item.roles.includes(user.role));
+  }, [user.role]);
   const [title, subtitle] = titles[location.pathname] || titles['/'];
   const today = new Intl.DateTimeFormat('ar-EG', {
     day: 'numeric',
@@ -90,6 +104,33 @@ export default function Layout() {
       window.clearTimeout(highlightTimeoutRef.current);
     };
   }, [notificationOpen]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadNotifications = async () => {
+      try {
+        const items = await api('/api/notifications');
+        if (!active) return;
+        setNotifications(items);
+        const unreadNew = items.find(item => !item.readAt && !seenNotificationIdsRef.current.has(item.id));
+        if (unreadNew) {
+          seenNotificationIdsRef.current.add(unreadNew.id);
+          setPopupNotification(unreadNew);
+          await api(`/api/notifications/${unreadNew.id}/read`, { method: 'POST' }).catch(() => null);
+        }
+      } catch {
+        if (active) setNotifications(current => current);
+      }
+    };
+
+    loadNotifications();
+    const intervalId = window.setInterval(loadNotifications, REFRESH_MS);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   useEffect(() => {
     setNotificationOpen(false);
@@ -247,6 +288,17 @@ export default function Layout() {
           </div>
           <Outlet />
         </div>
+        {popupNotification && (
+          <div className="live-popup">
+            <div className="live-popup-head">
+              <strong>{popupNotification.title}</strong>
+              <button className="icon-btn" type="button" onClick={() => setPopupNotification(null)}>
+                <X size={16} />
+              </button>
+            </div>
+            <p>{popupNotification.message}</p>
+          </div>
+        )}
       </main>
     </div>
   );

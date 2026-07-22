@@ -1,21 +1,168 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Banknote, CircleDollarSign, CreditCard, Eye, FilePlus2, Plus, ReceiptText, Search, WalletCards } from 'lucide-react';
+import { Banknote, CircleDollarSign, CreditCard, Eye, FilePlus2, FileText, Plus, ReceiptText, Search, Send, Stamp, WalletCards } from 'lucide-react';
 import { api, formatDate, formatMoney } from '../api.js';
 import { Badge, Button, Card, Field, Modal, Spinner, Toast } from '../components/UI.jsx';
 import { useAuth } from '../auth.jsx';
 import { tr } from '../i18n.js';
 import { can } from '../permissions.js';
 
+const today = '2026-07-22';
+const paymentMethods = ['Cash', 'Bank Transfer', 'Card', 'InstaPay', 'Vodafone Cash'];
+const currencies = ['EGP', 'USD', 'EUR', 'GBP'];
+
+const createInstallment = (index = 0) => ({
+  id: `inst-${Date.now()}-${index}`,
+  label: `القسط ${index + 1}`,
+  dueDate: '',
+  amount: ''
+});
+
 const invoiceBlank = {
   studentId: '',
-  description: 'خدمات استشارات تعليمية',
+  description: 'أتعاب خدمات التقديم الجامعي',
+  paymentStatement: 'دفعة من أتعاب التقديم الجامعي',
   currency: 'USD',
-  subtotal: '',
+  exchangeRate: '1',
+  serviceFee: '',
+  universityFee: '',
+  visaFee: '',
   tax: '0',
-  commission: '0',
   dueDate: '',
-  notes: ''
+  notes: '',
+  installments: []
 };
+
+const paymentBlank = {
+  amount: '',
+  currency: 'USD',
+  exchangeRate: '1',
+  method: 'Bank Transfer',
+  reference: '',
+  date: today,
+  statement: '',
+  installmentId: '',
+  notes: '',
+  attachment: null
+};
+
+const numberValue = value => Number(value || 0);
+const formatDateTime = value =>
+  value
+    ? new Intl.DateTimeFormat('ar-EG', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(new Date(value))
+    : '—';
+
+function ReceiptSheet({ payment, invoice }) {
+  if (!payment || !invoice) return null;
+  const snapshot = payment.studentSnapshot || {};
+  const totals = payment.financialSummary || {};
+
+  return (
+    <div className="receipt-sheet">
+      <div className="receipt-head">
+        <div>
+          <span>EduGlobal CRM</span>
+          <h3>سند قبض رسمي</h3>
+          <p>{payment.receiptNumber}</p>
+        </div>
+        <div className="receipt-stamp">
+          <Stamp />
+          <span>معتمد من النظام</span>
+        </div>
+      </div>
+
+      <div className="receipt-grid">
+        <div>
+          <span>تاريخ ووقت التحصيل</span>
+          <strong>{formatDateTime(payment.createdAt || payment.date)}</strong>
+        </div>
+        <div>
+          <span>طريقة الدفع</span>
+          <strong>{tr(payment.method)}</strong>
+        </div>
+        <div>
+          <span>العملة</span>
+          <strong>{payment.currency}</strong>
+        </div>
+        <div>
+          <span>سعر الصرف</span>
+          <strong>{payment.exchangeRate || 1}</strong>
+        </div>
+      </div>
+
+      <div className="receipt-block">
+        <strong>بيانات الطالب</strong>
+        <div className="receipt-grid">
+          <div>
+            <span>اسم الطالب</span>
+            <strong>{snapshot.name || invoice.student?.name || '—'}</strong>
+          </div>
+          <div>
+            <span>الهاتف / الكود المرجعي</span>
+            <strong>{snapshot.phone || invoice.student?.phone || '—'} / {snapshot.referenceCode || invoice.student?.id || '—'}</strong>
+          </div>
+          <div>
+            <span>الدولة والتخصص</span>
+            <strong>{snapshot.targetMajor || invoice.application?.program || '—'} - {snapshot.targetCountry || invoice.application?.country || '—'}</strong>
+          </div>
+          <div>
+            <span>المستشار</span>
+            <strong>{snapshot.consultantName || invoice.consultant?.name || 'غير محدد'}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div className="receipt-block">
+        <strong>تفاصيل المبلغ</strong>
+        <div className="receipt-grid">
+          <div>
+            <span>المبلغ المدفوع</span>
+            <strong>{formatMoney(payment.amount, payment.currency)}</strong>
+          </div>
+          <div className="receipt-wide">
+            <span>التفقيط</span>
+            <strong>{payment.amountInWords}</strong>
+          </div>
+          <div className="receipt-wide">
+            <span>البيان</span>
+            <strong>{payment.statement || invoice.paymentStatement || invoice.description}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div className="receipt-summary">
+        <div>
+          <span>إجمالي المستحق</span>
+          <strong>{formatMoney(totals.totalDue || invoice.total, invoice.currency)}</strong>
+        </div>
+        <div>
+          <span>إجمالي المدفوع</span>
+          <strong>{formatMoney(totals.totalPaid || invoice.paid, invoice.currency)}</strong>
+        </div>
+        <div>
+          <span>المتبقي</span>
+          <strong>{formatMoney(totals.remainingBalance || invoice.balance, invoice.currency)}</strong>
+        </div>
+      </div>
+
+      <div className="receipt-foot">
+        <div>
+          <span>توقيع المحاسب</span>
+          <i />
+        </div>
+        <div>
+          <span>ختم الشركة</span>
+          <i />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Finance() {
   const { user } = useAuth();
@@ -26,9 +173,11 @@ export default function Finance() {
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   const [form, setForm] = useState(invoiceBlank);
   const [selected, setSelected] = useState(null);
-  const [payment, setPayment] = useState({ amount: '', method: 'Bank Transfer', reference: '', date: '2026-07-17', notes: '' });
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [payment, setPayment] = useState(paymentBlank);
   const [toast, setToast] = useState(null);
 
   const canCreateInvoice = can(user.role, 'createInvoice');
@@ -48,37 +197,77 @@ export default function Finance() {
   }, []);
 
   const shown = useMemo(
-    () => invoices.filter(invoice => [invoice.number, invoice.student?.name, invoice.description, invoice.computedStatus].some(value => String(value || '').toLowerCase().includes(query.toLowerCase()))),
+    () =>
+      invoices.filter(invoice =>
+        [
+          invoice.number,
+          invoice.student?.name,
+          invoice.student?.phone,
+          invoice.description,
+          invoice.paymentStatement,
+          invoice.computedStatus
+        ].some(value => String(value || '').toLowerCase().includes(query.toLowerCase()))
+      ),
     [invoices, query]
   );
 
-  const total = invoices.reduce((sum, invoice) => sum + invoice.total, 0);
-  const paid = invoices.reduce((sum, invoice) => sum + invoice.paid, 0);
-  const outstanding = invoices.reduce((sum, invoice) => sum + invoice.balance, 0);
-  const commission = invoices.reduce((sum, invoice) => sum + invoice.commission, 0);
+  const totals = useMemo(() => ({
+    total: invoices.reduce((sum, invoice) => sum + invoice.total, 0),
+    paid: invoices.reduce((sum, invoice) => sum + invoice.paid, 0),
+    outstanding: invoices.reduce((sum, invoice) => sum + invoice.balance, 0),
+    serviceFees: invoices.reduce((sum, invoice) => sum + numberValue(invoice.serviceFee), 0)
+  }), [invoices]);
 
-  const create = async event => {
+  const invoicePreviewTotal = numberValue(form.serviceFee) + numberValue(form.universityFee) + numberValue(form.visaFee) + numberValue(form.tax);
+  const installmentTotal = form.installments.reduce((sum, item) => sum + numberValue(item.amount), 0);
+
+  const createInvoice = async event => {
     event.preventDefault();
+    if (form.installments.length && installmentTotal !== invoicePreviewTotal) {
+      setToast({ type: 'error', message: 'إجمالي الأقساط يجب أن يساوي إجمالي الفاتورة.' });
+      return;
+    }
     try {
-      await api('/api/invoices', { method: 'POST', body: JSON.stringify({ ...form, total: Number(form.subtotal) + Number(form.tax || 0) }) });
+      await api('/api/invoices', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...form,
+          installments: form.installments.map(item => ({ ...item, amount: numberValue(item.amount) })),
+          total: invoicePreviewTotal
+        })
+      });
       setInvoiceOpen(false);
       setForm(invoiceBlank);
       await load();
-      setToast({ message: 'تم إنشاء الفاتورة بنجاح' });
+      setToast({ message: 'تم إنشاء الفاتورة وخطة السداد بنجاح.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
   };
 
-  const pay = async event => {
+  const savePayment = async event => {
     event.preventDefault();
     if (!selected) return;
     try {
-      await api(`/api/invoices/${selected.id}/payments`, { method: 'POST', body: JSON.stringify(payment) });
+      const body = new FormData();
+      body.append('amount', payment.amount);
+      body.append('currency', payment.currency);
+      body.append('exchangeRate', payment.exchangeRate);
+      body.append('method', payment.method);
+      body.append('reference', payment.reference);
+      body.append('date', payment.date);
+      body.append('statement', payment.statement);
+      body.append('installmentId', payment.installmentId);
+      body.append('notes', payment.notes);
+      if (payment.attachment) body.append('attachment', payment.attachment);
+
+      const receipt = await api(`/api/invoices/${selected.id}/payments`, { method: 'POST', body });
       setPaymentOpen(false);
-      setPayment({ amount: '', method: 'Bank Transfer', reference: '', date: '2026-07-17', notes: '' });
+      setSelectedReceipt(receipt);
+      setReceiptOpen(true);
+      setPayment(paymentBlank);
       await load();
-      setToast({ message: 'تم تسجيل الدفعة بنجاح' });
+      setToast({ message: 'تم تسجيل الدفعة وإصدار سند القبض.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
@@ -87,11 +276,11 @@ export default function Finance() {
   const openPaymentModal = invoice => {
     setSelected(invoice);
     setPayment({
+      ...paymentBlank,
       amount: String(invoice.balance),
-      method: 'Bank Transfer',
-      reference: '',
-      date: '2026-07-17',
-      notes: ''
+      currency: invoice.currency,
+      exchangeRate: String(invoice.exchangeRate || 1),
+      statement: invoice.paymentStatement || invoice.description
     });
     setPaymentOpen(true);
   };
@@ -101,16 +290,97 @@ export default function Finance() {
     setHistoryOpen(true);
   };
 
+  const openReceipt = (invoice, receipt) => {
+    setSelected(invoice);
+    setSelectedReceipt(receipt);
+    setReceiptOpen(true);
+  };
+
+  const addInstallment = () => setForm(current => ({ ...current, installments: [...current.installments, createInstallment(current.installments.length)] }));
+  const removeInstallment = id => setForm(current => ({ ...current, installments: current.installments.filter(item => item.id !== id) }));
+
+  const printReceipt = () => {
+    if (!selectedReceipt || !selected) return;
+    const printWindow = window.open('', '_blank', 'width=960,height=900');
+    if (!printWindow) return;
+    const snapshot = selectedReceipt.studentSnapshot || {};
+    printWindow.document.write(`
+      <html lang="ar" dir="rtl">
+        <head>
+          <title>${selectedReceipt.receiptNumber}</title>
+          <style>
+            body{font-family:Arial,sans-serif;padding:32px;color:#1a1f2b}
+            .head,.summary,.foot{display:flex;justify-content:space-between;gap:16px}
+            .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+            .card{border:1px solid #d9dfec;border-radius:12px;padding:14px;margin:18px 0}
+            h1,h2,h3,p{margin:0}
+            span{font-size:12px;color:#667085;display:block;margin-bottom:6px}
+            strong{font-size:14px}
+            .summary .item{flex:1;border:1px solid #d9dfec;border-radius:12px;padding:14px}
+            .sig{margin-top:36px;border-top:1px solid #d9dfec;padding-top:20px}
+          </style>
+        </head>
+        <body>
+          <div class="head">
+            <div>
+              <h2>EduGlobal CRM</h2>
+              <h1>سند قبض رسمي</h1>
+              <p>${selectedReceipt.receiptNumber}</p>
+            </div>
+            <div><strong>تاريخ التحصيل:</strong> ${formatDateTime(selectedReceipt.createdAt || selectedReceipt.date)}</div>
+          </div>
+          <div class="card">
+            <div class="grid">
+              <div><span>اسم الطالب</span><strong>${snapshot.name || selected.student?.name || '-'}</strong></div>
+              <div><span>الهاتف / الكود المرجعي</span><strong>${snapshot.phone || selected.student?.phone || '-'} / ${snapshot.referenceCode || selected.student?.id || '-'}</strong></div>
+              <div><span>الدولة والتخصص</span><strong>${snapshot.targetMajor || selected.application?.program || '-'} - ${snapshot.targetCountry || selected.application?.country || '-'}</strong></div>
+              <div><span>المستشار</span><strong>${snapshot.consultantName || selected.consultant?.name || 'غير محدد'}</strong></div>
+              <div><span>طريقة الدفع</span><strong>${selectedReceipt.method}</strong></div>
+              <div><span>المبلغ</span><strong>${formatMoney(selectedReceipt.amount, selectedReceipt.currency)}</strong></div>
+            </div>
+            <div><span>البيان</span><strong>${selectedReceipt.statement || selected.paymentStatement || selected.description}</strong></div>
+            <div style="margin-top:14px"><span>التفقيط</span><strong>${selectedReceipt.amountInWords || '-'}</strong></div>
+          </div>
+          <div class="summary">
+            <div class="item"><span>إجمالي المستحق</span><strong>${formatMoney(selectedReceipt.financialSummary?.totalDue || selected.total, selected.currency)}</strong></div>
+            <div class="item"><span>إجمالي المدفوع</span><strong>${formatMoney(selectedReceipt.financialSummary?.totalPaid || selected.paid, selected.currency)}</strong></div>
+            <div class="item"><span>المتبقي</span><strong>${formatMoney(selectedReceipt.financialSummary?.remainingBalance || selected.balance, selected.currency)}</strong></div>
+          </div>
+          <div class="foot sig">
+            <div><span>توقيع المحاسب</span><strong>__________________</strong></div>
+            <div><span>ختم الشركة</span><strong>__________________</strong></div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
+  const sendWhatsApp = () => {
+    if (!selectedReceipt || !selected) return;
+    const studentPhone = String(selectedReceipt.studentSnapshot?.phone || selected.student?.phone || '').replace(/[^\d]/g, '');
+    const message = [
+      'مرحباً،',
+      `تم إصدار سند القبض رقم ${selectedReceipt.receiptNumber}.`,
+      `المبلغ: ${formatMoney(selectedReceipt.amount, selectedReceipt.currency)}`,
+      `البيان: ${selectedReceipt.statement || selected.paymentStatement || selected.description}`,
+      `المتبقي: ${formatMoney(selectedReceipt.financialSummary?.remainingBalance || selected.balance, selected.currency)}`
+    ].join('\n');
+    window.open(`https://wa.me/${studentPhone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  };
+
   if (loading) return <div className="loading-page"><Spinner />جارٍ تحميل السجلات المالية...</div>;
 
   return (
     <>
       <div className="kpi-grid finance-kpis">
         {[
-          [WalletCards, 'إجمالي الفواتير', total, 'كل الفواتير الصادرة'],
-          [CircleDollarSign, 'المحصّل', paid, 'مدفوعات الطلاب المؤكدة'],
-          [Banknote, 'المستحق', outstanding, 'الأرصدة المفتوحة على الطلاب'],
-          [CreditCard, 'عمولة الشركة', commission, 'إجمالي العمولة المتوقعة']
+          [WalletCards, 'إجمالي الفواتير', totals.total, 'قيمة جميع الفواتير المصدرة'],
+          [CircleDollarSign, 'المحصّل', totals.paid, 'كل المدفوعات المؤكدة'],
+          [Banknote, 'المتبقي', totals.outstanding, 'الأرصدة المفتوحة على الطلاب'],
+          [CreditCard, 'إيراد الشركة', totals.serviceFees, 'أتعاب الشركة فقط دون رسوم الجهات الخارجية']
         ].map(([Icon, label, value, subtitle]) => (
           <Card className="kpi-card" key={label}>
             <div className="kpi-icon"><Icon /></div>
@@ -127,7 +397,7 @@ export default function Finance() {
         <div className="panel-toolbar">
           <div className="search-box">
             <Search />
-            <input value={query} onChange={event => setQuery(event.target.value)} placeholder="ابحث عن فاتورة..." />
+            <input value={query} onChange={event => setQuery(event.target.value)} placeholder="ابحث عن فاتورة أو سند..." />
           </div>
           {canCreateInvoice && <Button onClick={() => setInvoiceOpen(true)} type="button"><FilePlus2 /> فاتورة جديدة</Button>}
         </div>
@@ -138,35 +408,51 @@ export default function Finance() {
               <tr>
                 <th>الفاتورة</th>
                 <th>الطالب</th>
-                <th>الوصف</th>
+                <th>تفصيل الرسوم</th>
                 <th>الإجمالي</th>
                 <th>المدفوع</th>
                 <th>المتبقي</th>
                 <th>الحالة</th>
-                <th>تاريخ الاستحقاق</th>
+                <th>الأقساط</th>
                 <th>الإجراءات</th>
               </tr>
             </thead>
             <tbody>
               {shown.map(invoice => (
                 <tr key={invoice.id}>
-                  <td><strong>{invoice.number}</strong><small>{formatDate(invoice.createdAt)}</small></td>
-                  <td><strong>{invoice.student?.name}</strong><small>{invoice.student?.email}</small></td>
-                  <td className="description-cell">{invoice.description}</td>
+                  <td>
+                    <strong>{invoice.number}</strong>
+                    <small>{formatDate(invoice.createdAt)}</small>
+                  </td>
+                  <td>
+                    <strong>{invoice.student?.name}</strong>
+                    <small>{invoice.student?.phone || invoice.student?.email}</small>
+                  </td>
+                  <td className="description-cell">
+                    <strong>{invoice.description}</strong>
+                    <small>أتعاب الشركة: {formatMoney(invoice.serviceFee, invoice.currency)}</small>
+                    <small>رسوم الجامعة/الفيزا: {formatMoney(invoice.passThroughFees, invoice.currency)}</small>
+                  </td>
                   <td>{formatMoney(invoice.total, invoice.currency)}</td>
                   <td>{formatMoney(invoice.paid, invoice.currency)}</td>
                   <td><strong>{formatMoney(invoice.balance, invoice.currency)}</strong></td>
                   <td><Badge tone={invoice.computedStatus === 'Paid' ? 'green' : invoice.computedStatus === 'Partial' ? 'amber' : 'red'}>{tr(invoice.computedStatus)}</Badge></td>
-                  <td>{formatDate(invoice.dueDate)}</td>
+                  <td>
+                    {invoice.installments?.length ? (
+                      <div className="installment-chip-stack">
+                        {invoice.installments.slice(0, 2).map(item => <Badge key={item.id} tone={item.status === 'Paid' ? 'green' : item.dueDate < today ? 'red' : 'amber'}>{item.label}</Badge>)}
+                      </div>
+                    ) : (
+                      <span className="paid-mark">دفعة واحدة</span>
+                    )}
+                  </td>
                   <td>
                     <div className="table-actions">
                       <Button variant="ghost" type="button" onClick={() => openHistoryModal(invoice)}><Eye /> السجل</Button>
                       {invoice.balance > 0 && canRecordPayment ? (
-                        <Button variant="ghost" type="button" onClick={() => openPaymentModal(invoice)}>تسجيل دفعة</Button>
-                      ) : invoice.balance > 0 ? (
-                        <span className="paid-mark">قراءة فقط</span>
+                        <Button variant="ghost" type="button" onClick={() => openPaymentModal(invoice)}><Plus /> تسجيل دفعة</Button>
                       ) : (
-                        <span className="paid-mark">تمت التسوية</span>
+                        <span className="paid-mark">{invoice.balance > 0 ? 'مغلق للمحاسب' : 'تمت التسوية'}</span>
                       )}
                     </div>
                   </td>
@@ -178,35 +464,80 @@ export default function Finance() {
       </Card>
 
       <Modal open={invoiceOpen} onClose={() => setInvoiceOpen(false)} title="إنشاء فاتورة طالب" size="lg">
-        <form className="form-grid" onSubmit={create}>
+        <form className="form-grid" onSubmit={createInvoice}>
           <Field label="الطالب" className="field-full">
             <select required value={form.studentId} onChange={event => setForm({ ...form, studentId: event.target.value })}>
               <option value="">اختر الطالب</option>
               {students.map(student => <option value={student.id} key={student.id}>{student.name}</option>)}
             </select>
           </Field>
-          <Field label="الوصف" className="field-full"><input required value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></Field>
-          <Field label="المبلغ الأساسي"><input required min="0" type="number" value={form.subtotal} onChange={event => setForm({ ...form, subtotal: event.target.value })} /></Field>
-          <Field label="الضريبة"><input min="0" type="number" value={form.tax} onChange={event => setForm({ ...form, tax: event.target.value })} /></Field>
-          <Field label="العمولة"><input min="0" type="number" value={form.commission} onChange={event => setForm({ ...form, commission: event.target.value })} /></Field>
-          <Field label="العملة">
+          <Field label="وصف الفاتورة" className="field-full"><input required value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></Field>
+          <Field label="البيان المختصر" className="field-full"><input required value={form.paymentStatement} onChange={event => setForm({ ...form, paymentStatement: event.target.value })} /></Field>
+          <Field label="عملة الفاتورة">
             <select value={form.currency} onChange={event => setForm({ ...form, currency: event.target.value })}>
-              <option>USD</option>
-              <option>EUR</option>
-              <option>GBP</option>
-              <option>EGP</option>
-              <option>TRY</option>
+              {currencies.map(currency => <option value={currency} key={currency}>{currency}</option>)}
             </select>
           </Field>
-          <Field label="تاريخ الاستحقاق"><input type="date" value={form.dueDate} onChange={event => setForm({ ...form, dueDate: event.target.value })} /></Field>
-          <Field label="ملاحظات"><input value={form.notes} onChange={event => setForm({ ...form, notes: event.target.value })} /></Field>
-          <div className="invoice-preview field-full">
+          <Field label="سعر الصرف">
+            <input min="0" step="0.01" type="number" value={form.exchangeRate} onChange={event => setForm({ ...form, exchangeRate: event.target.value })} />
+          </Field>
+          <Field label="أتعاب الشركة">
+            <input required min="0" type="number" value={form.serviceFee} onChange={event => setForm({ ...form, serviceFee: event.target.value })} />
+          </Field>
+          <Field label="رسوم الجامعة">
+            <input min="0" type="number" value={form.universityFee} onChange={event => setForm({ ...form, universityFee: event.target.value })} />
+          </Field>
+          <Field label="رسوم الفيزا / التحويل">
+            <input min="0" type="number" value={form.visaFee} onChange={event => setForm({ ...form, visaFee: event.target.value })} />
+          </Field>
+          <Field label="ضريبة / رسوم إضافية">
+            <input min="0" type="number" value={form.tax} onChange={event => setForm({ ...form, tax: event.target.value })} />
+          </Field>
+          <Field label="تاريخ الاستحقاق النهائي">
+            <input type="date" value={form.dueDate} onChange={event => setForm({ ...form, dueDate: event.target.value })} />
+          </Field>
+          <Field label="ملاحظات">
+            <textarea value={form.notes} onChange={event => setForm({ ...form, notes: event.target.value })} />
+          </Field>
+
+          <div className="field-full installment-builder">
+            <div className="installment-builder-head">
+              <div>
+                <strong>جدولة الأقساط</strong>
+                <span>اختياري. عند الاستخدام يجب أن يساوي مجموع الأقساط إجمالي الفاتورة.</span>
+              </div>
+              <Button type="button" variant="secondary" onClick={addInstallment}><Plus /> إضافة قسط</Button>
+            </div>
+
+            {form.installments.length ? (
+              <div className="installment-grid">
+                {form.installments.map((item, index) => (
+                  <div className="installment-row" key={item.id}>
+                    <input value={item.label} onChange={event => setForm(current => ({ ...current, installments: current.installments.map(row => row.id === item.id ? { ...row, label: event.target.value } : row) }))} placeholder={`القسط ${index + 1}`} />
+                    <input type="date" value={item.dueDate} onChange={event => setForm(current => ({ ...current, installments: current.installments.map(row => row.id === item.id ? { ...row, dueDate: event.target.value } : row) }))} />
+                    <input min="0" type="number" value={item.amount} onChange={event => setForm(current => ({ ...current, installments: current.installments.map(row => row.id === item.id ? { ...row, amount: event.target.value } : row) }))} placeholder="المبلغ" />
+                    <Button type="button" variant="ghost" onClick={() => removeInstallment(item.id)}>حذف</Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="document-empty compact-empty">
+                <ReceiptText />
+                <strong>لا توجد أقساط مجدولة</strong>
+                <span>اترك الفاتورة دفعة واحدة أو أضف خطة تقسيط.</span>
+              </div>
+            )}
+          </div>
+
+          <div className="invoice-preview field-full finance-preview">
             <ReceiptText />
             <div>
               <span>إجمالي الفاتورة</span>
-              <strong>{formatMoney(Number(form.subtotal || 0) + Number(form.tax || 0), form.currency)}</strong>
+              <strong>{formatMoney(invoicePreviewTotal, form.currency)}</strong>
+              {form.installments.length > 0 && <small>إجمالي الأقساط: {formatMoney(installmentTotal, form.currency)}</small>}
             </div>
           </div>
+
           <div className="form-actions field-full">
             <Button type="button" variant="secondary" onClick={() => setInvoiceOpen(false)}>إلغاء</Button>
             <Button type="submit">إنشاء الفاتورة</Button>
@@ -214,47 +545,99 @@ export default function Finance() {
         </form>
       </Modal>
 
-      <Modal open={paymentOpen} onClose={() => setPaymentOpen(false)} title={`تسجيل دفعة · ${selected?.number || ''}`}>
-        <form className="stack-form" onSubmit={pay}>
-          <Field label="المبلغ"><input required min="1" max={selected?.balance} type="number" value={payment.amount} onChange={event => setPayment({ ...payment, amount: event.target.value })} /></Field>
-          <Field label="طريقة الدفع">
-            <select value={payment.method} onChange={event => setPayment({ ...payment, method: event.target.value })}>
-              <option value="Bank Transfer">تحويل بنكي</option>
-              <option value="Card">بطاقة</option>
-              <option value="Cash">نقدًا</option>
-              <option value="Online Gateway">بوابة دفع إلكترونية</option>
+      <Modal open={paymentOpen} onClose={() => setPaymentOpen(false)} title={`تسجيل دفعة · ${selected?.number || ''}`} size="lg">
+        <form className="form-grid" onSubmit={savePayment}>
+          <Field label="المبلغ">
+            <input required min="1" max={selected?.balance} type="number" value={payment.amount} onChange={event => setPayment({ ...payment, amount: event.target.value })} />
+          </Field>
+          <Field label="العملة">
+            <select value={payment.currency} onChange={event => setPayment({ ...payment, currency: event.target.value })}>
+              {currencies.map(currency => <option value={currency} key={currency}>{currency}</option>)}
             </select>
           </Field>
-          <Field label="المرجع"><input value={payment.reference} onChange={event => setPayment({ ...payment, reference: event.target.value })} /></Field>
-          <Field label="التاريخ"><input type="date" value={payment.date} onChange={event => setPayment({ ...payment, date: event.target.value })} /></Field>
-          <Field label="ملاحظات"><textarea value={payment.notes} onChange={event => setPayment({ ...payment, notes: event.target.value })} /></Field>
-          <div className="form-actions">
+          <Field label="طريقة الدفع">
+            <select value={payment.method} onChange={event => setPayment({ ...payment, method: event.target.value })}>
+              {paymentMethods.map(method => <option value={method} key={method}>{tr(method)}</option>)}
+            </select>
+          </Field>
+          <Field label="سعر الصرف">
+            <input min="0" step="0.01" type="number" value={payment.exchangeRate} onChange={event => setPayment({ ...payment, exchangeRate: event.target.value })} />
+          </Field>
+          <Field label="مرجع العملية">
+            <input value={payment.reference} onChange={event => setPayment({ ...payment, reference: event.target.value })} />
+          </Field>
+          <Field label="تاريخ التحصيل">
+            <input type="date" value={payment.date} onChange={event => setPayment({ ...payment, date: event.target.value })} />
+          </Field>
+          <Field label="ربط بقسط محدد">
+            <select value={payment.installmentId} onChange={event => setPayment({ ...payment, installmentId: event.target.value })}>
+              <option value="">بدون ربط مباشر</option>
+              {(selected?.installments || []).filter(item => item.status !== 'Paid').map(item => (
+                <option value={item.id} key={item.id}>{item.label} - {formatMoney(item.balance || item.amount, selected.currency)}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="البيان">
+            <input value={payment.statement} onChange={event => setPayment({ ...payment, statement: event.target.value })} />
+          </Field>
+          <Field label="إرفاق إيصال التحويل" className="field-full">
+            <input type="file" accept="image/*,.pdf" onChange={event => setPayment({ ...payment, attachment: event.target.files?.[0] || null })} />
+          </Field>
+          <Field label="ملاحظات" className="field-full">
+            <textarea value={payment.notes} onChange={event => setPayment({ ...payment, notes: event.target.value })} />
+          </Field>
+          <div className="form-actions field-full">
             <Button type="button" variant="secondary" onClick={() => setPaymentOpen(false)}>إلغاء</Button>
-            <Button type="submit"><Plus /> حفظ الدفعة</Button>
+            <Button type="submit"><Plus /> إصدار سند القبض</Button>
           </div>
         </form>
       </Modal>
 
-      <Modal open={historyOpen} onClose={() => setHistoryOpen(false)} title={`سجل الدفعات · ${selected?.number || ''}`} subtitle={selected ? `إجمالي المدفوع ${formatMoney(selected.paid, selected.currency)}` : ''}>
+      <Modal open={historyOpen} onClose={() => setHistoryOpen(false)} title={`سجل السندات · ${selected?.number || ''}`} subtitle={selected ? `المحصّل ${formatMoney(selected.paid, selected.currency)} من أصل ${formatMoney(selected.total, selected.currency)}` : ''} size="lg">
         <div className="payment-history">
+          {selected?.installments?.length ? (
+            <div className="installment-summary-grid">
+              {selected.installments.map(item => (
+                <div className="installment-summary-card" key={item.id}>
+                  <strong>{item.label}</strong>
+                  <span>{formatDate(item.dueDate)}</span>
+                  <small>{formatMoney(item.paidAmount || 0, selected.currency)} / {formatMoney(item.amount, selected.currency)}</small>
+                  <Badge tone={item.status === 'Paid' ? 'green' : item.dueDate < today ? 'red' : 'amber'}>{tr(item.status)}</Badge>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           {selected?.payments?.length ? (
             selected.payments.map(item => (
-              <div className="history-row" key={item.id}>
+              <div className="history-row history-row-receipt" key={item.id}>
                 <div>
-                  <strong>{formatMoney(item.amount, selected.currency)}</strong>
-                  <span>{tr(item.method)} · {formatDate(item.date)}</span>
-                  {item.reference && <small>المرجع: {item.reference}</small>}
+                  <strong>{item.receiptNumber}</strong>
+                  <span>{formatMoney(item.amount, item.currency || selected.currency)} · {tr(item.method)} · {formatDateTime(item.createdAt || item.date)}</span>
+                  <small>{item.statement || selected.paymentStatement || selected.description}</small>
+                  {item.attachment?.url && <a href={item.attachment.url} target="_blank" rel="noreferrer">فتح المرفق</a>}
                 </div>
-                <Badge tone="green">مسجل</Badge>
+                <div className="table-actions">
+                  <Badge tone="green">مغلق</Badge>
+                  <Button type="button" variant="ghost" onClick={() => openReceipt(selected, item)}><FileText /> عرض السند</Button>
+                </div>
               </div>
             ))
           ) : (
             <div className="document-empty compact-empty">
               <ReceiptText />
               <strong>لا توجد دفعات مسجلة</strong>
-              <span>ابدأ بإضافة أول دفعة على هذه الفاتورة.</span>
+              <span>ابدأ بإضافة أول دفعة لإصدار أول سند قبض.</span>
             </div>
           )}
+        </div>
+      </Modal>
+
+      <Modal open={receiptOpen} onClose={() => setReceiptOpen(false)} title={`سند قبض · ${selectedReceipt?.receiptNumber || ''}`} subtitle="جاهز للطباعة والمشاركة" size="lg">
+        <ReceiptSheet payment={selectedReceipt} invoice={selected} />
+        <div className="form-actions">
+          <Button type="button" variant="secondary" onClick={printReceipt}><ReceiptText /> طباعة سند</Button>
+          <Button type="button" onClick={sendWhatsApp}><Send /> إرسال عبر الواتساب</Button>
         </div>
       </Modal>
 

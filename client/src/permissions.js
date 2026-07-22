@@ -1,9 +1,9 @@
 export const modulePermissions = {
-  consultancy: ['admin', 'management', 'consultant', 'admissions', 'reception'],
-  students: ['admin', 'management', 'consultant', 'admissions', 'finance', 'reception'],
+  consultancy: ['admin', 'management', 'consultant', 'admissions'],
+  students: ['admin', 'management', 'consultant', 'admissions'],
   admissions: ['admin', 'management', 'consultant', 'admissions'],
   inbox: ['admin', 'management', 'consultant', 'admissions', 'reception'],
-  reports: ['admin', 'management', 'finance', 'hr', 'admissions'],
+  reports: ['admin', 'management', 'finance', 'admissions'],
   tasks: ['admin', 'management', 'consultant', 'admissions', 'reception', 'hr', 'finance'],
   reception: ['admin', 'management', 'reception'],
   hr: ['admin', 'management', 'hr'],
