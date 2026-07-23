@@ -27,6 +27,10 @@ const supabaseUrl = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const supabaseServiceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '');
 const supabaseStorageBucket = String(process.env.SUPABASE_STORAGE_BUCKET || '').trim();
 const useSupabaseStorage = Boolean(supabaseUrl && supabaseServiceRoleKey && supabaseStorageBucket);
+const cloudinaryCloudName = String(process.env.CLOUDINARY_CLOUD_NAME || '').trim();
+const cloudinaryApiKey = String(process.env.CLOUDINARY_API_KEY || '').trim();
+const cloudinaryApiSecret = String(process.env.CLOUDINARY_API_SECRET || '').trim();
+const useCloudinaryStorage = Boolean(cloudinaryCloudName && cloudinaryApiKey && cloudinaryApiSecret);
 
 fs.mkdirSync(uploadsDir, { recursive: true });
 
@@ -235,8 +239,56 @@ function supabaseStorageHeaders(contentType) {
   };
 }
 
+function cloudinarySignature(payload) {
+  const serialized = Object.entries(payload)
+    .filter(([, value]) => value !== undefined && value !== null && value !== '')
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => `${key}=${value}`)
+    .join('&');
+  return createHash('sha1').update(`${serialized}${cloudinaryApiSecret}`).digest('hex');
+}
+
 async function storeUploadedFile(file) {
   const fileName = safeUploadName(file.originalname);
+
+  if (useCloudinaryStorage) {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const folder = 'study-birds-crm';
+    const publicId = `${folder}/${fileName}`;
+    const resourceType = String(file.mimetype || '').startsWith('image/') ? 'image' : 'raw';
+    const signature = cloudinarySignature({
+      folder,
+      public_id: publicId,
+      resource_type: resourceType,
+      timestamp
+    });
+    const body = new FormData();
+    body.append('file', new Blob([file.buffer], { type: file.mimetype || 'application/octet-stream' }), file.originalname);
+    body.append('api_key', cloudinaryApiKey);
+    body.append('timestamp', String(timestamp));
+    body.append('folder', folder);
+    body.append('public_id', publicId);
+    body.append('signature', signature);
+
+    const uploadResponse = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/${resourceType}/upload`, {
+      method: 'POST',
+      body
+    });
+
+    if (!uploadResponse.ok) {
+      throw Object.assign(new Error('فشل رفع الملف إلى Cloudinary'), { status: 500 });
+    }
+
+    const payload = await uploadResponse.json();
+    return {
+      fileName: payload.public_id,
+      publicId: payload.public_id,
+      url: payload.secure_url || payload.url,
+      size: file.size,
+      storageProvider: 'cloudinary',
+      resourceType: payload.resource_type || resourceType
+    };
+  }
 
   if (useSupabaseStorage) {
     const objectPath = `documents/${fileName}`;
@@ -273,6 +325,25 @@ async function storeUploadedFile(file) {
 
 async function removeUploadedFile(document) {
   if (!document?.fileName) return;
+
+  if (document.storageProvider === 'cloudinary' || (useCloudinaryStorage && document.publicId)) {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const publicId = document.publicId || document.fileName;
+    const resourceType = document.resourceType || 'raw';
+    const signature = cloudinarySignature({ public_id: publicId, timestamp });
+    const body = new URLSearchParams();
+    body.set('api_key', cloudinaryApiKey);
+    body.set('timestamp', String(timestamp));
+    body.set('public_id', publicId);
+    body.set('signature', signature);
+
+    await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/${resourceType}/destroy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    }).catch(() => null);
+    return;
+  }
 
   if (document.storageProvider === 'supabase' || (useSupabaseStorage && document.fileName.includes('/'))) {
     await fetch(
