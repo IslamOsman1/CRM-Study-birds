@@ -9,6 +9,7 @@ export const modulePermissions = {
   hr: ['admin', 'management', 'hr'],
   finance: ['admin', 'management', 'finance'],
   activity: ['admin', 'management'],
+  universities: ['admin', 'management'],
   settings: ['admin', 'management']
 };
 

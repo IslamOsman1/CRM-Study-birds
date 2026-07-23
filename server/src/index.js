@@ -367,6 +367,10 @@ function sanitizeDocumentTypes(items) {
     .filter(item => item.name);
 }
 
+function sanitizeOptionList(items) {
+  return [...new Set((items || []).map(item => String(item || '').trim()).filter(Boolean))];
+}
+
 function sanitizeChecklistTemplates(items) {
   return (items || [])
     .map(item => ({
@@ -1600,7 +1604,6 @@ async function prepareDb() {
     db.monthlyRevenue ||= [];
     db.executiveActions ||= [];
     db.broadcasts ||= [];
-    const companyId = req.user.companyId;
     db.userNotifications ||= [];
     db.leaveRequests ||= [];
     db.receptionState ||= {};
@@ -1610,6 +1613,9 @@ async function prepareDb() {
       currency: 'USD',
       pipelineStages: [],
       applicationStatuses: [],
+      availableUniversities: [],
+      availablePrograms: [],
+      availableCountries: [],
       documentTypes: [],
       documentChecklistTemplates: [],
       applicationWorkflowTemplates: []
@@ -1643,6 +1649,9 @@ async function prepareDb() {
     if (!Array.isArray(db.settings.pipelineStages) || !db.settings.pipelineStages.length || db.settings.pipelineStages.some(stage => legacyLeadStageMap[stage])) {
       db.settings.pipelineStages = [...consultancyPipelineStages];
     }
+    db.settings.availableUniversities = sanitizeOptionList(db.settings.availableUniversities || []);
+    db.settings.availablePrograms = sanitizeOptionList(db.settings.availablePrograms || []);
+    db.settings.availableCountries = sanitizeOptionList(db.settings.availableCountries || []);
 
     db.tasks ||= [];
     for (const user of db.users) {
@@ -1662,6 +1671,7 @@ async function prepareDb() {
       lead.currentLevel = currentLevelOptions.includes(lead.currentLevel) ? lead.currentLevel : '';
       lead.nextFollowUp ||= '';
       lead.lostReason ||= '';
+      lead.documents ||= [];
     }
 
     for (const employee of db.employees) {
@@ -2434,6 +2444,9 @@ app.get('/api/settings', async (_req, res) => {
   const db = await readDb();
   db.settings.documentChecklistTemplates = sanitizeChecklistTemplates(db.settings.documentChecklistTemplates || []);
   db.settings.applicationWorkflowTemplates = sanitizeWorkflowTemplates(db.settings.applicationWorkflowTemplates || []);
+  db.settings.availableUniversities = sanitizeOptionList(db.settings.availableUniversities || []);
+  db.settings.availablePrograms = sanitizeOptionList(db.settings.availablePrograms || []);
+  db.settings.availableCountries = sanitizeOptionList(db.settings.availableCountries || []);
   const companyId = _req.user.companyId;
   res.json({
     ...db.settings,
@@ -2450,6 +2463,9 @@ app.patch('/api/settings', allowRoles('admin', 'management'), async (req, res) =
     const settings = db.settings;
     settings.documentChecklistTemplates = sanitizeChecklistTemplates(settings.documentChecklistTemplates || []);
     settings.applicationWorkflowTemplates = sanitizeWorkflowTemplates(settings.applicationWorkflowTemplates || []);
+    settings.availableUniversities = sanitizeOptionList(settings.availableUniversities || []);
+    settings.availablePrograms = sanitizeOptionList(settings.availablePrograms || []);
+    settings.availableCountries = sanitizeOptionList(settings.availableCountries || []);
 
     if (typeof payload.companyName === 'string' && payload.companyName.trim()) settings.companyName = payload.companyName.trim();
     if (typeof payload.workspace === 'string' && payload.workspace.trim()) settings.workspace = payload.workspace.trim();
@@ -2465,6 +2481,18 @@ app.patch('/api/settings', allowRoles('admin', 'management'), async (req, res) =
       const statuses = payload.applicationStatuses.map(item => String(item || '').trim()).filter(Boolean);
       if (!statuses.length) throw Object.assign(new Error('يجب إدخال حالة طلب واحدة على الأقل'), { status: 400 });
       settings.applicationStatuses = statuses;
+    }
+
+    if (Array.isArray(payload.availableUniversities)) {
+      settings.availableUniversities = sanitizeOptionList(payload.availableUniversities);
+    }
+
+    if (Array.isArray(payload.availablePrograms)) {
+      settings.availablePrograms = sanitizeOptionList(payload.availablePrograms);
+    }
+
+    if (Array.isArray(payload.availableCountries)) {
+      settings.availableCountries = sanitizeOptionList(payload.availableCountries);
     }
 
     if (Array.isArray(payload.documentTypes)) {
@@ -2504,6 +2532,7 @@ app.post('/api/users', allowRoles('admin', 'management'), async (req, res) => {
 
     const user = {
       id: randomUUID(),
+      companyId: req.user.companyId,
       name: payload.name,
       email,
       role: payload.role,
@@ -2720,6 +2749,7 @@ app.post('/api/leads', allowRoles('admin', 'management', 'consultant', 'receptio
       priority: payload.priority || 'Medium',
       nextFollowUp: payload.nextFollowUp || '',
       lostReason: payload.lostReason || '',
+      documents: [],
       notes: payload.notes || '',
       createdAt: now(),
       updatedAt: now()
@@ -2811,6 +2841,53 @@ app.delete('/api/leads/:id', allowRoles('admin', 'management'), async (req, res)
     if (index < 0) throw Object.assign(new Error('العميل المحتمل غير موجود'), { status: 404 });
     const [lead] = db.leads.splice(index, 1);
     activity(db, req.user, 'deleted', 'lead', lead.id, `تم حذف ${lead.name}`);
+  });
+
+  res.status(204).end();
+});
+
+app.post('/api/leads/:id/documents', allowRoles('admin', 'management', 'consultant', 'reception'), upload.single('file'), async (req, res) => {
+  const storedFile = req.file ? await storeUploadedFile(req.file) : null;
+  if (!req.file) return res.status(400).json({ message: 'الملف مطلوب' });
+
+  const result = await mutateDb(db => {
+    const lead = db.leads.find(item => item.id === req.params.id && item.companyId === req.user.companyId);
+    if (!lead) throw Object.assign(new Error('العميل المحتمل غير موجود'), { status: 404 });
+
+    lead.documents ||= [];
+    const document = {
+      id: randomUUID(),
+      type: String(req.body.type || 'Other').trim() || 'Other',
+      originalName: req.file.originalname,
+      fileName: storedFile.fileName,
+      url: storedFile.url,
+      size: storedFile.size,
+      storageProvider: storedFile.storageProvider,
+      uploadedBy: req.user.name,
+      uploadedAt: now()
+    };
+
+    lead.documents.unshift(document);
+    lead.updatedAt = now();
+    activity(db, req.user, 'uploaded', 'lead-document', document.id, `تم رفع ${document.type} للعميل ${lead.name}`);
+    return { document, lead };
+  });
+
+  res.status(201).json(result);
+});
+
+app.delete('/api/leads/:leadId/documents/:docId', allowRoles('admin', 'management', 'consultant', 'reception'), async (req, res) => {
+  await mutateDb(async db => {
+    const lead = db.leads.find(item => item.id === req.params.leadId && item.companyId === req.user.companyId);
+    if (!lead) throw Object.assign(new Error('العميل المحتمل غير موجود'), { status: 404 });
+
+    lead.documents ||= [];
+    const index = lead.documents.findIndex(item => item.id === req.params.docId);
+    if (index < 0) throw Object.assign(new Error('المستند غير موجود'), { status: 404 });
+    const [document] = lead.documents.splice(index, 1);
+    await removeUploadedFile(document);
+    lead.updatedAt = now();
+    activity(db, req.user, 'deleted', 'lead-document', document.id, `تم حذف ${document.type} من العميل ${lead.name}`);
   });
 
   res.status(204).end();
@@ -3237,6 +3314,7 @@ app.post('/api/employees', allowRoles('admin', 'management', 'hr'), async (req, 
   const result = await mutateDb(db => {
     const employee = {
       id: randomUUID(),
+      companyId: req.user.companyId,
       name: req.body.name,
       email: req.body.email || '',
       phone: req.body.phone || '',

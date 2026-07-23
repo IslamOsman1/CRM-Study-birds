@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, CircleDot, Clock3, Eye, EyeOff, File, FilePlus2, FileUp, GraduationCap, History, KeyRound, Link as LinkIcon, Save, Search, ShieldCheck, Trash2, UploadCloud, WalletCards } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, CircleDot, Clock3, Eye, EyeOff, File, FilePlus2, FileUp, GraduationCap, History, KeyRound, Link as LinkIcon, Save, Search, ShieldCheck, Trash2, UploadCloud, WalletCards } from 'lucide-react';
 import { api, formatDate, initials } from '../api.js';
 import { Badge, Button, Card, Field, Modal, Progress, Spinner, Toast } from '../components/UI.jsx';
 import { useAuth } from '../auth.jsx';
@@ -13,7 +13,7 @@ const currentYear = 2026;
 
 const createBlank = {
   studentId: '',
-  university: '',
+  universities: [],
   program: '',
   country: '',
   intakeSeason: 'Fall',
@@ -50,6 +50,14 @@ function getChecklistStatus(typeName, currentDocuments) {
   return { tone: 'blue', label: 'قيد المراجعة' };
 }
 
+function collectUniqueOptions(...groups) {
+  const values = groups
+    .flatMap(group => group || [])
+    .map(value => String(value || '').trim())
+    .filter(Boolean);
+  return [...new Set(values)].sort((a, b) => a.localeCompare(b));
+}
+
 export default function Admissions() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -71,7 +79,9 @@ export default function Admissions() {
   const [createForm, setCreateForm] = useState(createBlank);
   const [showPortalPassword, setShowPortalPassword] = useState(false);
   const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [universitiesMenuOpen, setUniversitiesMenuOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  const universitiesMenuRef = useRef(null);
 
   const canCreateApplication = can(user.role, 'createApplication');
   const canUpdateStatus = can(user.role, 'updateApplicationStatus');
@@ -153,6 +163,17 @@ export default function Admissions() {
   const archivedDocuments = (selected?.documents || []).filter(doc => doc.current === false);
   const effectiveDocumentTypes = selected?.effectiveDocumentTypes || settings?.documentTypes || [];
   const effectiveFollowUpStages = selected?.effectiveFollowUpStages || [];
+  const universityOptions = useMemo(() => collectUniqueOptions(settings?.availableUniversities), [settings?.availableUniversities]);
+  const programOptions = useMemo(() => collectUniqueOptions(settings?.availablePrograms), [settings?.availablePrograms]);
+  const countryOptions = useMemo(() => collectUniqueOptions(settings?.availableCountries), [settings?.availableCountries]);
+  const detailUniversityOptions = useMemo(() => collectUniqueOptions(universityOptions, detailForm?.university ? [detailForm.university] : []), [detailForm?.university, universityOptions]);
+  const detailProgramOptions = useMemo(() => collectUniqueOptions(programOptions, detailForm?.program ? [detailForm.program] : []), [detailForm?.program, programOptions]);
+  const detailCountryOptions = useMemo(() => collectUniqueOptions(countryOptions, detailForm?.country ? [detailForm.country] : []), [countryOptions, detailForm?.country]);
+  const selectedUniversitiesLabel = useMemo(() => {
+    if (!createForm.universities.length) return 'اختر جامعة أو أكثر';
+    if (createForm.universities.length === 1) return createForm.universities[0];
+    return `${createForm.universities.length} جامعات محددة`;
+  }, [createForm.universities]);
   const uploadOptions = useMemo(() => {
     const map = new Map();
     [...effectiveDocumentTypes, ...(settings?.documentTypes || [])].forEach(item => {
@@ -166,6 +187,22 @@ export default function Admissions() {
       setType(uploadOptions[0].name);
     }
   }, [type, uploadOptions]);
+
+  useEffect(() => {
+    if (!createOpen) {
+      setUniversitiesMenuOpen(false);
+      return undefined;
+    }
+
+    const handleClickOutside = event => {
+      if (universitiesMenuRef.current && !universitiesMenuRef.current.contains(event.target)) {
+        setUniversitiesMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [createOpen]);
 
   const selectApplication = application => {
     setSelected(application);
@@ -240,21 +277,58 @@ export default function Admissions() {
 
   const createApplication = async event => {
     event.preventDefault();
+    if (!createForm.universities.length) {
+      setToast({ type: 'error', message: 'اختر جامعة واحدة على الأقل.' });
+      return;
+    }
     try {
-      await api('/api/applications', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...createForm,
-          intake: joinIntake(createForm.intakeSeason, createForm.intakeYear)
-        })
-      });
+      await Promise.all(
+        createForm.universities.map(university =>
+          api('/api/applications', {
+            method: 'POST',
+            body: JSON.stringify({
+              ...createForm,
+              university,
+              intake: joinIntake(createForm.intakeSeason, createForm.intakeYear)
+            })
+          })
+        )
+      );
       setCreateOpen(false);
       setCreateForm(createBlank);
       await load();
-      setToast({ message: 'تم إنشاء طلب تقديم جديد داخل ملف الطالب.' });
+      setToast({ message: createForm.universities.length > 1 ? `تم إنشاء ${createForm.universities.length} طلبات تقديم للجامعات المختارة.` : 'تم إنشاء طلب تقديم جديد داخل ملف الطالب.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
+  };
+
+  const toggleUniversitySelection = university => {
+    setCreateForm(current => ({
+      ...current,
+      universities: current.universities.includes(university)
+        ? current.universities.filter(item => item !== university)
+        : [...current.universities, university]
+    }));
+  };
+
+  const openCreateForAdditionalUniversities = () => {
+    if (!selected) return;
+    const intake = splitIntake(selected.intake);
+    setCreateForm({
+      ...createBlank,
+      studentId: selected.studentId || selected.student?.id || '',
+      program: selected.program || '',
+      country: selected.country || '',
+      intakeSeason: intake.intakeSeason,
+      intakeYear: intake.intakeYear,
+      assignedTo: selected.assignedTo || '',
+      portalUrl: selected.portalUrl || '',
+      portalUsername: selected.portalUsername || '',
+      portalPassword: selected.portalPassword || '',
+      status: selected.status || createBlank.status
+    });
+    setCreateOpen(true);
   };
 
   const deleteDocument = async document => {
@@ -396,10 +470,33 @@ export default function Admissions() {
                 <div><span>رسوم التقديم</span><strong>{selected.applicationFeeStatus === 'Paid' ? 'مدفوع' : 'غير مدفوع'}</strong></div>
               </div>
 
-              <form className="form-grid admissions-edit-grid" onSubmit={saveApplicationDetails}>
-                <Field label="الجامعة"><input required value={detailForm.university} onChange={event => setDetailForm({ ...detailForm, university: event.target.value })} /></Field>
-                <Field label="البرنامج"><input required value={detailForm.program} onChange={event => setDetailForm({ ...detailForm, program: event.target.value })} /></Field>
-                <Field label="الدولة"><input required value={detailForm.country} onChange={event => setDetailForm({ ...detailForm, country: event.target.value })} /></Field>
+              <form className="form-grid admissions-edit-grid" data-application-form="edit" onSubmit={saveApplicationDetails}>
+                <Field label="الجامعة">
+                  <select required value={detailForm.university} onChange={event => setDetailForm({ ...detailForm, university: event.target.value })}>
+                    <option value="">اختر جامعة</option>
+                    {detailUniversityOptions.map(option => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </Field>
+                <Field label="البرنامج">
+                  <select required value={detailForm.program} onChange={event => setDetailForm({ ...detailForm, program: event.target.value })}>
+                    <option value="">اختر برنامجاً</option>
+                    {detailProgramOptions.map(option => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </Field>
+                <Field label="الدولة">
+                  <select required value={detailForm.country} onChange={event => setDetailForm({ ...detailForm, country: event.target.value })}>
+                    <option value="">اختر دولة</option>
+                    {detailCountryOptions.map(option => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </Field>
+                {canCreateApplication && (
+                  <Field label="جامعات إضافية لنفس الطالب" className="field-full">
+                    <button className="inline-link-btn" onClick={openCreateForAdditionalUniversities} type="button">
+                      اختيار أكثر من جامعة لهذا الطالب
+                    </button>
+                    <small>كل جامعة يتم حفظها كطلب تقديم مستقل داخل نفس ملف الطالب.</small>
+                  </Field>
+                )}
                 <Field label="رقم الطلب في الجامعة"><input value={detailForm.applicationRefNo} onChange={event => setDetailForm({ ...detailForm, applicationRefNo: event.target.value })} /></Field>
                 <Field label="Intake">
                   <div className="dual-input">
@@ -666,16 +763,59 @@ export default function Admissions() {
       </Modal>
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="إنشاء طلب تقديم جديد" subtitle="الطالب الواحد يمكنه امتلاك أكثر من طلب مستقل" size="lg">
-        <form className="form-grid" onSubmit={createApplication}>
+        <form className="form-grid" data-application-form="create" onSubmit={createApplication}>
           <Field label="الطالب" className="field-full">
             <select required value={createForm.studentId} onChange={event => setCreateForm({ ...createForm, studentId: event.target.value })}>
               <option value="">اختر الطالب</option>
               {students.map(student => <option key={student.id} value={student.id}>{student.name}</option>)}
             </select>
           </Field>
-          <Field label="الجامعة"><input required value={createForm.university} onChange={event => setCreateForm({ ...createForm, university: event.target.value })} /></Field>
-          <Field label="البرنامج"><input required value={createForm.program} onChange={event => setCreateForm({ ...createForm, program: event.target.value })} /></Field>
-          <Field label="الدولة"><input required value={createForm.country} onChange={event => setCreateForm({ ...createForm, country: event.target.value })} /></Field>
+          <Field label="الجامعات" hint="يمكنك اختيار أكثر من جامعة وسيتم إنشاء طلب مستقل لكل جامعة.">
+            <div className="multi-select" ref={universitiesMenuRef}>
+              <button
+                className={`multi-select-trigger ${universitiesMenuOpen ? 'is-open' : ''}`}
+                onClick={() => setUniversitiesMenuOpen(value => !value)}
+                type="button"
+              >
+                <span className={createForm.universities.length ? '' : 'is-placeholder'}>{selectedUniversitiesLabel}</span>
+                <ChevronDown size={16} />
+              </button>
+
+              {universitiesMenuOpen && (
+                <div className="multi-select-menu">
+                  {universityOptions.length ? universityOptions.map(option => (
+                    <label className="multi-select-option" key={option}>
+                      <input
+                        type="checkbox"
+                        checked={createForm.universities.includes(option)}
+                        onChange={() => toggleUniversitySelection(option)}
+                      />
+                      <span>{option}</span>
+                    </label>
+                  )) : (
+                    <div className="multi-select-empty">أضف جامعات أولاً من قسم الجامعات والبرامج.</div>
+                  )}
+                </div>
+              )}
+            </div>
+            {!!createForm.universities.length && (
+              <div className="multi-select-tags">
+                {createForm.universities.map(option => <Badge key={option} tone="purple">{option}</Badge>)}
+              </div>
+            )}
+          </Field>
+          <Field label="البرنامج">
+            <select required value={createForm.program} onChange={event => setCreateForm({ ...createForm, program: event.target.value })}>
+              <option value="">اختر برنامجاً</option>
+              {programOptions.map(option => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </Field>
+          <Field label="الدولة">
+            <select required value={createForm.country} onChange={event => setCreateForm({ ...createForm, country: event.target.value })}>
+              <option value="">اختر دولة</option>
+              {countryOptions.map(option => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </Field>
           <Field label="رقم الطلب في الجامعة"><input value={createForm.applicationRefNo} onChange={event => setCreateForm({ ...createForm, applicationRefNo: event.target.value })} /></Field>
           <Field label="Intake">
             <div className="dual-input">

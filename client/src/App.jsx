@@ -15,6 +15,7 @@ import ActivityPage from './pages/ActivityPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import TasksPage from './pages/TasksPage.jsx';
 import InboxPage from './pages/InboxPage.jsx';
+import UniversitiesPage from './pages/UniversitiesPage.jsx';
 import { canOpenModule } from './permissions.js';
 
 function Guard({ module, children }) {
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="hr" element={<Guard module="hr"><HR /></Guard>} />
         <Route path="finance" element={<Guard module="finance"><Finance /></Guard>} />
         <Route path="activity" element={<Guard module="activity"><ActivityPage /></Guard>} />
+        <Route path="universities" element={<Guard module="universities"><UniversitiesPage /></Guard>} />
         <Route path="settings" element={<Guard module="settings"><SettingsPage /></Guard>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

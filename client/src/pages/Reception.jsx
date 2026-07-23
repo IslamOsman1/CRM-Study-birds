@@ -21,8 +21,6 @@ const leadSourceOptions = [
   'Walk-in Without Appointment'
 ];
 
-const interestOptions = ['Bachelor', 'Master', 'Foundation Year', 'Language Course'];
-
 const blank = {
   type: 'Walk-in',
   name: '',
@@ -148,6 +146,14 @@ export default function Reception() {
 
   const availableConsultants = useMemo(() => consultants.filter(item => item.status === 'available'), [consultants]);
   const shownConsultants = consultants.length ? consultants : settings?.employees?.filter(employee => employee.department === 'Consultancy') || [];
+  const interestOptions = useMemo(
+    () => (settings?.availablePrograms || []).map(option => String(option || '').trim()).filter(Boolean),
+    [settings?.availablePrograms]
+  );
+  const countryOptions = useMemo(
+    () => (settings?.availableCountries || []).map(option => String(option || '').trim()).filter(Boolean),
+    [settings?.availableCountries]
+  );
 
   if (loading) return <div className="loading-page"><Spinner />جارٍ تحميل بيانات الاستقبال...</div>;
 
@@ -183,7 +189,12 @@ export default function Reception() {
                 {interestOptions.map(option => <option key={option} value={option}>{tr(option)}</option>)}
               </select>
             </Field>
-            <Field label="بلد الوجهة"><input value={form.country} onChange={event => setForm({ ...form, country: event.target.value })} /></Field>
+            <Field label="بلد الوجهة">
+              <select value={form.country} onChange={event => setForm({ ...form, country: event.target.value })}>
+                <option value="">اختر دولة</option>
+                {countryOptions.map(option => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </Field>
             <Field label="مصدر العميل المحتمل">
               <select required value={form.source} onChange={event => setForm({ ...form, source: event.target.value })}>
                 {leadSourceOptions.map(option => <option key={option} value={option}>{tr(option)}</option>)}

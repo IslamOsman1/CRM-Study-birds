@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, BarChart3, Bell, BriefcaseBusiness, ChevronDown, CircleCheckBig, GraduationCap, Headphones, LineChart, LogOut, Menu, MessageCircleMore, Search, Settings2, UserSquare2, UsersRound, WalletCards, X } from 'lucide-react';
+import { Activity, BarChart3, Bell, BookOpenCheck, BriefcaseBusiness, ChevronDown, CircleCheckBig, GraduationCap, Headphones, LineChart, LogOut, Menu, MessageCircleMore, Search, Settings2, UserSquare2, UsersRound, WalletCards, X } from 'lucide-react';
 import { api, formatDate } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { tr } from '../i18n.js';
-import studyBirdsLogo from '../assets/study-birds-logo.svg';
+import studyBirdsLogo from '../assets/logo.jpeg';
 
 const REFRESH_MS = 10_000;
 const HIGHLIGHT_MS = 8_000;
@@ -24,6 +24,13 @@ const modules = [
   { to: '/settings', label: 'الإعدادات', icon: Settings2, roles: ['admin', 'management'] }
 ];
 
+modules.splice(modules.length - 1, 0, {
+  to: '/universities',
+  label: 'الجامعات والبرامج',
+  icon: BookOpenCheck,
+  roles: ['admin', 'management']
+});
+
 const titles = {
   '/': ['لوحة الإدارة', 'نظرة موحدة على المبيعات والقبول والموارد البشرية والإيرادات.'],
   '/consultancy': ['قسم الاستشارات', 'تابع العملاء المحتملين وانقلهم خلال رحلة الطالب خطوة بخطوة.'],
@@ -38,6 +45,8 @@ const titles = {
   '/activity': ['سجل النشاط', 'تسلسل زمني للنشاطات عبر جميع الأقسام.'],
   '/settings': ['الإعدادات', 'إدارة بيانات الشركة والمراحل والحالات والمستندات والمستخدمين.']
 };
+
+titles['/universities'] = ['الجامعات والبرامج', 'إدارة الجامعات والبرامج والدول المتاحة لكل النظام.'];
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -123,7 +132,6 @@ export default function Layout() {
         if (unreadNew) {
           seenNotificationIdsRef.current.add(unreadNew.id);
           setPopupNotification(unreadNew);
-          await api(`/api/notifications/${unreadNew.id}/read`, { method: 'POST' }).catch(() => null);
         }
       } catch {
         if (active) setNotifications(current => current);
@@ -274,6 +282,26 @@ export default function Layout() {
     [tasks]
   );
   const unreadNotifications = useMemo(() => notifications.filter(item => !item.readAt), [notifications]);
+  const unreadCount = notificationOpen ? 0 : unreadNotifications.length;
+  const criticalNotifications = useMemo(
+    () => notifications.filter(item => ['critical', 'warning'].includes(item.metadata?.tone || '')).slice(0, 4),
+    [notifications]
+  );
+  const criticalTasks = useMemo(
+    () =>
+      openTasks
+        .filter(task => task.priority === 'High' || task.kind === 'alert')
+        .slice(0, 4),
+    [openTasks]
+  );
+  const regularNotifications = useMemo(
+    () => notifications.filter(item => !criticalNotifications.some(critical => critical.id === item.id)).slice(0, 4),
+    [criticalNotifications, notifications]
+  );
+  const regularTasks = useMemo(
+    () => openTasks.filter(task => !criticalTasks.some(critical => critical.id === task.id)).slice(0, 4),
+    [criticalTasks, openTasks]
+  );
 
   const toggleNotifications = () => {
     setNotificationOpen(value => {
@@ -281,6 +309,13 @@ export default function Layout() {
       if (next) setHasNewAlerts(false);
       return next;
     });
+  };
+
+  const markNotificationRead = async notificationId => {
+    setNotifications(current =>
+      current.map(item => (item.id === notificationId ? { ...item, readAt: item.readAt || new Date().toISOString() } : item))
+    );
+    await api(`/api/notifications/${notificationId}/read`, { method: 'POST' }).catch(() => null);
   };
 
   const submitGlobalSearch = event => {
@@ -394,7 +429,8 @@ export default function Layout() {
             <div className="notification-wrap">
               <button className={`icon-btn notification ${hasNewAlerts ? 'notification-highlight' : ''}`} onClick={toggleNotifications} type="button">
                 <Bell size={19} />
-                {(openTasks.length > 0 || unreadNotifications.length > 0) && <i />}
+                {unreadCount > 0 && <i />}
+                {unreadCount > 0 && <span className="notification-count">{unreadCount > 99 ? '99+' : unreadCount}</span>}
               </button>
 
               {notificationOpen && (
@@ -402,24 +438,64 @@ export default function Layout() {
                   <div className="notification-menu-head">
                     <div>
                       <strong>التنبيهات</strong>
-                      <span>تحديث تلقائي كل 10 ثوانٍ · {unreadNotifications.length} إشعار جديد</span>
+                      <span>تحديث تلقائي كل 10 ثوانٍ · {criticalNotifications.length + criticalTasks.length} تنبيه جدي</span>
                     </div>
                     <NavLink to="/tasks" className="notification-link">عرض الكل</NavLink>
                   </div>
 
                   <div className="notification-menu-list">
-                    {notifications.slice(0, 4).map(item => (
-                      <div key={item.id} className="notification-item">
+                    {!!(criticalNotifications.length || criticalTasks.length) && (
+                      <div className="notification-section-label">تنبيهات جدية</div>
+                    )}
+
+                    {criticalNotifications.map(item => (
+                      <button
+                        key={item.id}
+                        className={`notification-item notification-button ${!item.readAt ? 'notification-item-fresh' : ''}`}
+                        onClick={() => markNotificationRead(item.id)}
+                        type="button"
+                      >
                         <div className={`notification-item-dot ${item.metadata?.tone === 'critical' ? 'is-red' : item.metadata?.tone === 'warning' ? 'is-amber' : 'is-blue'}`} />
                         <div>
                           <strong>{item.title}</strong>
                           <p>{item.message}</p>
                           <span>{item.readAt ? 'تمت القراءة' : 'جديد'} · {item.createdAt ? formatDate(item.createdAt) : 'الآن'}</span>
                         </div>
-                      </div>
+                      </button>
                     ))}
 
-                    {openTasks.slice(0, 5).map(task => (
+                    {criticalTasks.map(task => (
+                      <NavLink key={task.id} to="/tasks" className="notification-item notification-item-critical">
+                        <div className={`notification-item-dot ${task.priority === 'High' ? 'is-red' : task.kind === 'alert' ? 'is-amber' : 'is-blue'}`} />
+                        <div>
+                          <strong>{task.title}</strong>
+                          <p>{task.description || 'لا توجد تفاصيل إضافية'}</p>
+                          <span>{tr(task.source)} · {task.dueDate ? formatDate(task.dueDate) : 'بدون تاريخ'}</span>
+                        </div>
+                      </NavLink>
+                    ))}
+
+                    {!!(regularNotifications.length || regularTasks.length) && (
+                      <div className="notification-section-label">جديد وغير مقروء</div>
+                    )}
+
+                    {regularNotifications.map(item => (
+                      <button
+                        key={item.id}
+                        className={`notification-item notification-button ${!item.readAt ? 'notification-item-fresh' : ''}`}
+                        onClick={() => markNotificationRead(item.id)}
+                        type="button"
+                      >
+                        <div className={`notification-item-dot ${item.metadata?.tone === 'critical' ? 'is-red' : item.metadata?.tone === 'warning' ? 'is-amber' : 'is-blue'}`} />
+                        <div>
+                          <strong>{item.title}</strong>
+                          <p>{item.message}</p>
+                          <span>{item.readAt ? 'تمت القراءة' : 'جديد'} · {item.createdAt ? formatDate(item.createdAt) : 'الآن'}</span>
+                        </div>
+                      </button>
+                    ))}
+
+                    {regularTasks.map(task => (
                       <NavLink key={task.id} to="/tasks" className="notification-item">
                         <div className={`notification-item-dot ${task.priority === 'High' ? 'is-red' : task.kind === 'alert' ? 'is-amber' : 'is-blue'}`} />
                         <div>
