@@ -158,11 +158,12 @@ export default function Admissions() {
     return base;
   }, [apps, query, statusFilter]);
 
-  const admissionsEmployees = settings?.employees.filter(employee => employee.department === 'Admissions') || [];
+  const admissionsEmployees = settings?.employees?.filter(employee => employee.department === 'Admissions') || [];
   const currentDocuments = selected?.currentDocuments || [];
   const archivedDocuments = (selected?.documents || []).filter(doc => doc.current === false);
   const effectiveDocumentTypes = selected?.effectiveDocumentTypes || settings?.documentTypes || [];
   const effectiveFollowUpStages = selected?.effectiveFollowUpStages || [];
+  const applicationStatuses = settings?.applicationStatuses || [];
   const universityOptions = useMemo(() => collectUniqueOptions(settings?.availableUniversities), [settings?.availableUniversities]);
   const programOptions = useMemo(() => collectUniqueOptions(settings?.availablePrograms), [settings?.availablePrograms]);
   const countryOptions = useMemo(() => collectUniqueOptions(settings?.availableCountries), [settings?.availableCountries]);
@@ -514,7 +515,7 @@ export default function Admissions() {
                 </Field>
                 <Field label="حالة الطلب">
                   <select disabled={!canUpdateStatus} value={detailForm.status} onChange={event => setDetailForm({ ...detailForm, status: event.target.value })}>
-                    {settings?.applicationStatuses.map(status => <option key={status} value={status}>{tr(status)}</option>)}
+                    {applicationStatuses.map(status => <option key={status} value={status}>{tr(status)}</option>)}
                   </select>
                 </Field>
                 <Field label="رابط بورتال الجامعة">
@@ -843,7 +844,7 @@ export default function Admissions() {
           </Field>
           <Field label="حالة الطلب">
             <select value={createForm.status} onChange={event => setCreateForm({ ...createForm, status: event.target.value })}>
-              {settings?.applicationStatuses.map(status => <option key={status} value={status}>{tr(status)}</option>)}
+              {applicationStatuses.map(status => <option key={status} value={status}>{tr(status)}</option>)}
             </select>
           </Field>
           <Field label="ملاحظات" className="field-full">
