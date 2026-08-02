@@ -1,0 +1,22 @@
+﻿offer_id,program_scope,university,language,degree,location,campus,address,price,discount_price,years,available_seats
+1,All programs except Physiotherapy and Computer Engineering,Istanbul Kent University,Turkish,Bachelor,Istanbul / Turkey,Ka ğ ıthane Campus,"Merkez, Cendere Cd. NO:24, 34406 Kâ ğ ıthane/ İ stanbul",3000USD,3000USD,2026-2027,30
+2,Computer Engineering - Physiotherapy and Rehabilitation,Istanbul Kent University,Turkish,Bachelor,Istanbul / Turkey,Ka ğ ıthane Campus,"Merkez, Cendere Cd. NO:24, 34406 Kâ ğ ıthane/ İ stanbul",3300USD,3300USD,2026-2027,30
+3,All programs,Istanbul Kent University,English,Bachelor,Istanbul / Turkey,Ka ğ ıthane Campus,"Merkez, Cendere Cd. NO:24, 34406 Kâ ğ ıthane/ İ stanbul",4000USD,4000USD,2026-2027,25
+4,All programs except Software Engineering,Istanbul Atlas University,English - Turkish,Bachelor,Istanbul / Turkey,Atlas Valley Campus,Anadolu Cd. No: 40 Ka ğ ıthane Istanbul,5500USD,5500USD,2026-2027,15
+5,All programs except Computer Engineering,Istanbul Arel University,,,,,,3700USD,3700USD,2026-2027,20
+6,All programs except Computer Engineering,Istanbul Arel University,English,Bachelor,Istanbul / Turkey,Tepekent Kemal Gözükara Campus,"Türkoba Mahallesi, Erguvan Sokak, No:26, K 34537, Tepekent - Büyükçekmece, Istanbul - Turkey",4000USD,4000USD,2026-2027,20
+7,All programs,Istanbul Arel University,Turkish,Associate,Istanbul / Turkey,Sefaköy Campus,"Kemalpa ş a Mahallesi, Halkalı Caddesi, No:101, 34295, Sefaköy - Küçükçekmece, Istanbul - Turkey",1800USD,1800USD,2026-2027,180
+8,All programs,I ş ık University,English - Turkish,Bachelor,Istanbul / Turkey,Ş ile Campus,"Me ş rutiyet Mahallesi, Üniversite Sokak, No:2, 34980 Ş ile/ İ stanbul",4250USD,4250USD,2026-2027,15
+9,Medicine,Istanbul Atlas University,English - Turkish,Bachelor,Istanbul / Turkey,Atlas Valley Campus,Anadolu Cd. No: 40 Ka ğ ıthane Istanbul,38000USD,38000USD,2026-2027,5
+10,All programs,Fenerbahçe University,English - Turkish,Bachelor,Istanbul / Turkey,Ata ş ehir Campus,"Atatürk Mah. Ata ş ehir Bulvarı, Metropol İ stanbul, 34758, Ata ş ehir / İstanbul",4000USD,4000USD,2026-2027,10
+11,All programs,Istanbul Topkapı University,Turkish,,,,,2900USD,2900USD,2026-2027,10
+12,All programs,Istanbul Aydin University,English,Bachelor,Istanbul / Turkey,Florya Campus (Halit Aydın Campus),Be ş yol Mah. İ nönü Cad. No:38 Sefaköy-Küçükçekmece / Istanbul / Turkey,10000USD,10000USD,2026-2027,10
+13,All programs,Istinye University,English - Turkish,Bachelor,Istanbul / Turkey,Istinye University Vadi Campus,"Ayaza ğ a Mahallesi, Azerbaycan Caddesi (Vadistanbul 4A Blok), 34396 Sarıyer/Istanbul",13000USD,13000USD,2026-2027,5
+14,All programs,Istanbul Okan University,English - Turkish,Bachelor,Istanbul / Turkey,Tuzla Campus,Tepeören Mah. Ballıca Yolu Cad. İ stanbul Okan Üniversitesi Rektörlük Blok No: 11/11 Tuzla / İ stanbul,5500USD,5500USD,2026-2027,30
+15,All programs,Beykent University,English - Turkish,Bachelor,Istanbul / Turkey,Taksim Campus,"Cihangir Mahallesi, Sıraselviler Cd. No:65, Beyo ğ lu / İ stanbul",4500USD,4500USD,2026-2027,20
+16,All programs,Fenerbahçe University,Turkish,Associate,Istanbul / Turkey,Ata ş ehir Campus,"Atatürk Mah. Ata ş ehir Bulvarı, Metropol İ stanbul, 34758, Ata ş ehir / İstanbul",1600USD,1600USD,2026-2027,100
+17,All programs,Istanbul Geli ş im University,Turkish,Bachelor,Istanbul / Turkey,Avcılar Campus,,5000USD,5000USD,2026-2027,15
+18,Dentistry,Istanbul Geli ş im University,English,Bachelor,Istanbul / Turkey,Avcılar Campus,Cihangir Mah. Ş ehit Jandarma Komando Er Hakan Öner Sk. No:1 Avcılar/ İ stanbul,31000USD,31000USD,2026-2027,5
+19,Dentistry,Istanbul Geli ş im University,Turkish,Bachelor,Istanbul / Turkey,Avcılar Campus,Cihangir Mah. Ş ehit Jandarma Komando Er Hakan Öner Sk. No:1 Avcılar/ İ stanbul,25000USD,25000USD,2026-2027,5
+20,"All programs except Computer, Software & Aeronautical Engineering",Istanbul Geli ş im University,English,Bachelor,Istanbul / Turkey,Avcılar Campus,Cihangir Mah. Ş ehit Jandarma Komando Er Hakan Öner Sk. No:1 Avcılar/ İ stanbul,5500USD,5500USD,2026-2027,15
+21,Aeronautical Engineering - Computer Engineering - Software Engineering,Istanbul Geli ş im University,English,Bachelor,Istanbul / Turkey,Avcılar Campus,Cihangir Mah. Ş ehit Jandarma Komando Er Hakan Öner Sk. No:1 Avcılar/ İ stanbul,8000USD,8000USD,2026-2027,15

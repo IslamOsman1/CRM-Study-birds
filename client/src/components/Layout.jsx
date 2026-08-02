@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, BarChart3, Bell, BookOpenCheck, BriefcaseBusiness, ChevronDown, CircleCheckBig, GraduationCap, Headphones, LineChart, LogOut, Menu, MessageCircleMore, Search, Settings2, UserSquare2, UsersRound, WalletCards, X } from 'lucide-react';
+import { Activity, BarChart3, Bell, BookOpenCheck, BriefcaseBusiness, Building2, ChevronDown, CircleCheckBig, GraduationCap, Headphones, LineChart, LogOut, Menu, MessageCircleMore, Search, Settings2, Sparkles, UserSquare2, UsersRound, WalletCards, X } from 'lucide-react';
 import { api, formatDate } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { tr } from '../i18n.js';
@@ -24,12 +24,11 @@ const modules = [
   { to: '/settings', label: 'الإعدادات', icon: Settings2, roles: ['admin', 'management'] }
 ];
 
-modules.splice(modules.length - 1, 0, {
-  to: '/universities',
-  label: 'الجامعات والبرامج',
-  icon: BookOpenCheck,
-  roles: ['admin', 'management']
-});
+modules.splice(modules.length - 1, 0,
+  { to: '/universities', label: 'الجامعات', icon: Building2, roles: ['admin', 'management'] },
+  { to: '/programs', label: 'البرامج', icon: BookOpenCheck, roles: ['admin', 'management'] },
+  { to: '/scholarships', label: 'المنح', icon: Sparkles, roles: ['admin', 'management'] }
+);
 
 const titles = {
   '/': ['لوحة الإدارة', 'نظرة موحدة على المبيعات والقبول والموارد البشرية والإيرادات.'],
@@ -46,7 +45,9 @@ const titles = {
   '/settings': ['الإعدادات', 'إدارة بيانات الشركة والمراحل والحالات والمستندات والمستخدمين.']
 };
 
-titles['/universities'] = ['الجامعات والبرامج', 'إدارة الجامعات والبرامج والدول المتاحة لكل النظام.'];
+titles['/universities'] = ['الجامعات', 'عرض الجامعات المتاحة مع المدن والدول والأحرام المرتبطة بها.'];
+titles['/programs'] = ['البرامج', 'عرض البرامج الدراسية بشكل مستقل مع الأسعار والفلاتر والبحث السريع.'];
+titles['/scholarships'] = ['المنح', 'عرض المنح الدراسية بشكل مستقل مع تفاصيلها الكاملة وفلاتر البحث.'];
 
 export default function Layout() {
   const { user, logout } = useAuth();

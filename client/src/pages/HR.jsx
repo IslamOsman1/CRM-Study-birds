@@ -1,5 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarCheck2, Clock3, Download, FileBadge2, FileSpreadsheet, Gift, MinusCircle, Plus, Search, Target, UploadCloud, UserPlus, UsersRound, WalletCards } from 'lucide-react';
+import {
+  AlertTriangle,
+  CalendarCheck2,
+  Clock3,
+  Download,
+  FileBadge2,
+  FileSpreadsheet,
+  Gift,
+  MinusCircle,
+  Plus,
+  Search,
+  Target,
+  Trash2,
+  UploadCloud,
+  UserPlus,
+  UserX2,
+  UsersRound
+} from 'lucide-react';
 import { api, formatDate, formatMoney, initials } from '../api.js';
 import { Badge, Button, Card, Field, Modal, Progress, Spinner, Toast } from '../components/UI.jsx';
 import { useAuth } from '../auth.jsx';
@@ -7,6 +24,7 @@ import { tr } from '../i18n.js';
 import { can } from '../permissions.js';
 
 const today = '2026-07-22';
+
 const attendanceBlank = {
   employeeId: '',
   date: today,
@@ -20,8 +38,11 @@ const employeeBlank = {
   name: '',
   email: '',
   phone: '',
+  role: 'consultant',
   department: 'Consultancy',
   title: '',
+  password: '',
+  isActive: true,
   joinDate: today,
   performance: '75',
   branch: 'Cairo HQ',
@@ -40,6 +61,11 @@ const leaveBlank = {
 };
 
 const documentTypes = ['Employment Contract', 'National ID', 'University Degree', 'Military Status'];
+const statusFilters = [
+  { key: 'all', label: 'الكل' },
+  { key: 'active', label: 'النشطون' },
+  { key: 'terminated', label: 'المقالون' }
+];
 
 const payrollToCsv = rows => {
   const header = ['Employee', 'Department', 'Basic Salary', 'Commissions', 'Bonuses', 'Deductions', 'Advances', 'Unpaid Leave Days', 'Absence Deduction', 'Net Salary'];
@@ -67,6 +93,7 @@ export default function HR() {
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [employeeOpen, setEmployeeOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
@@ -77,20 +104,30 @@ export default function HR() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
   const [documentType, setDocumentType] = useState(documentTypes[0]);
   const [documentFile, setDocumentFile] = useState(null);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [submittingAction, setSubmittingAction] = useState(false);
   const [toast, setToast] = useState(null);
 
   const canCreateEmployee = can(user.role, 'createEmployee');
   const canLogAttendance = can(user.role, 'logAttendance');
+  const canTerminateEmployee = can(user.role, 'terminateEmployee');
+  const canDeleteEmployee = can(user.role, 'deleteEmployee');
 
   const load = () =>
     api('/api/hr')
       .then(data => {
-        setEmployees(data.employees || []);
+        const nextEmployees = data.employees || [];
+        setEmployees(nextEmployees);
         setAttendance(data.attendance || []);
         setTargets(data.targets || []);
         setPayroll(data.payroll || []);
         setLeaveRequests(data.leaveRequests || []);
-        if (!selectedEmployeeId && data.employees?.[0]) setSelectedEmployeeId(data.employees[0].id);
+
+        if (!selectedEmployeeId && nextEmployees[0]) {
+          setSelectedEmployeeId(nextEmployees[0].id);
+        } else if (selectedEmployeeId && !nextEmployees.some(employee => employee.id === selectedEmployeeId)) {
+          setSelectedEmployeeId(nextEmployees[0]?.id || null);
+        }
       })
       .catch(error => setToast({ type: 'error', message: error.message }))
       .finally(() => setLoading(false));
@@ -100,14 +137,32 @@ export default function HR() {
   }, []);
 
   const shown = useMemo(
-    () => employees.filter(employee => [employee.name, employee.department, employee.title, employee.branch].some(value => String(value || '').toLowerCase().includes(query.toLowerCase()))),
-    [employees, query]
+    () =>
+      employees.filter(employee => {
+        const matchesSearch = [employee.name, employee.department, employee.title, employee.branch, employee.status]
+          .some(value => String(value || '').toLowerCase().includes(query.toLowerCase()));
+
+        const normalizedStatus = String(employee.status || '').toLowerCase();
+        const matchesStatus =
+          statusFilter === 'all' ||
+          (statusFilter === 'active' && normalizedStatus === 'active') ||
+          (statusFilter === 'terminated' && normalizedStatus === 'terminated');
+
+        return matchesSearch && matchesStatus;
+      }),
+    [employees, query, statusFilter]
   );
 
-  const selectedEmployee = shown.find(employee => employee.id === selectedEmployeeId) || employees.find(employee => employee.id === selectedEmployeeId) || null;
+  const selectedEmployee =
+    shown.find(employee => employee.id === selectedEmployeeId) ||
+    employees.find(employee => employee.id === selectedEmployeeId) ||
+    null;
+
   const present = attendance.filter(item => item.date === today && ['Present', 'Remote'].includes(item.status)).length;
   const onLeave = attendance.filter(item => item.date === today && item.status === 'Leave').length;
-  const targetAchievement = targets.length ? Math.round(targets.reduce((sum, item) => sum + Number(item.targetProgress || 0), 0) / targets.length) : 0;
+  const targetAchievement = targets.length
+    ? Math.round(targets.reduce((sum, item) => sum + Number(item.targetProgress || 0), 0) / targets.length)
+    : 0;
 
   const submitAttendance = async event => {
     event.preventDefault();
@@ -125,20 +180,32 @@ export default function HR() {
   const createEmployee = async event => {
     event.preventDefault();
     try {
-      const created = await api('/api/employees', { method: 'POST', body: JSON.stringify(employeeForm) });
-      await api(`/api/hr/employees/${created.id}`, {
-        method: 'PATCH',
+      const created = await api('/api/users', {
+        method: 'POST',
         body: JSON.stringify({
-          basicSalary: employeeForm.basicSalary,
-          monthlyTarget: employeeForm.monthlyTarget,
-          commissionPerContract: employeeForm.commissionPerContract,
-          annualLeaveBalance: employeeForm.annualLeaveBalance
+          name: employeeForm.name,
+          email: employeeForm.email,
+          role: employeeForm.role,
+          department: employeeForm.department,
+          password: employeeForm.password,
+          isActive: employeeForm.isActive
         })
       });
+      if (created.linkedEmployeeId) {
+        await api(`/api/hr/employees/${created.linkedEmployeeId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            basicSalary: employeeForm.basicSalary,
+            monthlyTarget: employeeForm.monthlyTarget,
+            commissionPerContract: employeeForm.commissionPerContract,
+            annualLeaveBalance: employeeForm.annualLeaveBalance
+          })
+        });
+      }
       setEmployeeOpen(false);
       setEmployeeForm(employeeBlank);
       await load();
-      setToast({ message: 'تمت إضافة الموظف بنجاح.' });
+      setToast({ message: 'تم إنشاء الحساب وسجل الموارد البشرية بنجاح.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
@@ -193,6 +260,69 @@ export default function HR() {
       setToast({ type: 'error', message: error.message });
     }
   };
+
+  const openTerminateModal = employee => {
+    setPendingAction({
+      type: employee.status === 'Active' ? 'terminate' : 'reactivate',
+      employee
+    });
+  };
+
+  const openDeleteModal = employee => {
+    setPendingAction({ type: 'delete', employee });
+  };
+
+  const closePendingAction = () => {
+    if (submittingAction) return;
+    setPendingAction(null);
+  };
+
+  const confirmPendingAction = async () => {
+    if (!pendingAction?.employee) return;
+    setSubmittingAction(true);
+    try {
+      if (pendingAction.type === 'delete') {
+        await api(`/api/hr/employees/${pendingAction.employee.id}`, { method: 'DELETE' });
+        await load();
+        setToast({ message: 'تم حذف الموظف نهائياً.' });
+      } else {
+        await api(`/api/hr/employees/${pendingAction.employee.id}/lifecycle`, {
+          method: 'PATCH',
+          body: JSON.stringify({ action: pendingAction.type })
+        });
+        await load();
+        setToast({ message: pendingAction.type === 'terminate' ? 'تم إنهاء خدمة الموظف.' : 'تمت إعادة تفعيل الموظف.' });
+      }
+      setPendingAction(null);
+    } catch (error) {
+      setToast({ type: 'error', message: error.message });
+    } finally {
+      setSubmittingAction(false);
+    }
+  };
+
+  const pendingActionCopy = useMemo(() => {
+    if (!pendingAction?.employee) return null;
+    if (pendingAction.type === 'delete') {
+      return {
+        title: 'حذف الموظف',
+        subtitle: `سيتم حذف ${pendingAction.employee.name} نهائياً مع المستندات وسجلات الحضور والإجازات المرتبطة به.`,
+        confirmLabel: 'تأكيد الحذف'
+      };
+    }
+    if (pendingAction.type === 'terminate') {
+      return {
+        title: 'إقالة الموظف',
+        subtitle: `سيتم إنهاء خدمة ${pendingAction.employee.name} مع الاحتفاظ بسجله داخل النظام.`,
+        confirmLabel: 'تأكيد الإقالة'
+      };
+    }
+    return {
+      title: 'إعادة تفعيل الموظف',
+      subtitle: `سيتم إعادة ${pendingAction.employee.name} إلى حالة نشط داخل النظام.`,
+      confirmLabel: 'تأكيد التفعيل'
+    };
+  }, [pendingAction]);
 
   const exportPayrollCsv = () => {
     const blob = new Blob([payrollToCsv(payroll)], { type: 'text/csv;charset=utf-8;' });
@@ -307,14 +437,31 @@ export default function HR() {
           </div>
         </div>
 
+        <div className="hr-filter-bar">
+          {statusFilters.map(filter => (
+            <button
+              key={filter.key}
+              type="button"
+              className={statusFilter === filter.key ? 'filter-chip active' : 'filter-chip'}
+              onClick={() => setStatusFilter(filter.key)}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+
         <div className="employee-grid">
           {shown.map(employee => {
             const targetRow = targets.find(item => item.employeeId === employee.id);
             return (
-              <article className={`employee-card ${selectedEmployeeId === employee.id ? 'employee-card-active' : ''}`} key={employee.id} onClick={() => setSelectedEmployeeId(employee.id)}>
+              <article
+                className={`employee-card ${selectedEmployeeId === employee.id ? 'employee-card-active' : ''}`}
+                key={employee.id}
+                onClick={() => setSelectedEmployeeId(employee.id)}
+              >
                 <div className="employee-head">
                   <div className="avatar large soft">{initials(employee.name)}</div>
-                  <Badge tone="green">{tr(employee.status)}</Badge>
+                  <Badge tone={employee.status === 'Active' ? 'green' : 'red'}>{tr(employee.status)}</Badge>
                 </div>
                 <h3>{employee.name}</h3>
                 <p>{tr(employee.title)}</p>
@@ -323,7 +470,22 @@ export default function HR() {
                   <div><span>الحضور</span><strong>{employee.attendanceRate}%</strong><Progress value={employee.attendanceRate} /></div>
                   <div><span>تحقق التارجت</span><strong>{targetRow ? `${targetRow.targetProgress}%` : '—'}</strong><Progress value={targetRow?.targetProgress || 0} /></div>
                 </div>
-                <footer><span>انضم في {formatDate(employee.joinDate)}</span><a href={`mailto:${employee.email}`}>تواصل</a></footer>
+                <div className="employee-card-actions" onClick={event => event.stopPropagation()}>
+                  <a href={`mailto:${employee.email}`}>تواصل</a>
+                  {canTerminateEmployee && (
+                    <button className="employee-card-action danger-text" type="button" onClick={() => openTerminateModal(employee)}>
+                      <UserX2 size={14} />
+                      {employee.status === 'Active' ? 'إقالة' : 'تفعيل'}
+                    </button>
+                  )}
+                  {canDeleteEmployee && (
+                    <button className="employee-card-action danger-text" type="button" onClick={() => openDeleteModal(employee)}>
+                      <Trash2 size={14} />
+                      حذف
+                    </button>
+                  )}
+                </div>
+                <footer><span>انضم في {formatDate(employee.joinDate)}</span></footer>
               </article>
             );
           })}
@@ -444,6 +606,20 @@ export default function HR() {
           </div>
           {selectedEmployee ? (
             <>
+              {(canTerminateEmployee || canDeleteEmployee) && (
+                <div className="employee-detail-actions">
+                  {canTerminateEmployee && (
+                    <Button type="button" variant="secondary" onClick={() => openTerminateModal(selectedEmployee)}>
+                      <UserX2 /> {selectedEmployee.status === 'Active' ? 'إقالة الموظف' : 'إعادة التفعيل'}
+                    </Button>
+                  )}
+                  {canDeleteEmployee && (
+                    <Button type="button" variant="secondary" onClick={() => openDeleteModal(selectedEmployee)}>
+                      <Trash2 /> حذف نهائي
+                    </Button>
+                  )}
+                </div>
+              )}
               <div className="detail-grid">
                 <div><span>الموظف</span><strong>{selectedEmployee.name}</strong></div>
                 <div><span>الرصيد السنوي</span><strong>{selectedEmployee.annualLeaveBalance || 0} يوم</strong></div>
@@ -552,6 +728,16 @@ export default function HR() {
           <Field label="الاسم"><input required value={employeeForm.name} onChange={event => setEmployeeForm({ ...employeeForm, name: event.target.value })} /></Field>
           <Field label="البريد الإلكتروني"><input type="email" value={employeeForm.email} onChange={event => setEmployeeForm({ ...employeeForm, email: event.target.value })} /></Field>
           <Field label="رقم الهاتف"><input value={employeeForm.phone} onChange={event => setEmployeeForm({ ...employeeForm, phone: event.target.value })} /></Field>
+          <Field label="الدور">
+            <select value={employeeForm.role} onChange={event => setEmployeeForm({ ...employeeForm, role: event.target.value })}>
+              <option value="management">الإدارة</option>
+              <option value="consultant">مستشار</option>
+              <option value="admissions">القبول</option>
+              <option value="reception">الاستقبال</option>
+              <option value="hr">الموارد البشرية</option>
+              <option value="finance">المالية</option>
+            </select>
+          </Field>
           <Field label="القسم">
             <select value={employeeForm.department} onChange={event => setEmployeeForm({ ...employeeForm, department: event.target.value })}>
               {['Consultancy', 'Admissions', 'Reception', 'Human Resources', 'Finance'].map(option => <option key={option} value={option}>{tr(option)}</option>)}
@@ -559,12 +745,17 @@ export default function HR() {
           </Field>
           <Field label="المسمى الوظيفي"><input required value={employeeForm.title} onChange={event => setEmployeeForm({ ...employeeForm, title: event.target.value })} /></Field>
           <Field label="الفرع"><input value={employeeForm.branch} onChange={event => setEmployeeForm({ ...employeeForm, branch: event.target.value })} /></Field>
+          <Field label="كلمة المرور"><input required minLength="6" type="password" value={employeeForm.password} onChange={event => setEmployeeForm({ ...employeeForm, password: event.target.value })} /></Field>
           <Field label="تاريخ الانضمام"><input type="date" value={employeeForm.joinDate} onChange={event => setEmployeeForm({ ...employeeForm, joinDate: event.target.value })} /></Field>
           <Field label="الراتب الأساسي"><input min="0" type="number" value={employeeForm.basicSalary} onChange={event => setEmployeeForm({ ...employeeForm, basicSalary: event.target.value })} /></Field>
           <Field label="التارجت الشهري"><input min="0" type="number" value={employeeForm.monthlyTarget} onChange={event => setEmployeeForm({ ...employeeForm, monthlyTarget: event.target.value })} /></Field>
           <Field label="العمولة لكل عقد"><input min="0" type="number" value={employeeForm.commissionPerContract} onChange={event => setEmployeeForm({ ...employeeForm, commissionPerContract: event.target.value })} /></Field>
           <Field label="رصيد الإجازات السنوي"><input min="0" type="number" value={employeeForm.annualLeaveBalance} onChange={event => setEmployeeForm({ ...employeeForm, annualLeaveBalance: event.target.value })} /></Field>
           <Field label="الأداء المبدئي"><input min="0" max="100" type="number" value={employeeForm.performance} onChange={event => setEmployeeForm({ ...employeeForm, performance: event.target.value })} /></Field>
+          <label className="required-toggle field-full">
+            <input type="checkbox" checked={employeeForm.isActive} onChange={event => setEmployeeForm({ ...employeeForm, isActive: event.target.checked })} />
+            <span>الحساب مفعل ويمكنه تسجيل الدخول</span>
+          </label>
           <div className="form-actions field-full">
             <Button type="button" variant="secondary" onClick={() => setEmployeeOpen(false)}>إلغاء</Button>
             <Button type="submit">إضافة الموظف</Button>
@@ -612,6 +803,21 @@ export default function HR() {
             <Button type="submit">رفع المستند</Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal open={Boolean(pendingActionCopy)} onClose={closePendingAction} title={pendingActionCopy?.title || ''} subtitle={pendingActionCopy?.subtitle || ''}>
+        <div className="confirm-dialog">
+          <div className="confirm-dialog-icon">
+            <AlertTriangle />
+          </div>
+          <p>سيتم تنفيذ هذا الإجراء فورًا بعد التأكيد.</p>
+          <div className="form-actions">
+            <Button type="button" variant="secondary" onClick={closePendingAction} disabled={submittingAction}>إلغاء</Button>
+            <Button type="button" onClick={confirmPendingAction} disabled={submittingAction}>
+              {submittingAction ? 'جارٍ التنفيذ...' : pendingActionCopy?.confirmLabel}
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       <Toast toast={toast} onClose={() => setToast(null)} />

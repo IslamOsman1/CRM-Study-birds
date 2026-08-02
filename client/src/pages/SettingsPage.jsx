@@ -91,8 +91,8 @@ function ArrayEditor({ title, items, onAdd, onChange, onRemove, placeholder, wit
 const blankUser = {
   name: '',
   email: '',
-  role: 'consultant',
-  department: 'Consultancy',
+  role: 'admin',
+  department: 'Human Resources',
   password: '',
   isActive: true
 };
@@ -125,6 +125,8 @@ export default function SettingsPage() {
   const canManageUsers = can(user.role, 'manageUsers');
   const canManageChecklists = can(user.role, 'manageDocumentChecklists');
   const canManageWorkflows = can(user.role, 'manageApplicationWorkflows');
+  const adminUsers = useMemo(() => form.users.filter(item => item.role === 'admin'), [form.users]);
+  const teamUsers = useMemo(() => form.users.filter(item => item.role !== 'admin'), [form.users]);
 
   const load = () =>
     Promise.all([api('/api/settings'), api('/api/integrations/meta/status')])
@@ -274,10 +276,16 @@ export default function SettingsPage() {
   const createUser = async event => {
     event.preventDefault();
     try {
-      const created = await api('/api/users', { method: 'POST', body: JSON.stringify(userForm) });
-      setForm(current => ({ ...current, users: [created, ...current.users] }));
+      await api('/api/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...userForm,
+          role: 'admin'
+        })
+      });
       setCreateOpen(false);
       setUserForm(blankUser);
+      await load();
       setToast({ message: 'تمت إضافة المستخدم بنجاح' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
@@ -301,14 +309,11 @@ export default function SettingsPage() {
     event.preventDefault();
     if (!selectedUser) return;
     try {
-      const updated = await api(`/api/users/${selectedUser.id}`, { method: 'PATCH', body: JSON.stringify(userForm) });
-      setForm(current => ({
-        ...current,
-        users: current.users.map(item => (item.id === selectedUser.id ? updated : item))
-      }));
+      await api(`/api/users/${selectedUser.id}`, { method: 'PATCH', body: JSON.stringify(userForm) });
       setEditOpen(false);
       setSelectedUser(null);
       setUserForm(blankUser);
+      await load();
       setToast({ message: 'تم تحديث بيانات المستخدم' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
@@ -628,32 +633,89 @@ export default function SettingsPage() {
               </div>
               <div className="settings-users-head">
                 <Badge tone="purple">{form.users.length} مستخدم</Badge>
-                <Button type="button" onClick={() => setCreateOpen(true)}><Plus /> مستخدم جديد</Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setUserForm(blankUser);
+                    setCreateOpen(true);
+                  }}
+                ><Plus /> أدمن جديد</Button>
               </div>
             </div>
 
-            <div className="users-grid">
-              {form.users.map(item => (
-                <article className="user-card" key={item.id}>
-                  <div className="user-card-top">
-                    <div className="avatar soft">{item.avatar || item.name?.slice(0, 2)}</div>
-                    <Badge tone={item.isActive === false ? 'red' : 'green'}>{item.isActive === false ? 'موقوف' : 'نشط'}</Badge>
+            <div className="notes-box">
+              <strong>مصدر موحّد للفريق</strong>
+              <p>أي حساب غير أدمن مرتبط تلقائيًا بسجل الموارد البشرية، لذلك أي تعديل للاسم أو القسم أو حالة التفعيل هنا ينعكس مباشرة في شاشة HR.</p>
+            </div>
+
+            <div className="settings-user-sections">
+              <div className="settings-user-group">
+                <div className="settings-user-group-head">
+                  <div>
+                    <strong>حسابات الإدارة والنظام</strong>
+                    <span>هذه الحسابات لا تظهر داخل الموارد البشرية.</span>
                   </div>
-                  <h3>{item.name}</h3>
-                  <p>{item.email}</p>
-                  <div className="user-badges">
-                    <Badge tone="purple">{tr(item.role)}</Badge>
-                    <Badge tone="neutral">{tr(item.department)}</Badge>
+                  <Badge tone="purple">{adminUsers.length}</Badge>
+                </div>
+
+                <div className="users-grid">
+                  {adminUsers.map(item => (
+                    <article className="user-card" key={item.id}>
+                      <div className="user-card-top">
+                        <div className="avatar soft">{item.avatar || item.name?.slice(0, 2)}</div>
+                        <Badge tone={item.isActive === false ? 'red' : 'green'}>{item.isActive === false ? 'موقوف' : 'نشط'}</Badge>
+                      </div>
+                      <h3>{item.name}</h3>
+                      <p>{item.email}</p>
+                      <div className="user-badges">
+                        <Badge tone="purple">{tr(item.role)}</Badge>
+                        <Badge tone="neutral">{tr(item.department)}</Badge>
+                      </div>
+                      <div className="user-permissions">
+                        <div><ShieldCheck size={16} /><span>صلاحيات كاملة على النظام</span></div>
+                        <div><UserCog size={16} /><span>{item.isActive === false ? 'تسجيل الدخول معطل' : 'يمكنه الدخول للنظام'}</span></div>
+                      </div>
+                      <div className="task-actions">
+                        <Button variant="ghost" type="button" onClick={() => startEditUser(item)}>تعديل المستخدم</Button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+
+              <div className="settings-user-group">
+                <div className="settings-user-group-head">
+                  <div>
+                    <strong>حسابات الفريق المرتبطة بالموارد البشرية</strong>
+                    <span>تم تبسيط عرضها هنا لتجنب تكرار نفس بطاقات الفريق بين الإعدادات وHR. إضافة أعضاء الفريق تتم من HR فقط.</span>
                   </div>
-                  <div className="user-permissions">
-                    <div><ShieldCheck size={16} /><span>{item.role === 'admin' ? 'صلاحيات كاملة' : 'صلاحيات حسب القسم'}</span></div>
-                    <div><UserCog size={16} /><span>{item.isActive === false ? 'تسجيل الدخول معطل' : 'يمكنه الدخول للنظام'}</span></div>
-                  </div>
-                  <div className="task-actions">
-                    <Button variant="ghost" type="button" onClick={() => startEditUser(item)}>تعديل المستخدم</Button>
-                  </div>
-                </article>
-              ))}
+                  <Badge tone="blue">{teamUsers.length}</Badge>
+                </div>
+
+                <div className="users-grid users-grid-linked">
+                  {teamUsers.map(item => (
+                    <article className="user-card linked-user-card" key={item.id}>
+                      <div className="user-card-top">
+                        <div className="avatar soft">{item.avatar || item.name?.slice(0, 2)}</div>
+                        <Badge tone={item.isActive === false ? 'red' : 'green'}>{item.isActive === false ? 'موقوف' : 'نشط'}</Badge>
+                      </div>
+                      <h3>{item.name}</h3>
+                      <p>{item.email}</p>
+                      <div className="user-badges">
+                        <Badge tone="purple">{tr(item.role)}</Badge>
+                        <Badge tone="neutral">{tr(item.department)}</Badge>
+                        <Badge tone="blue">مرتبط بـ HR</Badge>
+                      </div>
+                      <div className="user-permissions compact">
+                        <div><UserCog size={16} /><span>{item.isActive === false ? 'الحساب وسجل HR متوقفان' : 'الحساب وسجل HR نشطان'}</span></div>
+                      </div>
+                      <div className="task-actions">
+                        <Button variant="ghost" type="button" onClick={() => startEditUser(item)}>تعديل الحساب</Button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
             </div>
           </Card>
         )}
@@ -665,19 +727,13 @@ export default function SettingsPage() {
         )}
       </form>
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="إضافة مستخدم جديد" subtitle="إنشاء حساب داخلي مع صلاحيات القسم" size="lg">
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="إضافة أدمن جديد" subtitle="إنشاء حساب إداري داخلي للنظام" size="lg">
         <form className="form-grid" onSubmit={createUser}>
           <Field label="الاسم"><input required value={userForm.name} onChange={event => setUserForm({ ...userForm, name: event.target.value })} /></Field>
           <Field label="البريد الإلكتروني"><input required type="email" value={userForm.email} onChange={event => setUserForm({ ...userForm, email: event.target.value })} /></Field>
           <Field label="الدور">
-            <select value={userForm.role} onChange={event => setUserForm({ ...userForm, role: event.target.value })}>
+            <select value="admin" disabled>
               <option value="admin">مسؤول النظام</option>
-              <option value="management">الإدارة</option>
-              <option value="consultant">مستشار</option>
-              <option value="admissions">القبول</option>
-              <option value="reception">الاستقبال</option>
-              <option value="hr">الموارد البشرية</option>
-              <option value="finance">المالية</option>
             </select>
           </Field>
           <Field label="القسم">
@@ -692,7 +748,7 @@ export default function SettingsPage() {
           </label>
           <div className="form-actions field-full">
             <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>إلغاء</Button>
-            <Button type="submit">إنشاء المستخدم</Button>
+            <Button type="submit">إنشاء الأدمن</Button>
           </div>
         </form>
       </Modal>

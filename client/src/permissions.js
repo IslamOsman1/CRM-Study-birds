@@ -10,6 +10,8 @@ export const modulePermissions = {
   finance: ['admin', 'management', 'finance'],
   activity: ['admin', 'management'],
   universities: ['admin', 'management'],
+  programs: ['admin', 'management'],
+  scholarships: ['admin', 'management'],
   settings: ['admin', 'management']
 };
 
@@ -28,8 +30,11 @@ export const actionPermissions = {
   manageApplicationWorkflows: ['admin', 'management'],
   createEmployee: ['admin', 'management', 'hr'],
   logAttendance: ['admin', 'management', 'hr'],
+  terminateEmployee: ['admin', 'management', 'hr'],
+  deleteEmployee: ['admin', 'management', 'hr'],
   createInvoice: ['admin', 'management', 'finance'],
   recordPayment: ['admin', 'management', 'finance'],
+  deleteInvoice: ['admin', 'management', 'finance'],
   manageTasks: ['admin', 'management', 'consultant', 'admissions', 'reception', 'hr', 'finance'],
   manageSettings: ['admin', 'management'],
   manageUsers: ['admin', 'management']

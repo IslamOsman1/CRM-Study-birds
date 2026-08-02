@@ -16,6 +16,8 @@ import SettingsPage from './pages/SettingsPage.jsx';
 import TasksPage from './pages/TasksPage.jsx';
 import InboxPage from './pages/InboxPage.jsx';
 import UniversitiesPage from './pages/UniversitiesPage.jsx';
+import ProgramsCatalogPage from './pages/ProgramsCatalogPage.jsx';
+import ScholarshipsPage from './pages/ScholarshipsPage.jsx';
 import { canOpenModule } from './permissions.js';
 
 function Guard({ module, children }) {
@@ -49,6 +51,8 @@ export default function App() {
         <Route path="finance" element={<Guard module="finance"><Finance /></Guard>} />
         <Route path="activity" element={<Guard module="activity"><ActivityPage /></Guard>} />
         <Route path="universities" element={<Guard module="universities"><UniversitiesPage /></Guard>} />
+        <Route path="programs" element={<Guard module="programs"><ProgramsCatalogPage /></Guard>} />
+        <Route path="scholarships" element={<Guard module="scholarships"><ScholarshipsPage /></Guard>} />
         <Route path="settings" element={<Guard module="settings"><SettingsPage /></Guard>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

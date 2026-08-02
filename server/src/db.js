@@ -1,41 +1,60 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { MongoClient } from 'mongodb';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dataFile = path.join(__dirname, '..', 'data', 'db.json');
-const supabaseUrl = normalizeSupabaseUrl(process.env.SUPABASE_URL);
-const supabaseServiceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '');
-const supabaseDbTable = String(process.env.SUPABASE_DB_TABLE || 'app_state').trim() || 'app_state';
-const supabaseDbRowId = String(process.env.SUPABASE_DB_ROW_ID || 'default').trim() || 'default';
-const supabaseDbSchema = String(process.env.SUPABASE_DB_SCHEMA || 'public').trim() || 'public';
-const useSupabase = Boolean(supabaseUrl && supabaseServiceRoleKey);
+const mongoUri = String(process.env.MONGODB_URI || '').trim();
+const mongoDbName = String(process.env.MONGODB_DB_NAME || 'eduglobal_crm').trim() || 'eduglobal_crm';
+const mongoCollectionName = String(process.env.MONGODB_COLLECTION || 'app_state').trim() || 'app_state';
+const mongoDocumentId = String(process.env.MONGODB_DOCUMENT_ID || 'default').trim() || 'default';
+const unifiedCatalogImportFile = path.join(__dirname, '..', 'data', 'imports', 'easy-apply-unified-catalog-2026-08-02.json');
+
+if (!mongoUri) {
+  throw new Error('MONGODB_URI is required. The server now supports MongoDB only.');
+}
+
 let queue = Promise.resolve();
+let mongoClient;
+let mongoCollectionPromise;
 
-function normalizeSupabaseUrl(value) {
-  const raw = String(value || '').trim().replace(/\/+$/, '');
-  if (!raw) return '';
-  return raw.replace(/\/rest\/v1$/i, '');
-}
-
-function supabaseHeaders(extra = {}) {
+function createEmptyDb() {
   return {
-    apikey: supabaseServiceRoleKey,
-    Authorization: `Bearer ${supabaseServiceRoleKey}`,
-    'Content-Type': 'application/json',
-    'Accept-Profile': supabaseDbSchema,
-    'Content-Profile': supabaseDbSchema,
-    ...extra
+    activities: [],
+    applications: [],
+    attendance: [],
+    broadcasts: [],
+    companies: [],
+    connectedChannels: [],
+    contactChannelIdentities: [],
+    conversations: [],
+    educationCatalog: {
+      universities: [],
+      programs: [],
+      scholarships: []
+    },
+    employees: [],
+    executiveActions: [],
+    integrationAuditLogs: [],
+    invoices: [],
+    leads: [],
+    leaveRequests: [],
+    messages: [],
+    metaIntegrations: [],
+    metaPendingSessions: [],
+    monthlyRevenue: [],
+    oauthStates: [],
+    payments: [],
+    receptionLogs: [],
+    receptionState: {},
+    settings: {},
+    students: [],
+    tasks: [],
+    userNotifications: [],
+    users: [],
+    webhookEvents: [],
+    whatsAppTemplates: []
   };
-}
-
-function supabaseDbEndpoint(query = '') {
-  return `${supabaseUrl}/rest/v1/${supabaseDbTable}${query}`;
-}
-
-async function readFileDb() {
-  const raw = await fs.readFile(dataFile, 'utf8');
-  return JSON.parse(raw);
 }
 
 function isPlainObject(value) {
@@ -51,83 +70,88 @@ function isValidAppDbShape(value) {
     && isPlainObject(value.settings);
 }
 
-async function writeFileDb(data) {
-  const temp = `${dataFile}.tmp`;
-  await fs.writeFile(temp, JSON.stringify(data, null, 2));
-  await fs.rename(temp, dataFile);
-  return data;
+function hasEducationCatalogEntries(value) {
+  return Boolean(value)
+    && (Array.isArray(value.universities) && value.universities.length > 0
+      || Array.isArray(value.programs) && value.programs.length > 0
+      || Array.isArray(value.scholarships) && value.scholarships.length > 0);
 }
 
-async function readSupabaseDb() {
-  const response = await fetch(
-    supabaseDbEndpoint(`?id=eq.${encodeURIComponent(supabaseDbRowId)}&select=payload`),
-    { headers: supabaseHeaders() }
-  );
-
-  if (!response.ok) {
-    throw new Error(await buildSupabaseErrorMessage('read', response));
-  }
-
-  const rows = await response.json();
-  if (isValidAppDbShape(rows[0]?.payload)) return rows[0].payload;
-
-  try {
-    const seeded = await readFileDb();
-    await writeSupabaseDb(seeded);
-    return seeded;
-  } catch {
-    const empty = {};
-    await writeSupabaseDb(empty);
-    return empty;
-  }
+async function readUnifiedCatalogImport() {
+  const raw = await fs.readFile(unifiedCatalogImportFile, 'utf8');
+  const imported = JSON.parse(raw);
+  return {
+    universities: Array.isArray(imported.universities) ? imported.universities : [],
+    programs: Array.isArray(imported.programs) ? imported.programs : [],
+    scholarships: Array.isArray(imported.scholarships) ? imported.scholarships : []
+  };
 }
 
-async function writeSupabaseDb(data) {
-  const response = await fetch(
-    supabaseDbEndpoint('?on_conflict=id'),
-    {
-      method: 'POST',
-      headers: supabaseHeaders({
-        Prefer: 'resolution=merge-duplicates,return=minimal'
-      }),
-      body: JSON.stringify({
-        id: supabaseDbRowId,
-        payload: data
-      })
+async function getMongoCollection() {
+  if (!mongoCollectionPromise) {
+    mongoClient = new MongoClient(mongoUri);
+    mongoCollectionPromise = mongoClient.connect()
+      .then(client => client.db(mongoDbName).collection(mongoCollectionName));
+  }
+
+  return mongoCollectionPromise;
+}
+
+export async function getMongoDbHandle() {
+  if (!mongoClient) await getMongoCollection();
+  return mongoClient.db(mongoDbName);
+}
+
+async function readMongoDb() {
+  const collection = await getMongoCollection();
+  const record = await collection.findOne({ _id: mongoDocumentId });
+
+  if (isValidAppDbShape(record?.payload)) {
+    const payload = record.payload;
+    if (!hasEducationCatalogEntries(payload.educationCatalog)) {
+      try {
+        payload.educationCatalog = await readUnifiedCatalogImport();
+        await writeMongoDb(payload);
+      } catch {
+        payload.educationCatalog ||= { universities: [], programs: [], scholarships: [] };
+      }
     }
-  );
-
-  if (!response.ok) {
-    throw new Error(await buildSupabaseErrorMessage('write', response));
+    return payload;
   }
 
-  return data;
+  const empty = createEmptyDb();
+  try {
+    empty.educationCatalog = await readUnifiedCatalogImport();
+  } catch {
+    // Keep the empty catalog shape if the import file is not available.
+  }
+  await writeMongoDb(empty);
+  return empty;
 }
 
-async function buildSupabaseErrorMessage(action, response) {
-  let details = '';
+async function writeMongoDb(data) {
+  const collection = await getMongoCollection();
 
-  try {
-    const payload = await response.json();
-    details = payload?.message || payload?.error_description || payload?.hint || '';
-  } catch {
-    details = '';
-  }
+  await collection.updateOne(
+    { _id: mongoDocumentId },
+    {
+      $set: {
+        payload: data,
+        updatedAt: new Date().toISOString()
+      }
+    },
+    { upsert: true }
+  );
 
-  if (response.status === 404) {
-    const endpoint = supabaseDbEndpoint();
-    return `Supabase ${action} failed: 404 Not Found. Check SUPABASE_URL (${supabaseUrl}) and ensure table ${supabaseDbSchema}.${supabaseDbTable} exists. If you pasted a URL ending with /rest/v1, it is supported now, but the base project URL is preferred. Endpoint: ${endpoint}${details ? ` | ${details}` : ''}`;
-  }
-
-  return `Supabase ${action} failed: ${response.status} ${response.statusText}${details ? ` | ${details}` : ''}`;
+  return data;
 }
 
 export async function readDb() {
-  return useSupabase ? readSupabaseDb() : readFileDb();
+  return readMongoDb();
 }
 
 export async function writeDb(data) {
-  return useSupabase ? writeSupabaseDb(data) : writeFileDb(data);
+  return writeMongoDb(data);
 }
 
 export function mutateDb(mutator) {
@@ -138,4 +162,8 @@ export function mutateDb(mutator) {
     return result;
   });
   return queue;
+}
+
+export function isMongoDbEnabled() {
+  return true;
 }

@@ -1,0 +1,18 @@
+{
+  "draw": 1,
+  "columns": [
+    {"data":"id","name":"","searchable":true,"orderable":false,"search":{"value":"","regex":false}},
+    {"data":"id","name":"","searchable":true,"orderable":true,"search":{"value":"","regex":false}},
+    {"data":"scholarship","name":"","searchable":true,"orderable":true,"search":{"value":"","regex":false}},
+    {"data":"price","name":"","searchable":true,"orderable":true,"search":{"value":"","regex":false}},
+    {"data":"address","name":"","searchable":true,"orderable":true,"search":{"value":"","regex":false}},
+    {"data":"actions","name":"","searchable":false,"orderable":false,"search":{"value":"","regex":false}}
+  ],
+  "order": [{"column":1,"dir":"desc"}],
+  "start": 0,
+  "length": 1000,
+  "search": {
+    "value": "{\"countries\":null,\"cities\":null,\"universities\":null,\"departments\":null,\"degrees\":null,\"languages\":null,\"statuses\":null,\"text_search\":\"\"}",
+    "regex": false
+  }
+}

@@ -8,7 +8,8 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { readDb, mutateDb } from './db.js';
+import { GridFSBucket, ObjectId } from 'mongodb';
+import { readDb, mutateDb, getMongoDbHandle, isMongoDbEnabled } from './db.js';
 import { signToken, requireAuth, allowRoles } from './auth.js';
 import { buildMetaOauthUrl, consumeMetaOauthState, createMetaOauthState } from './integrations/meta/metaOAuth.service.js';
 import { discoverMetaAssets } from './integrations/meta/metaAssetDiscovery.service.js';
@@ -23,10 +24,7 @@ const port = Number(process.env.PORT || 4000);
 const uploadsDir = path.join(__dirname, '..', 'uploads');
 const isVercelRuntime = process.env.VERCEL === '1';
 const todayKey = () => new Date().toISOString().slice(0, 10);
-const supabaseUrl = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
-const supabaseServiceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '');
-const supabaseStorageBucket = String(process.env.SUPABASE_STORAGE_BUCKET || '').trim();
-const useSupabaseStorage = Boolean(supabaseUrl && supabaseServiceRoleKey && supabaseStorageBucket);
+const useMongoStorage = isMongoDbEnabled();
 const cloudinaryCloudName = String(process.env.CLOUDINARY_CLOUD_NAME || '').trim();
 const cloudinaryApiKey = String(process.env.CLOUDINARY_API_KEY || '').trim();
 const cloudinaryApiSecret = String(process.env.CLOUDINARY_API_SECRET || '').trim();
@@ -38,6 +36,23 @@ app.use(cors({ origin: process.env.CLIENT_ORIGIN || true, credentials: true }));
 app.use(express.json({ limit: '2mb' }));
 app.use(morgan('dev'));
 app.use('/uploads', express.static(uploadsDir));
+app.get('/api/files/:fileId', async (req, res, next) => {
+  try {
+    if (!useMongoStorage) return res.status(404).json({ message: 'File storage is not configured on MongoDB' });
+    const bucket = await getMongoUploadsBucket();
+    const fileId = new ObjectId(req.params.fileId);
+    const [file] = await bucket.find({ _id: fileId }).limit(1).toArray();
+    if (!file) return res.status(404).json({ message: 'الملف غير موجود' });
+    res.setHeader('Content-Type', file.contentType || 'application/octet-stream');
+    res.setHeader('Content-Length', String(file.length || 0));
+    res.setHeader('Content-Disposition', `inline; filename=\"${encodeURIComponent(file.filename || 'file')}\"`);
+    bucket.openDownloadStream(fileId)
+      .on('error', next)
+      .pipe(res);
+  } catch (error) {
+    next(error);
+  }
+});
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 12 * 1024 * 1024 } });
 const now = () => new Date().toISOString();
@@ -79,6 +94,26 @@ function sanitizeCurrency(value, fallback = 'USD') {
 
 function sanitizePaymentMethod(value, fallback = 'Bank Transfer') {
   return supportedPaymentMethods.includes(value) ? value : fallback;
+}
+
+function defaultRoleForDepartment(department) {
+  const normalized = String(department || '').trim();
+  if (normalized === 'Consultancy') return 'consultant';
+  if (normalized === 'Admissions') return 'admissions';
+  if (normalized === 'Reception') return 'reception';
+  if (normalized === 'Human Resources') return 'hr';
+  if (normalized === 'Finance') return 'finance';
+  return 'management';
+}
+
+function defaultTitleForDepartment(department) {
+  const normalized = String(department || '').trim();
+  if (normalized === 'Consultancy') return 'Educational Consultant';
+  if (normalized === 'Admissions') return 'Admissions Officer';
+  if (normalized === 'Reception') return 'Reception Coordinator';
+  if (normalized === 'Human Resources') return 'HR Specialist';
+  if (normalized === 'Finance') return 'Finance Officer';
+  return 'Team Member';
 }
 
 function decimalPart(value) {
@@ -230,13 +265,14 @@ function safeUploadName(originalName) {
   return `${Date.now()}-${randomUUID().slice(0, 8)}-${String(originalName || 'file').replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 }
 
-function supabaseStorageHeaders(contentType) {
-  return {
-    apikey: supabaseServiceRoleKey,
-    Authorization: `Bearer ${supabaseServiceRoleKey}`,
-    'Content-Type': contentType || 'application/octet-stream',
-    'x-upsert': 'true'
-  };
+function safeCloudinaryFolder(folderName = '') {
+  const normalized = String(folderName || '')
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/[^a-zA-Z0-9/_-]/g, '-')
+    .replace(/\/+/g, '/')
+    .replace(/^\/|\/$/g, '');
+  return normalized || 'general';
 }
 
 function cloudinarySignature(payload) {
@@ -248,12 +284,17 @@ function cloudinarySignature(payload) {
   return createHash('sha1').update(`${serialized}${cloudinaryApiSecret}`).digest('hex');
 }
 
-async function storeUploadedFile(file) {
+async function getMongoUploadsBucket() {
+  const db = await getMongoDbHandle();
+  return new GridFSBucket(db, { bucketName: 'uploads' });
+}
+
+async function storeUploadedFile(file, options = {}) {
   const fileName = safeUploadName(file.originalname);
 
   if (useCloudinaryStorage) {
     const timestamp = Math.floor(Date.now() / 1000);
-    const folder = 'study-birds-crm';
+    const folder = `study-birds-crm/${safeCloudinaryFolder(options.folder)}`;
     const publicId = `${folder}/${fileName}`;
     const resourceType = String(file.mimetype || '').startsWith('image/') ? 'image' : 'raw';
     const signature = cloudinarySignature({
@@ -290,26 +331,29 @@ async function storeUploadedFile(file) {
     };
   }
 
-  if (useSupabaseStorage) {
-    const objectPath = `documents/${fileName}`;
-    const uploadResponse = await fetch(
-      `${supabaseUrl}/storage/v1/object/${supabaseStorageBucket}/${objectPath}`,
-      {
-        method: 'POST',
-        headers: supabaseStorageHeaders(file.mimetype),
-        body: file.buffer
+  if (useMongoStorage) {
+    const bucket = await getMongoUploadsBucket();
+    const uploadStream = bucket.openUploadStream(fileName, {
+      contentType: file.mimetype || 'application/octet-stream',
+      metadata: {
+        originalName: file.originalname,
+        size: file.size
       }
-    );
+    });
 
-    if (!uploadResponse.ok) {
-      throw Object.assign(new Error('فشل رفع الملف إلى Supabase Storage'), { status: 500 });
-    }
+    await new Promise((resolve, reject) => {
+      uploadStream.on('error', reject);
+      uploadStream.on('finish', resolve);
+      uploadStream.end(file.buffer);
+    });
 
     return {
-      fileName: objectPath,
-      url: `${supabaseUrl}/storage/v1/object/public/${supabaseStorageBucket}/${objectPath}`,
+      fileId: String(uploadStream.id),
+      fileName,
+      originalName: file.originalname,
+      url: `/api/files/${uploadStream.id}`,
       size: file.size,
-      storageProvider: 'supabase'
+      storageProvider: 'mongo'
     };
   }
 
@@ -324,7 +368,17 @@ async function storeUploadedFile(file) {
 }
 
 async function removeUploadedFile(document) {
-  if (!document?.fileName) return;
+  if (!document?.fileName && !document?.fileId) return;
+
+  if (document.storageProvider === 'mongo' && document.fileId) {
+    try {
+      const bucket = await getMongoUploadsBucket();
+      await bucket.delete(new ObjectId(document.fileId));
+    } catch {
+      return;
+    }
+    return;
+  }
 
   if (document.storageProvider === 'cloudinary' || (useCloudinaryStorage && document.publicId)) {
     const timestamp = Math.floor(Date.now() / 1000);
@@ -342,22 +396,6 @@ async function removeUploadedFile(document) {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString()
     }).catch(() => null);
-    return;
-  }
-
-  if (document.storageProvider === 'supabase' || (useSupabaseStorage && document.fileName.includes('/'))) {
-    await fetch(
-      `${supabaseUrl}/storage/v1/object/${supabaseStorageBucket}`,
-      {
-        method: 'DELETE',
-        headers: {
-          apikey: supabaseServiceRoleKey,
-          Authorization: `Bearer ${supabaseServiceRoleKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ prefixes: [document.fileName] })
-      }
-    ).catch(() => null);
     return;
   }
 
@@ -576,6 +614,61 @@ function findUserByEmployee(db, employeeId, companyId) {
   const employee = findScoped(db.employees, companyId, item => item.id === employeeId);
   if (!employee) return null;
   return findScoped(db.users, companyId, item => item.email?.toLowerCase() === employee.email?.toLowerCase()) || null;
+}
+
+function syncEmployeeRecordForUser(db, user) {
+  if (!user || user.role === 'admin') return null;
+
+  let employee = findScoped(
+    db.employees,
+    user.companyId,
+    item => item.linkedUserId === user.id || item.email?.toLowerCase() === user.email?.toLowerCase()
+  );
+
+  if (!employee) {
+    employee = {
+      id: randomUUID(),
+      companyId: user.companyId,
+      linkedUserId: user.id,
+      name: user.name,
+      email: user.email,
+      phone: '',
+      department: user.department || 'Consultancy',
+      title: defaultTitleForDepartment(user.department),
+      status: user.isActive === false ? 'Terminated' : 'Active',
+      joinDate: todayKey(),
+      attendanceRate: 100,
+      performance: 75,
+      branch: 'Cairo HQ',
+      avatar: '',
+      createdAt: now()
+    };
+    db.employees.unshift(employee);
+  }
+
+  employee.linkedUserId = user.id;
+  employee.name = user.name;
+  employee.email = user.email;
+  employee.department = user.department || employee.department || 'Consultancy';
+  employee.status = user.isActive === false ? 'Terminated' : employee.status === 'Terminated' && user.isActive !== false ? 'Active' : employee.status || 'Active';
+  employee.title ||= defaultTitleForDepartment(employee.department);
+  employee.joinDate ||= todayKey();
+  employee.attendanceRate ??= 100;
+  employee.performance ??= 75;
+  employee.branch ||= 'Cairo HQ';
+  employee.avatar ||= '';
+  employee.documents ||= [];
+  employee.annualLeaveBalance ??= 21;
+  employee.monthlyTarget ??= employee.department === 'Consultancy' ? 8 : 0;
+  employee.commissionPerContract ??= employee.department === 'Consultancy' ? 500 : 0;
+  employee.basicSalary ??= employee.department === 'Consultancy' ? 18000 : employee.department === 'Admissions' ? 15000 : 12000;
+  employee.currentBonus ??= 0;
+  employee.currentDeductions ??= 0;
+  employee.currentAdvances ??= 0;
+  employee.dailySalaryDeduction ??= Math.round(Number(employee.basicSalary || 0) / 30);
+  if (employee.department === 'Consultancy' && !employee.liveStatus) employee.liveStatus = 'available';
+
+  return employee;
 }
 
 function createUserNotification(db, companyId, userId, title, message, metadata = {}) {
@@ -1686,6 +1779,7 @@ async function prepareDb() {
       applicationStatuses: [],
       availableUniversities: [],
       availablePrograms: [],
+      availableScholarships: [],
       availableCountries: [],
       documentTypes: [],
       documentChecklistTemplates: [],
@@ -1722,6 +1816,15 @@ async function prepareDb() {
     }
     db.settings.availableUniversities = sanitizeOptionList(db.settings.availableUniversities || []);
     db.settings.availablePrograms = sanitizeOptionList(db.settings.availablePrograms || []);
+    db.settings.availableScholarships = sanitizeOptionList(
+      db.settings.availableScholarships?.length
+        ? db.settings.availableScholarships
+        : (db.educationCatalog?.scholarships || []).map(item => {
+            const university = String(item?.university || '').trim();
+            const scope = String(item?.program_scope || '').trim();
+            return [university, scope].filter(Boolean).join(' - ');
+          })
+    );
     db.settings.availableCountries = sanitizeOptionList(db.settings.availableCountries || []);
 
     db.tasks ||= [];
@@ -1732,6 +1835,7 @@ async function prepareDb() {
         user.passwordHash = await bcrypt.hash(user.password, 10);
         delete user.password;
       }
+      syncEmployeeRecordForUser(db, user);
     }
 
     for (const lead of db.leads) {
@@ -2517,13 +2621,46 @@ app.get('/api/settings', async (_req, res) => {
   db.settings.applicationWorkflowTemplates = sanitizeWorkflowTemplates(db.settings.applicationWorkflowTemplates || []);
   db.settings.availableUniversities = sanitizeOptionList(db.settings.availableUniversities || []);
   db.settings.availablePrograms = sanitizeOptionList(db.settings.availablePrograms || []);
+  db.settings.availableScholarships = sanitizeOptionList(db.settings.availableScholarships || []);
   db.settings.availableCountries = sanitizeOptionList(db.settings.availableCountries || []);
   const companyId = _req.user.companyId;
+  const users = getScopedItems(db.users, companyId);
+  const hrEmployees = users
+    .filter(user => user.role !== 'admin')
+    .map(user => {
+      const employee = findScoped(
+        db.employees,
+        companyId,
+        item => item.linkedUserId === user.id || item.email?.toLowerCase() === user.email?.toLowerCase()
+      );
+      return employee ? { ...employee, linkedUserId: user.id, name: user.name, email: user.email, department: user.department } : null;
+    })
+    .filter(Boolean);
   res.json({
     ...db.settings,
-    users: getScopedItems(db.users, companyId).map(({ passwordHash, ...user }) => user),
-    employees: getScopedItems(db.employees, companyId),
+    users: users.map(({ passwordHash, ...user }) => user),
+    employees: hrEmployees,
     company: db.companies.find(item => item.id === companyId) || null
+  });
+});
+
+app.get('/api/education-catalog', allowRoles('admin', 'management'), async (_req, res) => {
+  const db = await readDb();
+  const catalog = db.educationCatalog || {};
+  res.json({
+    summary: {
+      universities: Array.isArray(catalog.universities) ? catalog.universities.length : 0,
+      programs: Array.isArray(catalog.programs) ? catalog.programs.length : 0,
+      scholarships: Array.isArray(catalog.scholarships) ? catalog.scholarships.length : 0,
+      uniqueDepartments: Array.isArray(catalog.availablePrograms) ? catalog.availablePrograms.length : 0,
+      countries: Array.isArray(catalog.availableCountries) ? catalog.availableCountries.length : 0
+    },
+    universities: Array.isArray(catalog.universities) ? catalog.universities : [],
+    programs: Array.isArray(catalog.programs) ? catalog.programs : [],
+    scholarships: Array.isArray(catalog.scholarships) ? catalog.scholarships : [],
+    availableUniversities: Array.isArray(catalog.availableUniversities) ? catalog.availableUniversities : [],
+    availablePrograms: Array.isArray(catalog.availablePrograms) ? catalog.availablePrograms : [],
+    availableCountries: Array.isArray(catalog.availableCountries) ? catalog.availableCountries : []
   });
 });
 
@@ -2536,6 +2673,7 @@ app.patch('/api/settings', allowRoles('admin', 'management'), async (req, res) =
     settings.applicationWorkflowTemplates = sanitizeWorkflowTemplates(settings.applicationWorkflowTemplates || []);
     settings.availableUniversities = sanitizeOptionList(settings.availableUniversities || []);
     settings.availablePrograms = sanitizeOptionList(settings.availablePrograms || []);
+    settings.availableScholarships = sanitizeOptionList(settings.availableScholarships || []);
     settings.availableCountries = sanitizeOptionList(settings.availableCountries || []);
 
     if (typeof payload.companyName === 'string' && payload.companyName.trim()) settings.companyName = payload.companyName.trim();
@@ -2560,6 +2698,10 @@ app.patch('/api/settings', allowRoles('admin', 'management'), async (req, res) =
 
     if (Array.isArray(payload.availablePrograms)) {
       settings.availablePrograms = sanitizeOptionList(payload.availablePrograms);
+    }
+
+    if (Array.isArray(payload.availableScholarships)) {
+      settings.availableScholarships = sanitizeOptionList(payload.availableScholarships);
     }
 
     if (Array.isArray(payload.availableCountries)) {
@@ -2614,9 +2756,10 @@ app.post('/api/users', allowRoles('admin', 'management'), async (req, res) => {
     };
 
     db.users.unshift(user);
+    const linkedEmployee = syncEmployeeRecordForUser(db, user);
     activity(db, req.user, 'created', 'user', user.id, `تمت إضافة المستخدم ${user.name}`);
     const { passwordHash, ...safeUser } = user;
-    return safeUser;
+    return { ...safeUser, linkedEmployeeId: linkedEmployee?.id || null };
   });
 
   res.status(201).json(result);
@@ -2645,10 +2788,11 @@ app.patch('/api/users/:id', allowRoles('admin', 'management'), async (req, res) 
     if (payload.department) user.department = payload.department;
     if (typeof payload.isActive === 'boolean') user.isActive = payload.isActive;
     if (payload.password) user.passwordHash = await bcrypt.hash(String(payload.password), 10);
+    const linkedEmployee = syncEmployeeRecordForUser(db, user);
 
     activity(db, req.user, 'updated', 'user', user.id, `تم تحديث المستخدم ${user.name}`);
     const { passwordHash, ...safeUser } = user;
-    return safeUser;
+    return { ...safeUser, linkedEmployeeId: linkedEmployee?.id || null };
   });
 
   res.json(result);
@@ -2918,7 +3062,7 @@ app.delete('/api/leads/:id', allowRoles('admin', 'management'), async (req, res)
 });
 
 app.post('/api/leads/:id/documents', allowRoles('admin', 'management', 'consultant', 'reception'), upload.single('file'), async (req, res) => {
-  const storedFile = req.file ? await storeUploadedFile(req.file) : null;
+  const storedFile = req.file ? await storeUploadedFile(req.file, { folder: 'leads' }) : null;
   if (!req.file) return res.status(400).json({ message: 'الملف مطلوب' });
 
   const result = await mutateDb(db => {
@@ -3130,7 +3274,7 @@ app.patch('/api/applications/:id/follow-up/:stageId', allowRoles('admin', 'manag
 });
 
 app.post('/api/applications/:id/documents', allowRoles('admin', 'management', 'admissions', 'consultant'), upload.single('file'), async (req, res) => {
-  const storedFile = req.file ? await storeUploadedFile(req.file) : null;
+  const storedFile = req.file ? await storeUploadedFile(req.file, { folder: 'applications' }) : null;
   if (!req.file) return res.status(400).json({ message: 'الملف مطلوب' });
 
   const result = await mutateDb(db => {
@@ -3439,20 +3583,38 @@ app.get('/api/attendance', async (_req, res) => {
 app.get('/api/hr', allowRoles('admin', 'management', 'hr'), async (req, res) => {
   const db = await readDb();
   const companyId = req.user.companyId;
-  const employees = getScopedItems(db.employees, companyId).map(employee => ({
-    ...employee,
-    documents: employee.documents || [],
-    targetSnapshot: buildHrTargets(db, companyId).find(item => item.employeeId === employee.id) || null,
-    payrollSnapshot: buildPayrollRows(db, companyId).find(item => item.employeeId === employee.id) || null
-  }));
+  const targetRows = buildHrTargets(db, companyId);
+  const payrollRows = buildPayrollRows(db, companyId);
+  const visibleUsers = getScopedItems(db.users, companyId).filter(user => user.role !== 'admin');
+  const employees = visibleUsers
+    .map(user => {
+      const employee = findScoped(
+        db.employees,
+        companyId,
+        item => item.linkedUserId === user.id || item.email?.toLowerCase() === user.email?.toLowerCase()
+      );
+      if (!employee) return null;
+      return {
+        ...employee,
+        linkedUserId: user.id,
+        name: user.name,
+        email: user.email,
+        department: user.department,
+        documents: employee.documents || [],
+        targetSnapshot: targetRows.find(item => item.employeeId === employee.id) || null,
+        payrollSnapshot: payrollRows.find(item => item.employeeId === employee.id) || null
+      };
+    })
+    .filter(Boolean);
+  const visibleEmployeeIds = new Set(employees.map(item => item.id));
   const attendance = getScopedItems(db.attendance, companyId).map(item => ({ ...item, employee: db.employees.find(employee => employee.id === item.employeeId) || null }));
   const leaveRequests = getScopedItems(db.leaveRequests || [], companyId).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   res.json({
     employees,
     attendance,
     leaveRequests,
-    targets: buildHrTargets(db, companyId),
-    payroll: buildPayrollRows(db, companyId)
+    targets: targetRows.filter(item => visibleEmployeeIds.has(item.employeeId)),
+    payroll: payrollRows.filter(item => visibleEmployeeIds.has(item.employeeId))
   });
 });
 
@@ -3530,9 +3692,76 @@ app.patch('/api/hr/employees/:id', allowRoles('admin', 'management', 'hr'), asyn
   res.json(result);
 });
 
+app.patch('/api/hr/employees/:id/lifecycle', allowRoles('admin', 'management', 'hr'), async (req, res) => {
+  const result = await mutateDb(db => {
+    const employee = findScoped(db.employees, req.user.companyId, item => item.id === req.params.id);
+    if (!employee) throw Object.assign(new Error('الموظف غير موجود'), { status: 404 });
+
+    const action = String(req.body.action || '').trim().toLowerCase();
+    if (!['terminate', 'reactivate'].includes(action)) {
+      throw Object.assign(new Error('إجراء غير صالح'), { status: 400 });
+    }
+
+    if (action === 'terminate') {
+      employee.status = 'Terminated';
+      employee.terminatedAt = now();
+      employee.terminatedBy = req.user.name;
+      employee.liveStatus = 'offline';
+      const linkedUser = findScoped(db.users, req.user.companyId, item => item.id === employee.linkedUserId || item.email?.toLowerCase() === employee.email?.toLowerCase());
+      if (linkedUser && linkedUser.role !== 'admin') linkedUser.isActive = false;
+      activity(db, req.user, 'updated', 'employee-lifecycle', employee.id, `تم إنهاء خدمة الموظف ${employee.name}`);
+    } else {
+      employee.status = 'Active';
+      employee.reactivatedAt = now();
+      employee.reactivatedBy = req.user.name;
+      employee.liveStatus ||= 'available';
+      const linkedUser = findScoped(db.users, req.user.companyId, item => item.id === employee.linkedUserId || item.email?.toLowerCase() === employee.email?.toLowerCase());
+      if (linkedUser && linkedUser.role !== 'admin') linkedUser.isActive = true;
+      activity(db, req.user, 'updated', 'employee-lifecycle', employee.id, `تمت إعادة تفعيل الموظف ${employee.name}`);
+    }
+
+    return employee;
+  });
+
+  res.json(result);
+});
+
+app.delete('/api/hr/employees/:id', allowRoles('admin', 'management', 'hr'), async (req, res) => {
+  const result = await mutateDb(async db => {
+    const companyId = req.user.companyId;
+    const employeeIndex = db.employees.findIndex(item => item.id === req.params.id && item.companyId === companyId);
+    if (employeeIndex === -1) throw Object.assign(new Error('الموظف غير موجود'), { status: 404 });
+
+    const [employee] = db.employees.splice(employeeIndex, 1);
+    db.users = (db.users || []).filter(
+      item => !(item.companyId === companyId && item.role !== 'admin' && (item.id === employee.linkedUserId || item.email?.toLowerCase() === employee.email?.toLowerCase()))
+    );
+
+    for (const document of employee.documents || []) {
+      await removeUploadedFile(document);
+    }
+
+    db.attendance = (db.attendance || []).filter(item => !(item.employeeId === employee.id && item.companyId === companyId));
+    db.leaveRequests = (db.leaveRequests || []).filter(item => !(item.employeeId === employee.id && item.companyId === companyId));
+
+    for (const student of getScopedItems(db.students, companyId)) {
+      if (student.consultantId === employee.id) student.consultantId = '';
+    }
+
+    for (const lead of getScopedItems(db.leads, companyId)) {
+      if (lead.consultantId === employee.id) lead.consultantId = '';
+    }
+
+    activity(db, req.user, 'deleted', 'employee', employee.id, `تم حذف الموظف ${employee.name} نهائياً`);
+    return { ok: true };
+  });
+
+  res.json(result);
+});
+
 app.post('/api/hr/employees/:id/documents', allowRoles('admin', 'management', 'hr'), upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'الملف مطلوب' });
-  const storedFile = await storeUploadedFile(req.file);
+  const storedFile = await storeUploadedFile(req.file, { folder: 'employees' });
   const result = await mutateDb(db => {
     const employee = findScoped(db.employees, req.user.companyId, item => item.id === req.params.id);
     if (!employee) throw Object.assign(new Error('الموظف غير موجود'), { status: 404 });
@@ -3604,7 +3833,7 @@ app.post('/api/invoices', allowRoles('admin', 'management', 'finance'), async (r
 });
 
 app.post('/api/invoices/:id/payments', allowRoles('admin', 'management', 'finance'), upload.single('attachment'), async (req, res) => {
-  const attachment = req.file ? await storeUploadedFile(req.file) : null;
+  const attachment = req.file ? await storeUploadedFile(req.file, { folder: 'receipts' }) : null;
   const result = await mutateDb(db => {
     const invoice = db.invoices.find(item => item.id === req.params.id);
     if (!invoice) throw Object.assign(new Error('الفاتورة غير موجودة'), { status: 404 });
@@ -3692,6 +3921,26 @@ app.post('/api/invoices/:id/payments', allowRoles('admin', 'management', 'financ
   });
 
   res.status(201).json(result);
+});
+
+app.delete('/api/invoices/:id', allowRoles('admin', 'management', 'finance'), async (req, res) => {
+  const result = await mutateDb(async db => {
+    const invoiceIndex = db.invoices.findIndex(item => item.id === req.params.id && item.companyId === req.user.companyId);
+    if (invoiceIndex === -1) throw Object.assign(new Error('الفاتورة غير موجودة'), { status: 404 });
+
+    const [invoice] = db.invoices.splice(invoiceIndex, 1);
+    const removedPayments = db.payments.filter(item => item.invoiceId === invoice.id && item.companyId === req.user.companyId);
+    db.payments = db.payments.filter(item => !(item.invoiceId === invoice.id && item.companyId === req.user.companyId));
+
+    for (const payment of removedPayments) {
+      if (payment.attachment) await removeUploadedFile(payment.attachment);
+    }
+
+    activity(db, req.user, 'deleted', 'invoice', invoice.id, `تم حذف الفاتورة ${invoice.number} مع ${removedPayments.length} دفعة مرتبطة بها`);
+    return { ok: true };
+  });
+
+  res.json(result);
 });
 
 app.patch('/api/payments/:id', allowRoles('admin', 'management'), async (req, res) => {
