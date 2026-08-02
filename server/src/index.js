@@ -265,6 +265,16 @@ function safeUploadName(originalName) {
   return `${Date.now()}-${randomUUID().slice(0, 8)}-${String(originalName || 'file').replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 }
 
+function logMetaWebhook(level, message, details = undefined) {
+  const payload = details ? ` ${JSON.stringify(details)}` : '';
+  const line = `[meta-webhook] ${message}${payload}`;
+  if (level === 'error') {
+    console.error(line);
+    return;
+  }
+  console.log(line);
+}
+
 function safeCloudinaryFolder(folderName = '') {
   const normalized = String(folderName || '')
     .trim()
@@ -1270,7 +1280,15 @@ function resolveContactForInbound(db, companyId, normalizedMessage) {
 
 function storeInboundMessage(db, companyId, channel, normalizedMessage) {
   const duplicate = db.messages.find(item => item.companyId === companyId && item.externalMessageId === normalizedMessage.externalMessageId);
-  if (duplicate) return duplicate;
+  if (duplicate) {
+    logMetaWebhook('info', 'duplicate inbound message ignored', {
+      companyId,
+      channelType: channel.channelType,
+      channelId: channel.id,
+      externalMessageId: normalizedMessage.externalMessageId
+    });
+    return duplicate;
+  }
 
   const contact = resolveContactForInbound(db, companyId, normalizedMessage);
   const conversation = getOrCreateConversation(db, companyId, {
@@ -1321,6 +1339,15 @@ function storeInboundMessage(db, companyId, channel, normalizedMessage) {
     const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     conversation.messagingWindowExpiresAt = expiry;
   }
+  logMetaWebhook('info', 'inbound message stored', {
+    companyId,
+    channelType: channel.channelType,
+    channelId: channel.id,
+    conversationId: conversation.id,
+    messageId: message.id,
+    externalMessageId: normalizedMessage.externalMessageId,
+    messageType: normalizedMessage.messageType
+  });
   return message;
 }
 
@@ -1991,11 +2018,22 @@ app.get('/api/integrations/meta/webhook', (req, res) => {
 app.post('/api/integrations/meta/webhook', async (req, res) => {
   const eventPayload = req.body || {};
   const eventHash = hashPayload(eventPayload);
+  logMetaWebhook('info', 'event received', {
+    object: eventPayload.object || 'meta',
+    entryCount: Array.isArray(eventPayload.entry) ? eventPayload.entry.length : 0,
+    eventHash
+  });
 
   const record = await mutateDb(db => {
     initMetaCollections(db);
     const existing = db.webhookEvents.find(item => item.provider === 'meta' && item.eventId === eventHash);
-    if (existing) return existing;
+    if (existing) {
+      logMetaWebhook('info', 'duplicate webhook event ignored', {
+        eventHash,
+        recordId: existing.id
+      });
+      return existing;
+    }
 
     const next = {
       id: randomUUID(),
@@ -2026,13 +2064,25 @@ app.post('/api/integrations/meta/webhook', async (req, res) => {
         const entries = stored.payload?.entry || [];
         for (const entry of entries) {
           const entryId = entry.id || '';
+          logMetaWebhook('info', 'processing entry', {
+            recordId: stored.id,
+            entryId,
+            hasMessagingArray: Array.isArray(entry.messaging),
+            changesCount: Array.isArray(entry.changes) ? entry.changes.length : 0
+          });
 
           if (Array.isArray(entry.messaging)) {
             const possibleChannels = db.connectedChannels.filter(item => item.pageId === entryId || item.instagramAccountId === entryId);
             for (const event of entry.messaging) {
               const channel = possibleChannels.find(item => item.channelType === 'facebook')
                 || possibleChannels.find(item => item.channelType === 'instagram');
-              if (!channel) continue;
+              if (!channel) {
+                logMetaWebhook('info', 'no connected messenger/instagram channel matched entry', {
+                  entryId,
+                  possibleChannels: possibleChannels.length
+                });
+                continue;
+              }
               stored.companyId = channel.companyId;
 
               const normalizedInbound = normalizeMessengerInboundEvent({
@@ -2056,7 +2106,13 @@ app.post('/api/integrations/meta/webhook', async (req, res) => {
             const value = change.value || {};
             const phoneNumberId = value.metadata?.phone_number_id || '';
             const channel = db.connectedChannels.find(item => item.phoneNumberId === phoneNumberId && item.companyId);
-            if (!channel) continue;
+            if (!channel) {
+              logMetaWebhook('info', 'no connected whatsapp channel matched phone number', {
+                phoneNumberId,
+                changeField: change.field
+              });
+              continue;
+            }
             stored.companyId = channel.companyId;
 
             const normalized = normalizeInboundMetaMessage({
@@ -2079,10 +2135,20 @@ app.post('/api/integrations/meta/webhook', async (req, res) => {
         stored.processingStatus = 'processed';
         stored.processedAt = now();
         stored.error = '';
+        logMetaWebhook('info', 'event processed', {
+          recordId: stored.id,
+          companyId: stored.companyId || '',
+          processingStatus: stored.processingStatus
+        });
       } catch (error) {
         stored.processingStatus = 'failed';
         stored.retryCount = Number(stored.retryCount || 0) + 1;
         stored.error = error.message;
+        logMetaWebhook('error', 'event processing failed', {
+          recordId: stored.id,
+          error: error.message,
+          retryCount: stored.retryCount
+        });
       }
     }).catch(() => {});
   });
