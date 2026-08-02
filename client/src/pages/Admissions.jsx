@@ -164,12 +164,69 @@ export default function Admissions() {
   const effectiveDocumentTypes = selected?.effectiveDocumentTypes || settings?.documentTypes || [];
   const effectiveFollowUpStages = selected?.effectiveFollowUpStages || [];
   const applicationStatuses = settings?.applicationStatuses || [];
-  const universityOptions = useMemo(() => collectUniqueOptions(settings?.availableUniversities), [settings?.availableUniversities]);
-  const programOptions = useMemo(() => collectUniqueOptions(settings?.availablePrograms), [settings?.availablePrograms]);
-  const countryOptions = useMemo(() => collectUniqueOptions(settings?.availableCountries), [settings?.availableCountries]);
-  const detailUniversityOptions = useMemo(() => collectUniqueOptions(universityOptions, detailForm?.university ? [detailForm.university] : []), [detailForm?.university, universityOptions]);
-  const detailProgramOptions = useMemo(() => collectUniqueOptions(programOptions, detailForm?.program ? [detailForm.program] : []), [detailForm?.program, programOptions]);
+  const catalogLinks = settings?.catalogLinks || {};
+  const universityOptions = useMemo(
+    () => collectUniqueOptions(catalogLinks.universities, settings?.availableUniversities),
+    [catalogLinks.universities, settings?.availableUniversities]
+  );
+  const programOptions = useMemo(
+    () => collectUniqueOptions(catalogLinks.programs, settings?.availablePrograms),
+    [catalogLinks.programs, settings?.availablePrograms]
+  );
+  const countryOptions = useMemo(
+    () => collectUniqueOptions(catalogLinks.countries, settings?.availableCountries),
+    [catalogLinks.countries, settings?.availableCountries]
+  );
   const detailCountryOptions = useMemo(() => collectUniqueOptions(countryOptions, detailForm?.country ? [detailForm.country] : []), [countryOptions, detailForm?.country]);
+  const detailUniversityOptions = useMemo(() => {
+    const selectedCountry = detailForm?.country || '';
+    const byCountry = selectedCountry && Array.isArray(catalogLinks.universitiesByCountry?.[selectedCountry])
+      ? catalogLinks.universitiesByCountry[selectedCountry]
+      : universityOptions;
+    return collectUniqueOptions(byCountry, detailForm?.university ? [detailForm.university] : []);
+  }, [catalogLinks.universitiesByCountry, detailForm?.country, detailForm?.university, universityOptions]);
+  const detailProgramOptions = useMemo(() => {
+    const selectedUniversity = detailForm?.university || '';
+    const selectedCountry = detailForm?.country || '';
+    if (selectedUniversity && Array.isArray(catalogLinks.programsByUniversity?.[selectedUniversity])) {
+      return collectUniqueOptions(catalogLinks.programsByUniversity[selectedUniversity], detailForm?.program ? [detailForm.program] : []);
+    }
+    if (selectedCountry && Array.isArray(catalogLinks.programsByCountry?.[selectedCountry])) {
+      return collectUniqueOptions(catalogLinks.programsByCountry[selectedCountry], detailForm?.program ? [detailForm.program] : []);
+    }
+    return collectUniqueOptions(programOptions, detailForm?.program ? [detailForm.program] : []);
+  }, [
+    catalogLinks.programsByCountry,
+    catalogLinks.programsByUniversity,
+    detailForm?.country,
+    detailForm?.program,
+    detailForm?.university,
+    programOptions
+  ]);
+  const createUniversityOptions = useMemo(() => {
+    const selectedCountry = createForm.country || '';
+    if (selectedCountry && Array.isArray(catalogLinks.universitiesByCountry?.[selectedCountry])) {
+      return collectUniqueOptions(catalogLinks.universitiesByCountry[selectedCountry], createForm.universities);
+    }
+    return collectUniqueOptions(universityOptions, createForm.universities);
+  }, [catalogLinks.universitiesByCountry, createForm.country, createForm.universities, universityOptions]);
+  const createProgramOptions = useMemo(() => {
+    if (createForm.universities.length) {
+      const linkedPrograms = createForm.universities.flatMap(university => catalogLinks.programsByUniversity?.[university] || []);
+      return collectUniqueOptions(linkedPrograms, createForm.program ? [createForm.program] : []);
+    }
+    if (createForm.country && Array.isArray(catalogLinks.programsByCountry?.[createForm.country])) {
+      return collectUniqueOptions(catalogLinks.programsByCountry[createForm.country], createForm.program ? [createForm.program] : []);
+    }
+    return collectUniqueOptions(programOptions, createForm.program ? [createForm.program] : []);
+  }, [
+    catalogLinks.programsByCountry,
+    catalogLinks.programsByUniversity,
+    createForm.country,
+    createForm.program,
+    createForm.universities,
+    programOptions
+  ]);
   const selectedUniversitiesLabel = useMemo(() => {
     if (!createForm.universities.length) return 'اختر جامعة أو أكثر';
     if (createForm.universities.length === 1) return createForm.universities[0];
@@ -473,7 +530,15 @@ export default function Admissions() {
 
               <form className="form-grid admissions-edit-grid" data-application-form="edit" onSubmit={saveApplicationDetails}>
                 <Field label="الجامعة">
-                  <select required value={detailForm.university} onChange={event => setDetailForm({ ...detailForm, university: event.target.value })}>
+                  <select
+                    required
+                    value={detailForm.university}
+                    onChange={event => setDetailForm({
+                      ...detailForm,
+                      university: event.target.value,
+                      country: catalogLinks.countryByUniversity?.[event.target.value] || detailForm.country
+                    })}
+                  >
                     <option value="">اختر جامعة</option>
                     {detailUniversityOptions.map(option => <option key={option} value={option}>{option}</option>)}
                   </select>
@@ -485,7 +550,7 @@ export default function Admissions() {
                   </select>
                 </Field>
                 <Field label="الدولة">
-                  <select required value={detailForm.country} onChange={event => setDetailForm({ ...detailForm, country: event.target.value })}>
+                  <select required value={detailForm.country} onChange={event => setDetailForm({ ...detailForm, country: event.target.value, university: '' })}>
                     <option value="">اختر دولة</option>
                     {detailCountryOptions.map(option => <option key={option} value={option}>{option}</option>)}
                   </select>
@@ -784,7 +849,7 @@ export default function Admissions() {
 
               {universitiesMenuOpen && (
                 <div className="multi-select-menu">
-                  {universityOptions.length ? universityOptions.map(option => (
+                  {createUniversityOptions.length ? createUniversityOptions.map(option => (
                     <label className="multi-select-option" key={option}>
                       <input
                         type="checkbox"
@@ -808,11 +873,11 @@ export default function Admissions() {
           <Field label="البرنامج">
             <select required value={createForm.program} onChange={event => setCreateForm({ ...createForm, program: event.target.value })}>
               <option value="">اختر برنامجاً</option>
-              {programOptions.map(option => <option key={option} value={option}>{option}</option>)}
+              {createProgramOptions.map(option => <option key={option} value={option}>{option}</option>)}
             </select>
           </Field>
           <Field label="الدولة">
-            <select required value={createForm.country} onChange={event => setCreateForm({ ...createForm, country: event.target.value })}>
+            <select required value={createForm.country} onChange={event => setCreateForm({ ...createForm, country: event.target.value, universities: [] })}>
               <option value="">اختر دولة</option>
               {countryOptions.map(option => <option key={option} value={option}>{option}</option>)}
             </select>

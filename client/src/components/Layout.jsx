@@ -174,7 +174,16 @@ export default function Layout() {
             api('/api/students').then(items =>
               items
                 .filter(student =>
-                  [student.name, student.phone, student.email]
+                  [
+                    student.name,
+                    student.phone,
+                    student.email,
+                    ...(student.applications || []).flatMap(application => [
+                      application.program,
+                      application.university,
+                      application.country
+                    ])
+                  ]
                     .some(value => String(value || '').toLowerCase().includes(trimmed.toLowerCase()))
                 )
                 .slice(0, 4)
@@ -214,7 +223,7 @@ export default function Layout() {
             api('/api/applications').then(items =>
               items
                 .filter(app =>
-                  [app.student?.name, app.university, app.program, app.applicationRefNo]
+                  [app.student?.name, app.university, app.program, app.country, app.applicationRefNo]
                     .some(value => String(value || '').toLowerCase().includes(trimmed.toLowerCase()))
                 )
                 .slice(0, 4)

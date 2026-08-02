@@ -32,7 +32,19 @@ export default function StudentsPage() {
   const shown = useMemo(
     () =>
       students.filter(student =>
-        [student.name, student.email, student.phone, student.nationality]
+        [
+          student.name,
+          student.email,
+          student.phone,
+          student.nationality,
+          ...(student.applications || []).flatMap(application => [
+            application.program,
+            application.university,
+            application.country,
+            application.status,
+            application.intake
+          ])
+        ]
           .some(value => String(value || '').toLowerCase().includes(query.toLowerCase()))
       ),
     [students, query]

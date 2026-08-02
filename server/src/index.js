@@ -218,6 +218,117 @@ function sanitizeInstallments(items) {
     .filter(Boolean);
 }
 
+function normalizeCatalogValue(value) {
+  return String(value || '').trim();
+}
+
+function sortCatalogOptions(values) {
+  return [...new Set((values || []).map(normalizeCatalogValue).filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right, 'ar'));
+}
+
+function buildEducationCatalogLinks(catalog = {}) {
+  const universities = Array.isArray(catalog.universities) ? catalog.universities : [];
+  const programs = Array.isArray(catalog.programs) ? catalog.programs : [];
+  const scholarships = Array.isArray(catalog.scholarships) ? catalog.scholarships : [];
+
+  const countrySet = new Set();
+  const universitySet = new Set();
+  const programSet = new Set();
+
+  const universitiesByCountry = new Map();
+  const universitiesByProgram = new Map();
+  const programsByCountry = new Map();
+  const programsByUniversity = new Map();
+  const countryByUniversity = {};
+  const universitiesIndex = {};
+
+  const addMappedValue = (map, key, value) => {
+    const normalizedKey = normalizeCatalogValue(key);
+    const normalizedValue = normalizeCatalogValue(value);
+    if (!normalizedKey || !normalizedValue) return;
+    if (!map.has(normalizedKey)) map.set(normalizedKey, new Set());
+    map.get(normalizedKey).add(normalizedValue);
+  };
+
+  for (const university of universities) {
+    const name = normalizeCatalogValue(university?.name);
+    const country = normalizeCatalogValue(university?.country);
+    if (!name) continue;
+    universitySet.add(name);
+    if (country) {
+      countrySet.add(country);
+      countryByUniversity[name] = country;
+      addMappedValue(universitiesByCountry, country, name);
+    }
+    universitiesIndex[name] = {
+      id: university?.id ?? name,
+      name,
+      country,
+      city: normalizeCatalogValue(university?.city),
+      campuses: Array.isArray(university?.campuses) ? university.campuses : [],
+      website: normalizeCatalogValue(university?.website),
+      address: normalizeCatalogValue(university?.address),
+      programCount: Number(university?.programCount || 0)
+    };
+  }
+
+  for (const program of programs) {
+    const university = normalizeCatalogValue(program?.university);
+    const country = normalizeCatalogValue(program?.country) || countryByUniversity[university] || '';
+    const department = normalizeCatalogValue(program?.department || program?.program);
+    if (country) countrySet.add(country);
+    if (university) universitySet.add(university);
+    if (department) programSet.add(department);
+    if (country && university) addMappedValue(universitiesByCountry, country, university);
+    if (country && department) addMappedValue(programsByCountry, country, department);
+    if (university && department) {
+      addMappedValue(programsByUniversity, university, department);
+      addMappedValue(universitiesByProgram, department, university);
+    }
+    if (university && country && !countryByUniversity[university]) {
+      countryByUniversity[university] = country;
+    }
+  }
+
+  for (const scholarship of scholarships) {
+    const university = normalizeCatalogValue(scholarship?.university);
+    const country = normalizeCatalogValue(scholarship?.country) || countryByUniversity[university] || '';
+    const scope = normalizeCatalogValue(
+      scholarship?.department ||
+      scholarship?.program ||
+      scholarship?.program_scope ||
+      scholarship?.name
+    );
+    if (country) countrySet.add(country);
+    if (university) universitySet.add(university);
+    if (scope) programSet.add(scope);
+    if (country && university) addMappedValue(universitiesByCountry, country, university);
+    if (country && scope) addMappedValue(programsByCountry, country, scope);
+    if (university && scope) {
+      addMappedValue(programsByUniversity, university, scope);
+      addMappedValue(universitiesByProgram, scope, university);
+    }
+  }
+
+  const serializeMap = map =>
+    Object.fromEntries(
+      [...map.entries()].map(([key, valueSet]) => [key, [...valueSet].sort((left, right) => left.localeCompare(right, 'ar'))])
+    );
+
+  return {
+    countries: [...countrySet].sort((left, right) => left.localeCompare(right, 'ar')),
+    universities: [...universitySet].sort((left, right) => left.localeCompare(right, 'ar')),
+    programs: [...programSet].sort((left, right) => left.localeCompare(right, 'ar')),
+    universitiesByCountry: serializeMap(universitiesByCountry),
+    programsByCountry: serializeMap(programsByCountry),
+    programsByUniversity: serializeMap(programsByUniversity),
+    universitiesByProgram: serializeMap(universitiesByProgram),
+    countryByUniversity,
+    universitiesIndex
+  };
+}
+
 function summarizeInvoiceFinancials(invoice) {
   const serviceFee = money(invoice.serviceFee ?? invoice.commission);
   const universityFee = money(invoice.universityFee ?? invoice.subtotal);
@@ -2710,10 +2821,17 @@ app.get('/api/settings', async (_req, res) => {
   const db = await readDb();
   db.settings.documentChecklistTemplates = sanitizeChecklistTemplates(db.settings.documentChecklistTemplates || []);
   db.settings.applicationWorkflowTemplates = sanitizeWorkflowTemplates(db.settings.applicationWorkflowTemplates || []);
-  db.settings.availableUniversities = sanitizeOptionList(db.settings.availableUniversities || []);
-  db.settings.availablePrograms = sanitizeOptionList(db.settings.availablePrograms || []);
+  const catalogLinks = buildEducationCatalogLinks(db.educationCatalog || {});
+  db.settings.availableUniversities = catalogLinks.universities.length
+    ? catalogLinks.universities
+    : sanitizeOptionList(db.settings.availableUniversities || []);
+  db.settings.availablePrograms = catalogLinks.programs.length
+    ? catalogLinks.programs
+    : sanitizeOptionList(db.settings.availablePrograms || []);
   db.settings.availableScholarships = sanitizeOptionList(db.settings.availableScholarships || []);
-  db.settings.availableCountries = sanitizeOptionList(db.settings.availableCountries || []);
+  db.settings.availableCountries = catalogLinks.countries.length
+    ? catalogLinks.countries
+    : sanitizeOptionList(db.settings.availableCountries || []);
   const companyId = _req.user.companyId;
   const users = getScopedItems(db.users, companyId);
   const hrEmployees = users
@@ -2729,6 +2847,7 @@ app.get('/api/settings', async (_req, res) => {
     .filter(Boolean);
   res.json({
     ...db.settings,
+    catalogLinks,
     users: users.map(({ passwordHash, ...user }) => user),
     employees: hrEmployees,
     company: db.companies.find(item => item.id === companyId) || null
@@ -2738,20 +2857,22 @@ app.get('/api/settings', async (_req, res) => {
 app.get('/api/education-catalog', allowRoles('admin', 'management'), async (_req, res) => {
   const db = await readDb();
   const catalog = db.educationCatalog || {};
+  const catalogLinks = buildEducationCatalogLinks(catalog);
   res.json({
     summary: {
       universities: Array.isArray(catalog.universities) ? catalog.universities.length : 0,
       programs: Array.isArray(catalog.programs) ? catalog.programs.length : 0,
       scholarships: Array.isArray(catalog.scholarships) ? catalog.scholarships.length : 0,
-      uniqueDepartments: Array.isArray(catalog.availablePrograms) ? catalog.availablePrograms.length : 0,
-      countries: Array.isArray(catalog.availableCountries) ? catalog.availableCountries.length : 0
+      uniqueDepartments: catalogLinks.programs.length,
+      countries: catalogLinks.countries.length
     },
     universities: Array.isArray(catalog.universities) ? catalog.universities : [],
     programs: Array.isArray(catalog.programs) ? catalog.programs : [],
     scholarships: Array.isArray(catalog.scholarships) ? catalog.scholarships : [],
-    availableUniversities: Array.isArray(catalog.availableUniversities) ? catalog.availableUniversities : [],
-    availablePrograms: Array.isArray(catalog.availablePrograms) ? catalog.availablePrograms : [],
-    availableCountries: Array.isArray(catalog.availableCountries) ? catalog.availableCountries : []
+    availableUniversities: catalogLinks.universities,
+    availablePrograms: catalogLinks.programs,
+    availableCountries: catalogLinks.countries,
+    catalogLinks
   });
 });
 

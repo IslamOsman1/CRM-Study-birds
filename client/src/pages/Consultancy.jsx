@@ -189,10 +189,53 @@ export default function Consultancy() {
     load();
   }, []);
 
+  const catalogLinks = settings?.catalogLinks || {};
   const consultants = useMemo(() => settings?.employees.filter(employee => employee.department === 'Consultancy') || [], [settings]);
-  const targetCountryOptions = useMemo(() => collectUniqueOptions(settings?.availableCountries), [settings?.availableCountries]);
-  const majorOptions = useMemo(() => collectUniqueOptions(settings?.availablePrograms), [settings?.availablePrograms]);
-  const universityOptions = useMemo(() => collectUniqueOptions(settings?.availableUniversities), [settings?.availableUniversities]);
+  const targetCountryOptions = useMemo(
+    () => collectUniqueOptions(catalogLinks.countries, settings?.availableCountries),
+    [catalogLinks.countries, settings?.availableCountries]
+  );
+  const majorOptions = useMemo(() => {
+    const selectedCountry = editOpen ? (editForm.targetCountry || editForm.country) : (form.targetCountry || form.country);
+    if (selectedCountry && Array.isArray(catalogLinks.programsByCountry?.[selectedCountry])) {
+      return collectUniqueOptions(catalogLinks.programsByCountry[selectedCountry]);
+    }
+    return collectUniqueOptions(catalogLinks.programs, settings?.availablePrograms);
+  }, [
+    catalogLinks.programs,
+    catalogLinks.programsByCountry,
+    editForm.country,
+    editForm.targetCountry,
+    editOpen,
+    form.country,
+    form.targetCountry,
+    settings?.availablePrograms
+  ]);
+  const universityOptions = useMemo(() => {
+    const selectedCountry = editOpen ? (editForm.targetCountry || editForm.country) : (form.targetCountry || form.country);
+    const selectedMajor = editOpen ? (editForm.targetMajor || editForm.program) : (form.targetMajor || form.program);
+    const byCountry = selectedCountry && Array.isArray(catalogLinks.universitiesByCountry?.[selectedCountry])
+      ? catalogLinks.universitiesByCountry[selectedCountry]
+      : collectUniqueOptions(catalogLinks.universities, settings?.availableUniversities);
+    if (selectedMajor && Array.isArray(catalogLinks.universitiesByProgram?.[selectedMajor])) {
+      return byCountry.filter(option => catalogLinks.universitiesByProgram[selectedMajor].includes(option));
+    }
+    return byCountry;
+  }, [
+    catalogLinks.universities,
+    catalogLinks.universitiesByCountry,
+    catalogLinks.universitiesByProgram,
+    editForm.country,
+    editForm.program,
+    editForm.targetCountry,
+    editForm.targetMajor,
+    editOpen,
+    form.country,
+    form.program,
+    form.targetCountry,
+    form.targetMajor,
+    settings?.availableUniversities
+  ]);
   const leadDocumentOptions = useMemo(() => (settings?.documentTypes?.length ? settings.documentTypes : fallbackLeadDocumentTypes), [settings?.documentTypes]);
   const formUniversityOptions = useMemo(() => collectUniqueOptions(universityOptions, parseUniversitySelection(form.university)), [form.university, universityOptions]);
   const editUniversityOptions = useMemo(() => collectUniqueOptions(universityOptions, parseUniversitySelection(editForm.university)), [editForm.university, universityOptions]);

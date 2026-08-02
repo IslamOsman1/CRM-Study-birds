@@ -146,14 +146,17 @@ export default function Reception() {
 
   const availableConsultants = useMemo(() => consultants.filter(item => item.status === 'available'), [consultants]);
   const shownConsultants = consultants.length ? consultants : settings?.employees?.filter(employee => employee.department === 'Consultancy') || [];
-  const interestOptions = useMemo(
-    () => (settings?.availablePrograms || []).map(option => String(option || '').trim()).filter(Boolean),
-    [settings?.availablePrograms]
-  );
+  const catalogLinks = settings?.catalogLinks || {};
   const countryOptions = useMemo(
-    () => (settings?.availableCountries || []).map(option => String(option || '').trim()).filter(Boolean),
-    [settings?.availableCountries]
+    () => (catalogLinks.countries || settings?.availableCountries || []).map(option => String(option || '').trim()).filter(Boolean),
+    [catalogLinks.countries, settings?.availableCountries]
   );
+  const interestOptions = useMemo(() => {
+    if (form.country && Array.isArray(catalogLinks.programsByCountry?.[form.country])) {
+      return catalogLinks.programsByCountry[form.country];
+    }
+    return (catalogLinks.programs || settings?.availablePrograms || []).map(option => String(option || '').trim()).filter(Boolean);
+  }, [catalogLinks.programs, catalogLinks.programsByCountry, form.country, settings?.availablePrograms]);
 
   if (loading) return <div className="loading-page"><Spinner />جارٍ تحميل بيانات الاستقبال...</div>;
 
