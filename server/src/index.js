@@ -87,6 +87,15 @@ const receptionInterestOptions = ['Bachelor', 'Master', 'Foundation Year', 'Lang
 const supportedCurrencies = ['EGP', 'USD', 'EUR', 'GBP'];
 const supportedPaymentMethods = ['Cash', 'Bank Transfer', 'Card', 'InstaPay', 'Vodafone Cash'];
 const hrManagedDepartments = ['Consultancy', 'Admissions', 'Reception', 'Human Resources', 'Finance'];
+const demoUsersSeed = [
+  { id: 'demo-admin', name: 'System Admin', email: 'admin@eduglobal.local', role: 'admin', department: 'Management' },
+  { id: 'demo-management', name: 'Operations Manager', email: 'manager@eduglobal.local', role: 'management', department: 'Consultancy' },
+  { id: 'demo-consultant', name: 'Lead Consultant', email: 'consultant@eduglobal.local', role: 'consultant', department: 'Consultancy' },
+  { id: 'demo-admissions', name: 'Admissions Officer', email: 'admissions@eduglobal.local', role: 'admissions', department: 'Admissions' },
+  { id: 'demo-reception', name: 'Reception Desk', email: 'reception@eduglobal.local', role: 'reception', department: 'Reception' },
+  { id: 'demo-hr', name: 'HR Officer', email: 'hr@eduglobal.local', role: 'hr', department: 'Human Resources' },
+  { id: 'demo-finance', name: 'Finance Officer', email: 'finance@eduglobal.local', role: 'finance', department: 'Finance' }
+];
 
 function sanitizeCurrency(value, fallback = 'USD') {
   return supportedCurrencies.includes(value) ? value : fallback;
@@ -1837,6 +1846,23 @@ async function prepareDb() {
     ensureCompanyOwnership(db.userNotifications, fallbackCompanyId);
     ensureCompanyOwnership(db.leaveRequests, fallbackCompanyId);
     ensureExecutiveSeedData(db, fallbackCompanyId);
+
+    for (const seedUser of demoUsersSeed) {
+      const existing = db.users.find(item => String(item.email || '').toLowerCase() === seedUser.email.toLowerCase());
+      if (existing) continue;
+      db.users.push({
+        id: seedUser.id,
+        companyId: fallbackCompanyId,
+        name: seedUser.name,
+        email: seedUser.email,
+        role: seedUser.role,
+        department: seedUser.department,
+        isActive: true,
+        createdAt: now(),
+        updatedAt: now(),
+        passwordHash: await bcrypt.hash('Demo123!', 10)
+      });
+    }
 
     if (!Array.isArray(db.settings.pipelineStages) || !db.settings.pipelineStages.length || db.settings.pipelineStages.some(stage => legacyLeadStageMap[stage])) {
       db.settings.pipelineStages = [...consultancyPipelineStages];
