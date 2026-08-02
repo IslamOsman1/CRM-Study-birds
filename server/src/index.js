@@ -2127,7 +2127,7 @@ app.get('/api/me', async (req, res) => {
   res.json(safe);
 });
 
-app.get('/api/integrations/meta/status', allowRoles('admin', 'management'), async (req, res) => {
+app.get('/api/integrations/meta/status', allowRoles('admin', 'management', 'consultant', 'admissions', 'reception'), async (req, res) => {
   const db = await readDb();
   initMetaCollections(db);
   const integration = sanitizeIntegration(getMetaIntegrationForCompany(db, req.user.companyId));
@@ -2165,7 +2165,6 @@ app.post('/api/integrations/meta/assets/connect', allowRoles('admin', 'managemen
     return res.status(400).json({ message: 'يجب اختيار أصل واحد على الأقل للربط' });
   }
 
-  const storedFile = await storeUploadedFile(req.file);
   const result = await mutateDb(db => {
     initMetaCollections(db);
     const session = resolveMetaSession(db, req.user.companyId, req.user.sub, String(sessionId));
@@ -2274,7 +2273,7 @@ app.delete('/api/integrations/meta/disconnect', allowRoles('admin', 'management'
   res.status(204).end();
 });
 
-app.get('/api/integrations/meta/channels', allowRoles('admin', 'management'), async (req, res) => {
+app.get('/api/integrations/meta/channels', allowRoles('admin', 'management', 'consultant', 'admissions', 'reception'), async (req, res) => {
   const db = await readDb();
   initMetaCollections(db);
   res.json(listConnectedChannels(db, req.user.companyId));
