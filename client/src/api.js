@@ -18,6 +18,24 @@ export async function api(path, options = {}) {
   return data;
 }
 
+export async function apiDownload(path, options = {}) {
+  const token = localStorage.getItem('eduglobal_token');
+  const headers = new Headers(options.headers || {});
+
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  if (!(options.body instanceof FormData) && options.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || 'فشل تنزيل الملف');
+  }
+
+  return response.blob();
+}
+
 export const formatMoney = (value, currency = 'USD') =>
   new Intl.NumberFormat('ar-EG', {
     style: 'currency',

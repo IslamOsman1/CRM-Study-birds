@@ -3,11 +3,16 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import multer from 'multer';
+import PDFDocument from 'pdfkit';
+import reshaper from 'arabic-persian-reshaper';
 import bcrypt from 'bcryptjs';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
+import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { GridFSBucket, ObjectId } from 'mongodb';
 import { readDb, mutateDb, getMongoDbHandle, isMongoDbEnabled } from './db.js';
 import { signToken, requireAuth, allowRoles } from './auth.js';
@@ -29,6 +34,18 @@ const cloudinaryCloudName = String(process.env.CLOUDINARY_CLOUD_NAME || '').trim
 const cloudinaryApiKey = String(process.env.CLOUDINARY_API_KEY || '').trim();
 const cloudinaryApiSecret = String(process.env.CLOUDINARY_API_SECRET || '').trim();
 const useCloudinaryStorage = Boolean(cloudinaryCloudName && cloudinaryApiKey && cloudinaryApiSecret);
+const quoteLogoPath = path.join(__dirname, '..', '..', 'client', 'src', 'assets', 'logo.jpeg');
+const windowsArabicRegularFontPath = 'C:\\Windows\\Fonts\\arial.ttf';
+const windowsArabicBoldFontPath = 'C:\\Windows\\Fonts\\arialbd.ttf';
+const chromeExecutableCandidates = [
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+  'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
+];
+const pdfArabicRegularFontPath = path.join(__dirname, '..', 'node_modules', '@fontsource', 'noto-sans-arabic', 'files', 'noto-sans-arabic-arabic-400-normal.woff');
+const pdfArabicBoldFontPath = path.join(__dirname, '..', 'node_modules', '@fontsource', 'noto-sans-arabic', 'files', 'noto-sans-arabic-arabic-700-normal.woff');
+const execFileAsync = promisify(execFile);
 
 fs.mkdirSync(uploadsDir, { recursive: true });
 
@@ -343,6 +360,693 @@ function summarizeInvoiceFinancials(invoice) {
     passThroughFees: universityFee + visaFee,
     total
   };
+}
+
+function safePdfText(value, fallback = '—') {
+  const normalized = String(value || '').trim();
+  return normalized || fallback;
+}
+
+function containsArabic(value) {
+  return /[\u0600-\u06FF]/.test(String(value || ''));
+}
+
+function preparePdfDisplayText(value, fallback = '—') {
+  const normalized = safePdfText(value, fallback);
+  if (!containsArabic(normalized)) return normalized;
+  return reshaper?.ArabicShaper?.convertArabic
+    ? reshaper.ArabicShaper.convertArabic(normalized)
+    : normalized;
+}
+
+function safePdfMoney(value, currency = 'USD') {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: sanitizeCurrency(currency),
+    maximumFractionDigits: 0
+  }).format(Number(value || 0));
+}
+
+function loadPdfFontPath(weight = 'regular') {
+  const candidatePaths = weight === 'bold'
+    ? [windowsArabicBoldFontPath, pdfArabicBoldFontPath, windowsArabicRegularFontPath, pdfArabicRegularFontPath]
+    : [windowsArabicRegularFontPath, pdfArabicRegularFontPath, windowsArabicBoldFontPath, pdfArabicBoldFontPath];
+
+  return candidatePaths.find(fontPath => fs.existsSync(fontPath)) || null;
+}
+
+function getChromeExecutablePath() {
+  return chromeExecutableCandidates.find(candidate => fs.existsSync(candidate)) || '';
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildUniversityQuoteHtml({ companyName, preparedBy, student, items, logoDataUri }) {
+  const rows = items.map(item => {
+    const location = [safePdfText(item.country, ''), safePdfText(item.city, '')].filter(Boolean).join(' / ') || '-';
+    return `
+      <tr>
+        <td class="program-cell">
+          <div class="program-title">${escapeHtml(item.major || 'Program')}</div>
+          <span class="availability-badge">${escapeHtml(item.availability || 'Available')}</span>
+        </td>
+        <td class="university-cell">
+          <div class="university-title">${escapeHtml(item.university)}</div>
+          <div class="university-sub">${escapeHtml(location)}</div>
+        </td>
+        <td class="info-cell">
+          <div class="info-line"><strong>Degree:</strong> <span>${escapeHtml(item.degree || '-')}</span></div>
+          <div class="info-line"><strong>Language:</strong> <span>${escapeHtml(item.language || '-')}</span></div>
+          <div class="info-line"><strong>Deposit Fee:</strong> <span>${escapeHtml(safePdfMoney(item.depositAmount, item.currency))}</span></div>
+          <div class="info-line"><strong>Prep School:</strong> <span>${escapeHtml(safePdfMoney(item.prepFee, item.currency))}</span></div>
+        </td>
+        <td class="fees-cell">
+          <div class="discount-card">
+            <span class="discount-label">DISCOUNTED</span>
+            <strong>${escapeHtml(safePdfMoney(item.tuitionFee, item.currency))}</strong>
+          </div>
+          <div class="cash-block">
+            <span>CASH PAYMENT</span>
+            <strong>${escapeHtml(safePdfMoney(item.cashFee, item.currency))}</strong>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const profileRows = [
+    ['Student Name', student.studentName],
+    ['Phone', student.studentPhone],
+    ['Email', student.studentEmail],
+    ['Target Country', student.targetCountry],
+    ['Prepared By', preparedBy],
+    ['Programs Count', String(items.length)]
+  ].map(([label, value]) => `
+    <div class="profile-item">
+      <span class="profile-label">${escapeHtml(label)}</span>
+      <strong class="profile-value">${escapeHtml(value || '-')}</strong>
+    </div>
+  `).join('');
+
+  return `
+    <!doctype html>
+    <html lang="ar" dir="rtl">
+      <head>
+        <meta charset="utf-8" />
+        <title>University Quote</title>
+        <style>
+          @page { size: A4; margin: 18mm 14mm 18mm 14mm; }
+          * { box-sizing: border-box; }
+          body {
+            margin: 0;
+            font-family: Arial, "Noto Sans Arabic", sans-serif;
+            color: #172033;
+            background: linear-gradient(180deg, #26398c 0%, #2e69bf 16%, #ffffff 16%, #ffffff 100%);
+          }
+          .page {
+            background: #fff;
+            border-radius: 26px;
+            min-height: 100%;
+            padding: 26px 26px 34px;
+            box-shadow: 0 0 0 1px #dfe7f2 inset;
+            position: relative;
+            overflow: hidden;
+          }
+          .page::after {
+            content: "";
+            position: absolute;
+            left: -40px;
+            bottom: -34px;
+            width: 240px;
+            height: 160px;
+            background: linear-gradient(135deg, #38b6ff, #2072d6);
+            border-top-right-radius: 120px;
+            transform: rotate(-10deg);
+            opacity: .95;
+          }
+          .hero {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 18px;
+            direction: ltr;
+          }
+          .brand-block {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+          }
+          .brand-block img {
+            width: 110px;
+            height: auto;
+            object-fit: contain;
+          }
+          .hero-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+          }
+          .title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #2450a6;
+            letter-spacing: .4px;
+            text-transform: uppercase;
+          }
+          .hero-line {
+            width: 100%;
+            height: 5px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #23368c, #38b6ff);
+          }
+          .hero-meta {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+          }
+          .meta-chip {
+            border: 1px solid #d6e3f8;
+            background: #fff;
+            color: #3d4b66;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: 700;
+          }
+          .profile-grid {
+            margin-top: 22px;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+          }
+          .profile-item {
+            border: 1px solid #e0e8f4;
+            background: #fbfdff;
+            border-radius: 14px;
+            padding: 12px 14px;
+          }
+          .profile-label {
+            display: block;
+            color: #6a7891;
+            font-size: 11px;
+            margin-bottom: 6px;
+          }
+          .profile-value {
+            display: block;
+            font-size: 14px;
+            color: #182131;
+          }
+          .section-title {
+            margin: 24px 0 12px;
+            font-size: 18px;
+            font-weight: 800;
+            color: #182131;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            border: 1px solid #dbe5f2;
+            border-radius: 16px;
+            overflow: hidden;
+          }
+          thead th {
+            background: #edf4ff;
+            color: #2450a6;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 14px 10px;
+            border-left: 1px solid #d9e6f5;
+            text-transform: uppercase;
+          }
+          tbody td {
+            padding: 16px 14px;
+            border-top: 1px solid #e4ebf5;
+            border-left: 1px solid #eef3fa;
+            vertical-align: top;
+          }
+          tbody tr:nth-child(even) td { background: #fbfdff; }
+          .program-title, .university-title {
+            font-size: 16px;
+            font-weight: 800;
+            line-height: 1.45;
+            word-break: break-word;
+          }
+          .program-cell, .university-cell, .info-cell {
+            direction: rtl;
+            text-align: right;
+          }
+          .university-sub {
+            margin-top: 8px;
+            color: #2f6fde;
+            font-size: 13px;
+            font-weight: 700;
+          }
+          .availability-badge {
+            display: inline-flex;
+            margin-top: 14px;
+            border-radius: 999px;
+            border: 1px solid #b8e7cf;
+            background: #ecfdf3;
+            color: #10a46f;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 6px 12px;
+          }
+          .info-line {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 13px;
+            margin-bottom: 9px;
+            direction: ltr;
+          }
+          .info-line strong { color: #31425d; }
+          .info-line span {
+            color: #182131;
+            font-weight: 700;
+            text-align: right;
+            direction: rtl;
+            flex: 1;
+          }
+          .fees-cell {
+            direction: ltr;
+            text-align: left;
+          }
+          .discount-card {
+            border: 1px solid #c9defa;
+            background: #edf4ff;
+            border-radius: 12px;
+            padding: 12px 14px;
+          }
+          .discount-label {
+            display: block;
+            color: #356fe8;
+            font-size: 10px;
+            font-weight: 800;
+            margin-bottom: 8px;
+          }
+          .discount-card strong {
+            display: block;
+            color: #356fe8;
+            font-size: 28px;
+            line-height: 1;
+          }
+          .cash-block {
+            margin-top: 14px;
+          }
+          .cash-block span {
+            display: block;
+            color: #6a7891;
+            font-size: 10px;
+            font-weight: 800;
+            margin-bottom: 6px;
+          }
+          .cash-block strong {
+            display: block;
+            color: #10a46f;
+            font-size: 24px;
+            line-height: 1;
+          }
+          .note-box {
+            margin-top: 20px;
+            border: 1px solid #b7e4d7;
+            background: #ecfdf5;
+            border-radius: 16px;
+            padding: 16px 18px;
+          }
+          .note-box strong {
+            display: block;
+            color: #0f766e;
+            margin-bottom: 6px;
+            font-size: 16px;
+          }
+          .note-box p {
+            margin: 0;
+            color: #14532d;
+            line-height: 1.7;
+            font-size: 12px;
+          }
+          .footer-mark {
+            margin-top: 20px;
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 20px;
+            position: relative;
+            z-index: 1;
+            direction: ltr;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="page">
+          <div class="hero">
+            <div class="brand-block">
+              ${logoDataUri ? `<img src="${logoDataUri}" alt="logo" />` : ''}
+            </div>
+            <div class="hero-right">
+              <div class="title">Turkey Programs</div>
+              <div class="hero-line"></div>
+              <div class="hero-meta">
+                <div class="meta-chip">Date: 22/08/2026</div>
+                <div class="meta-chip">Total: ${escapeHtml(String(items.length))} Programs</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-grid">${profileRows}</div>
+          <div class="section-title">Selected University Options</div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width:25%">Program</th>
+                <th style="width:27%">University</th>
+                <th style="width:26%">Information</th>
+                <th style="width:22%">Fees</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+
+          <div class="note-box">
+            <strong>Consultant Note</strong>
+            <p>This quotation is generated from ${escapeHtml(companyName || 'EduGlobal CRM')} on Saturday, August 22, 2026 and should be confirmed against the latest university availability before final submission.</p>
+          </div>
+
+          <div class="footer-mark">turkey / istanbul</div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+async function generateUniversityQuotePdfChrome({ companyName, preparedBy, student, items }) {
+  const chromePath = getChromeExecutablePath();
+  if (!chromePath) {
+    throw Object.assign(new Error('Chrome or Edge is required on the server to generate the PDF correctly.'), { status: 500 });
+  }
+
+  const tempDir = path.join(os.tmpdir(), `eduglobal-quote-${randomUUID()}`);
+  const htmlPath = path.join(tempDir, 'quote.html');
+  const pdfPath = path.join(tempDir, 'quote.pdf');
+
+  fs.mkdirSync(tempDir, { recursive: true });
+
+  const logoDataUri = fs.existsSync(quoteLogoPath)
+    ? `data:image/jpeg;base64,${fs.readFileSync(quoteLogoPath).toString('base64')}`
+    : '';
+
+  const html = buildUniversityQuoteHtml({ companyName, preparedBy, student, items, logoDataUri });
+  fs.writeFileSync(htmlPath, html, 'utf8');
+
+  try {
+    await execFileAsync(chromePath, [
+      '--headless=new',
+      '--disable-gpu',
+      '--no-pdf-header-footer',
+      `--print-to-pdf=${pdfPath}`,
+      htmlPath
+    ], { windowsHide: true });
+
+    return fs.readFileSync(pdfPath);
+  } finally {
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch {}
+  }
+}
+
+function generateUniversityQuotePdf({ companyName, preparedBy, student, items }) {
+  const doc = new PDFDocument({ size: 'A4', margin: 42, bufferPages: true });
+  const chunks = [];
+  const regularFont = loadPdfFontPath('regular');
+  const boldFont = loadPdfFontPath('bold') || regularFont;
+  const lineColor = '#d8deea';
+  const textColor = '#182131';
+  const mutedColor = '#627086';
+  const accentColor = '#0f766e';
+  const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const drawCell = (text, x, y, width, options = {}) => {
+    const preparedText = preparePdfDisplayText(text);
+    const isArabicText = containsArabic(text);
+    doc
+      .font(options.bold ? (boldFont || 'Helvetica-Bold') : (regularFont || 'Helvetica'))
+      .fontSize(options.fontSize || 9)
+      .fillColor(options.color || textColor)
+      .text(preparedText, x + 6, y + 8, {
+        width: width - 12,
+        align: options.align || (isArabicText ? 'right' : 'left'),
+        ellipsis: true,
+        lineBreak: false
+      });
+  };
+  const drawPageFrame = () => {
+    doc
+      .save()
+      .lineWidth(1)
+      .strokeColor('#e6ebf4')
+      .roundedRect(26, 26, doc.page.width - 52, doc.page.height - 52, 18)
+      .stroke()
+      .restore();
+  };
+  const ensureSpace = requiredHeight => {
+    if (doc.y + requiredHeight <= doc.page.height - doc.page.margins.bottom) return;
+    doc.addPage();
+    drawPageFrame();
+  };
+  const drawKeyValueLine = (label, value, x, y, labelWidth, valueWidth) => {
+    doc
+      .font(boldFont || 'Helvetica-Bold')
+      .fillColor(mutedColor)
+      .fontSize(8)
+      .text(label, x, y, { width: labelWidth, align: 'left' });
+    doc
+      .font(regularFont || 'Helvetica')
+      .fillColor(textColor)
+      .fontSize(9)
+      .text(preparePdfDisplayText(value), x + labelWidth + 8, y, {
+        width: valueWidth,
+        align: containsArabic(value) ? 'right' : 'left'
+      });
+  };
+
+  doc.on('data', chunk => chunks.push(chunk));
+
+  if (regularFont) doc.font(regularFont);
+  drawPageFrame();
+
+  if (fs.existsSync(quoteLogoPath)) {
+    doc.image(quoteLogoPath, doc.page.margins.left, 38, { fit: [88, 88], align: 'left' });
+  }
+
+  doc
+    .font(boldFont || 'Helvetica-Bold')
+    .fillColor(textColor)
+    .fontSize(20)
+    .text('University Offer Quote', 0, 44, { align: 'right' });
+  doc
+    .font(regularFont || 'Helvetica')
+    .fillColor(mutedColor)
+    .fontSize(10)
+    .text(companyName || 'EduGlobal CRM', 0, 68, { align: 'right' })
+    .text('Prepared on Saturday, August 22, 2026', 0, 84, { align: 'right' })
+    .text(`Prepared by ${safePdfText(preparedBy, 'CRM Team')}`, 0, 100, { align: 'right' });
+
+  doc.moveTo(doc.page.margins.left, 132).lineTo(doc.page.width - doc.page.margins.right, 132).strokeColor(lineColor).stroke();
+
+  doc.y = 150;
+  doc
+    .font(boldFont || 'Helvetica-Bold')
+    .fillColor(textColor)
+    .fontSize(12)
+    .text('Student Profile', doc.page.margins.left, doc.y);
+  doc.y += 10;
+
+  const profileRows = [
+    ['Student Name', safePdfText(student.studentName)],
+    ['Phone', safePdfText(student.studentPhone)],
+    ['Email', safePdfText(student.studentEmail)],
+    ['Target Country', safePdfText(student.targetCountry)],
+    ['Selected Programs', String(items.length)],
+    ['Notes', safePdfText(student.notes)]
+  ];
+
+  for (const [label, value] of profileRows) {
+    ensureSpace(26);
+    doc.roundedRect(doc.page.margins.left, doc.y, 128, 22, 8).fillAndStroke('#f4f7fb', '#edf1f7');
+    doc
+      .font(boldFont || 'Helvetica-Bold')
+      .fillColor('#344054')
+      .fontSize(9)
+      .text(preparePdfDisplayText(label), doc.page.margins.left + 8, doc.y + 7, { width: 112 });
+    doc
+      .font(regularFont || 'Helvetica')
+      .fillColor(textColor)
+      .fontSize(9)
+      .text(preparePdfDisplayText(value), doc.page.margins.left + 140, doc.y + 7, { width: pageWidth - 140 });
+    doc.y += 28;
+  }
+
+  doc.y += 10;
+  ensureSpace(42);
+  doc
+    .font(boldFont || 'Helvetica-Bold')
+    .fillColor(textColor)
+    .fontSize(12)
+    .text('Selected University Options', doc.page.margins.left, doc.y);
+  doc.y += 14;
+
+  const tableX = doc.page.margins.left;
+  const columnWidths = [150, 170, 170, pageWidth - 150 - 170 - 170];
+  const headerHeight = 30;
+  const rowHeight = 96;
+  const tableHeaders = ['PROGRAM', 'UNIVERSITY', 'INFORMATION', 'FEES'];
+
+  let headerCursorX = tableX;
+  tableHeaders.forEach((label, index) => {
+    doc.rect(headerCursorX, doc.y, columnWidths[index], headerHeight).fillAndStroke('#edf4ff', '#d9e6f5');
+    doc
+      .font(boldFont || 'Helvetica-Bold')
+      .fillColor('#2450a6')
+      .fontSize(8.5)
+      .text(label, headerCursorX + 8, doc.y + 10, { width: columnWidths[index] - 16, align: 'center' });
+    headerCursorX += columnWidths[index];
+  });
+  doc.y += headerHeight;
+
+  items.forEach((item, index) => {
+    ensureSpace(rowHeight + 2);
+
+    const rowY = doc.y;
+    const rowFill = index % 2 === 0 ? '#ffffff' : '#fbfdff';
+    let cellX = tableX;
+    columnWidths.forEach(width => {
+      doc.rect(cellX, rowY, width, rowHeight).fillAndStroke(rowFill, '#e2eaf5');
+      cellX += width;
+    });
+
+    const programX = tableX;
+    const universityX = tableX + columnWidths[0];
+    const infoX = universityX + columnWidths[1];
+    const feesX = infoX + columnWidths[2];
+
+    doc
+      .font(boldFont || 'Helvetica-Bold')
+      .fillColor(textColor)
+      .fontSize(9)
+      .text(preparePdfDisplayText(item.major || 'Program'), programX + 10, rowY + 18, {
+        width: columnWidths[0] - 20,
+        align: containsArabic(item.major) ? 'right' : 'left'
+      });
+    doc
+      .roundedRect(programX + 10, rowY + 54, 60, 18, 8)
+      .fillAndStroke('#ecfdf3', '#b8e7cf');
+    doc
+      .font(boldFont || 'Helvetica-Bold')
+      .fillColor('#10a46f')
+      .fontSize(7)
+      .text((item.availability || 'Available').toUpperCase(), programX + 14, rowY + 60, {
+        width: 52,
+        align: 'center'
+      });
+
+    doc
+      .font(boldFont || 'Helvetica-Bold')
+      .fillColor(textColor)
+      .fontSize(9)
+      .text(preparePdfDisplayText(item.university), universityX + 10, rowY + 18, {
+        width: columnWidths[1] - 20,
+        align: containsArabic(item.university) ? 'right' : 'left'
+      });
+    doc
+      .font(regularFont || 'Helvetica')
+      .fillColor('#2f6fde')
+      .fontSize(8)
+      .text(preparePdfDisplayText([safePdfText(item.country, ''), safePdfText(item.city, '')].filter(Boolean).join(' / ') || '-'), universityX + 10, rowY + 40, {
+        width: columnWidths[1] - 20,
+        align: containsArabic(item.country) || containsArabic(item.city) ? 'right' : 'left'
+      });
+
+    const infoLines = [
+      ['Degree', item.degree],
+      ['Language', item.language],
+      ['Deposit Fee', safePdfMoney(item.depositAmount, item.currency)],
+      ['Prep School', safePdfMoney(item.prepFee, item.currency)]
+    ];
+    infoLines.forEach(([label, value], infoIndex) => {
+      drawKeyValueLine(label, value, infoX + 10, rowY + 12 + (infoIndex * 18), 62, columnWidths[2] - 84);
+    });
+
+    doc
+      .roundedRect(feesX + 10, rowY + 14, columnWidths[3] - 20, 38, 8)
+      .fillAndStroke('#edf4ff', '#c9defa');
+    doc
+      .font(boldFont || 'Helvetica-Bold')
+      .fillColor('#356fe8')
+      .fontSize(7.5)
+      .text('DISCOUNTED', feesX + 18, rowY + 22, { width: columnWidths[3] - 36, align: 'left' });
+    doc
+      .font(boldFont || 'Helvetica-Bold')
+      .fillColor('#356fe8')
+      .fontSize(13)
+      .text(safePdfMoney(item.tuitionFee, item.currency), feesX + 18, rowY + 32, { width: columnWidths[3] - 36, align: 'left' });
+    doc
+      .font(boldFont || 'Helvetica-Bold')
+      .fillColor(mutedColor)
+      .fontSize(7)
+      .text('CASH PAYMENT', feesX + 18, rowY + 60, { width: columnWidths[3] - 36, align: 'left' });
+    doc
+      .font(boldFont || 'Helvetica-Bold')
+      .fillColor('#10a46f')
+      .fontSize(11)
+      .text(safePdfMoney(item.cashFee, item.currency), feesX + 18, rowY + 70, { width: columnWidths[3] - 36, align: 'left' });
+
+    doc.y += rowHeight;
+  });
+
+  ensureSpace(80);
+  doc.y += 8;
+  doc.roundedRect(doc.page.margins.left, doc.y, pageWidth, 52, 12).fillAndStroke('#ecfdf5', '#b7e4d7');
+  doc
+    .font(boldFont || 'Helvetica-Bold')
+    .fillColor(accentColor)
+    .fontSize(11)
+    .text('Consultant Note', doc.page.margins.left + 14, doc.y + 12);
+  doc
+    .font(regularFont || 'Helvetica')
+    .fillColor('#14532d')
+    .fontSize(9)
+    .text(
+      'This quotation is generated from the CRM catalog on Saturday, August 22, 2026 and should be confirmed against the latest university availability before final submission.',
+      doc.page.margins.left + 14,
+      doc.y + 28,
+      { width: pageWidth - 28 }
+    );
+
+  const pageRange = doc.bufferedPageRange();
+  for (let pageIndex = 0; pageIndex < pageRange.count; pageIndex += 1) {
+    doc.switchToPage(pageIndex);
+    doc
+      .font(regularFont || 'Helvetica')
+      .fillColor('#8a94a6')
+      .fontSize(8)
+      .text(`Page ${pageIndex + 1} of ${pageRange.count}`, 0, doc.page.height - 32, { align: 'center' });
+  }
+
+  doc.end();
+
+  return new Promise((resolve, reject) => {
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+  });
 }
 
 function enrichInvoice(db, invoice) {
@@ -814,6 +1518,43 @@ function createUserNotification(db, companyId, userId, title, message, metadata 
     createdAt: now()
   });
   db.userNotifications = db.userNotifications.slice(0, 500);
+}
+
+function defaultResponseScripts() {
+  return [
+    {
+      id: 'script-dentistry-faqs',
+      category: 'الأسنان',
+      title: 'Dentistry FAQs',
+      body: 'أهلًا بحضرتك، تخصص طب الأسنان متاح بعدة جامعات مع خيارات لغة ودفع مختلفة. أرسل لي الدولة والميزانية لنجهز أفضل الخيارات.'
+    },
+    {
+      id: 'script-visa-requirements',
+      category: 'الفيزا',
+      title: 'Visa Requirements',
+      body: 'لتجهيز ملف الفيزا نحتاج جواز السفر، خطاب القبول، إثبات السكن، والتأمين الصحي حسب الدولة.'
+    },
+    {
+      id: 'script-government-private',
+      category: 'مقارنات',
+      title: 'Government vs Private',
+      body: 'الجامعات الحكومية مناسبة لو الأولوية للسعر، والجامعات الخاصة تعطي مرونة أكبر في المقاعد واللغات.'
+    },
+    {
+      id: 'script-installments',
+      category: 'المدفوعات',
+      title: 'Installments Script',
+      body: 'لدينا خيارات دفع كاش وتقسيط حسب الجامعة، ويمكنني تجهيز عرض سعر يوضح الفرق بين كل طريقة.'
+    }
+  ];
+}
+
+function defaultReminders(companyId, userId) {
+  return [
+    { id: randomUUID(), companyId, userId, type: 'tasks', text: 'مراجعة العملاء المتأخرين في المتابعة قبل نهاية اليوم.', archived: false, createdAt: now() },
+    { id: randomUUID(), companyId, userId, type: 'admissions', text: 'تسليم خطاب القبول النهائي للطالب أحمد مصطفى.', archived: false, createdAt: now() },
+    { id: randomUUID(), companyId, userId, type: 'personal', text: 'متابعة إذن الخروج مع الموارد البشرية.', archived: false, createdAt: now() }
+  ];
 }
 
 function computeConsultantLiveStatus(db, companyId, consultantId) {
@@ -1915,6 +2656,10 @@ async function prepareDb() {
     db.monthlyRevenue ||= [];
     db.executiveActions ||= [];
     db.broadcasts ||= [];
+    db.callSchedules ||= [];
+    db.dailyReports ||= [];
+    db.reminders ||= [];
+    db.responseScripts ||= [];
     db.userNotifications ||= [];
     db.leaveRequests ||= [];
     db.receptionState ||= {};
@@ -1954,6 +2699,10 @@ async function prepareDb() {
     ensureCompanyOwnership(db.tasks, fallbackCompanyId);
     ensureCompanyOwnership(db.executiveActions, fallbackCompanyId);
     ensureCompanyOwnership(db.broadcasts, fallbackCompanyId);
+    ensureCompanyOwnership(db.callSchedules, fallbackCompanyId);
+    ensureCompanyOwnership(db.dailyReports, fallbackCompanyId);
+    ensureCompanyOwnership(db.reminders, fallbackCompanyId);
+    ensureCompanyOwnership(db.responseScripts, fallbackCompanyId);
     ensureCompanyOwnership(db.userNotifications, fallbackCompanyId);
     ensureCompanyOwnership(db.leaveRequests, fallbackCompanyId);
     ensureExecutiveSeedData(db, fallbackCompanyId);
@@ -1975,6 +2724,23 @@ async function prepareDb() {
       });
     }
 
+    if (!db.responseScripts.length) {
+      db.responseScripts = defaultResponseScripts().map(item => ({
+        ...item,
+        companyId: fallbackCompanyId,
+        createdAt: now(),
+        updatedAt: now()
+      }));
+    }
+
+    for (const user of db.users) {
+      if (user.role === 'admin') continue;
+      const userReminders = getScopedItems(db.reminders, fallbackCompanyId).filter(item => item.userId === user.id);
+      if (!userReminders.length) {
+        db.reminders.push(...defaultReminders(fallbackCompanyId, user.id));
+      }
+    }
+
     if (!Array.isArray(db.settings.pipelineStages) || !db.settings.pipelineStages.length || db.settings.pipelineStages.some(stage => legacyLeadStageMap[stage])) {
       db.settings.pipelineStages = [...consultancyPipelineStages];
     }
@@ -1992,6 +2758,7 @@ async function prepareDb() {
     db.settings.availableCountries = sanitizeOptionList(db.settings.availableCountries || []);
 
     db.tasks ||= [];
+    const users = getScopedItems(db.users || [], req.user.companyId);
     for (const user of db.users) {
       if (typeof user.isActive !== 'boolean') user.isActive = true;
       if (!user.companyId) user.companyId = fallbackCompanyId;
@@ -2034,6 +2801,28 @@ async function prepareDb() {
       request.leaveType ||= 'Annual Leave';
       request.reason ||= '';
       request.companyId ||= fallbackCompanyId;
+    }
+
+    for (const reminder of db.reminders) {
+      reminder.type ||= 'tasks';
+      reminder.text ||= '';
+      reminder.archived = Boolean(reminder.archived);
+      reminder.createdAt ||= now();
+      reminder.userId ||= db.users.find(item => item.companyId === fallbackCompanyId && item.role !== 'admin')?.id || '';
+    }
+
+    for (const call of db.callSchedules) {
+      call.status ||= 'scheduled';
+      call.createdAt ||= now();
+      call.createdBy ||= 'System';
+    }
+
+    for (const report of db.dailyReports) {
+      report.metrics ||= { newLeads: 0, contacted: 0, submitted: 0, followUps: 0 };
+      report.startTime ||= '09:00';
+      report.endTime ||= '18:00';
+      report.notes ||= '';
+      report.createdAt ||= now();
     }
 
     for (const log of db.receptionLogs) {
@@ -2876,6 +3665,60 @@ app.get('/api/education-catalog', allowRoles('admin', 'management'), async (_req
   });
 });
 
+app.post('/api/education-catalog/quote-pdf', allowRoles('admin', 'management'), async (req, res, next) => {
+  try {
+    const payload = req.body || {};
+    const student = payload.student || {};
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    if (!String(student.studentName || '').trim()) {
+      return res.status(400).json({ message: 'اسم الطالب مطلوب لتوليد ملف العرض.' });
+    }
+    if (!items.length) {
+      return res.status(400).json({ message: 'يجب اختيار برنامج واحد على الأقل.' });
+    }
+
+    const db = await readDb();
+    const companyId = req.user.companyId;
+    const company = findScoped(db.companies || [], companyId, item => item.id === companyId);
+    const settings = db.settings || {};
+    const pdfBuffer = await generateUniversityQuotePdfChrome({
+      companyName: company?.name || settings.companyName || 'EduGlobal CRM',
+      preparedBy: req.user.name,
+      student: {
+        studentName: String(student.studentName || '').trim(),
+        studentPhone: String(student.studentPhone || '').trim(),
+        studentEmail: String(student.studentEmail || '').trim(),
+        targetCountry: String(student.targetCountry || '').trim(),
+        notes: String(student.notes || '').trim()
+      },
+      items: items.map(item => ({
+        university: String(item?.university || '').trim(),
+        major: String(item?.major || '').trim(),
+        degree: String(item?.degree || '').trim(),
+        language: String(item?.language || '').trim(),
+        city: String(item?.city || '').trim(),
+        country: String(item?.country || '').trim(),
+        availability: String(item?.availability || '').trim(),
+        tuitionFee: Number(item?.tuitionFee || 0),
+        cashFee: Number(item?.cashFee || 0),
+        depositAmount: Number(item?.depositAmount || 0),
+        prepFee: Number(item?.prepFee || 0),
+        currency: sanitizeCurrency(item?.currency || 'USD')
+      }))
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Length', String(pdfBuffer.length));
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(`university-quote-${String(student.studentName || 'student').trim() || 'student'}.pdf`)}"`
+    );
+    res.send(pdfBuffer);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.patch('/api/settings', allowRoles('admin', 'management'), async (req, res) => {
   const payload = req.body || {};
 
@@ -3012,9 +3855,203 @@ app.patch('/api/users/:id', allowRoles('admin', 'management'), async (req, res) 
 
 app.get('/api/tasks', async (req, res) => {
   const db = await readDb();
+  const users = getScopedItems(db.users || [], req.user.companyId);
+  const safeUsers = new Map(users.map(({ passwordHash, ...user }) => [user.id, user]));
   const automaticTasks = req.user.role === 'hr' ? buildHrTasks(db, req.user.companyId) : buildAutomaticTasks(db, req.user.companyId);
-  const manualTasks = getScopedItems(db.tasks || [], req.user.companyId).filter(task => !task.assignedRole || task.assignedRole === req.user.role || ['admin', 'management'].includes(req.user.role));
-  res.json([...automaticTasks, ...manualTasks]);
+  const manualTasks = getScopedItems(db.tasks || [], req.user.companyId).filter(task => {
+    if (['admin', 'management'].includes(req.user.role)) return true;
+    if (task.assignedUserId) return task.assignedUserId === req.user.sub;
+    return !task.assignedRole || task.assignedRole === req.user.role;
+  });
+  res.json(
+    [...automaticTasks, ...manualTasks].map(task => ({
+      ...task,
+      assignedUser: task.assignedUserId ? safeUsers.get(task.assignedUserId) || null : null
+    }))
+  );
+});
+
+app.get('/api/reminders', async (req, res) => {
+  const db = await readDb();
+  const reminders = getScopedItems(db.reminders || [], req.user.companyId)
+    .filter(item => item.userId === req.user.sub || ['admin', 'management'].includes(req.user.role))
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  res.json(reminders);
+});
+
+app.post('/api/reminders', async (req, res) => {
+  const text = String(req.body?.text || '').trim();
+  const type = ['tasks', 'admissions', 'personal'].includes(req.body?.type) ? req.body.type : 'tasks';
+  if (!text) return res.status(400).json({ message: 'نص التذكير مطلوب' });
+
+  const result = await mutateDb(db => {
+    db.reminders ||= [];
+    const reminder = {
+      id: randomUUID(),
+      companyId: req.user.companyId,
+      userId: req.user.sub,
+      type,
+      text,
+      archived: false,
+      createdAt: now(),
+      createdBy: req.user.name
+    };
+    db.reminders.unshift(reminder);
+    activity(db, req.user, 'created', 'reminder', reminder.id, `تم إنشاء تذكير جديد: ${text}`);
+    return reminder;
+  });
+
+  res.status(201).json(result);
+});
+
+app.patch('/api/reminders/:id', async (req, res) => {
+  const result = await mutateDb(db => {
+    const reminder = findScoped(db.reminders || [], req.user.companyId, item => item.id === req.params.id);
+    if (!reminder) throw Object.assign(new Error('التذكير غير موجود'), { status: 404 });
+    if (reminder.userId !== req.user.sub && !['admin', 'management'].includes(req.user.role)) {
+      throw Object.assign(new Error('ليس لديك صلاحية لتعديل هذا التذكير'), { status: 403 });
+    }
+    if (typeof req.body?.archived === 'boolean') reminder.archived = req.body.archived;
+    if (typeof req.body?.text === 'string' && req.body.text.trim()) reminder.text = req.body.text.trim();
+    reminder.updatedAt = now();
+    return reminder;
+  });
+
+  res.json(result);
+});
+
+app.get('/api/calls', async (req, res) => {
+  const db = await readDb();
+  const calls = getScopedItems(db.callSchedules || [], req.user.companyId)
+    .sort((a, b) => String(a.datetime).localeCompare(String(b.datetime)));
+  res.json(calls);
+});
+
+app.post('/api/calls', async (req, res) => {
+  const datetime = String(req.body?.datetime || '');
+  const leadName = String(req.body?.leadName || '').trim();
+  const phone = String(req.body?.phone || '').trim();
+  if (!datetime || !leadName || !phone) {
+    return res.status(400).json({ message: 'بيانات الموعد غير مكتملة' });
+  }
+
+  const result = await mutateDb(db => {
+    db.callSchedules ||= [];
+    const lead = req.body?.leadId ? findScoped(db.leads || [], req.user.companyId, item => item.id === req.body.leadId) : null;
+    const call = {
+      id: randomUUID(),
+      companyId: req.user.companyId,
+      leadId: lead?.id || String(req.body?.leadId || ''),
+      leadName: lead?.name || leadName,
+      phone: lead?.phone || phone,
+      datetime: new Date(datetime).toISOString(),
+      note: String(req.body?.note || '').trim(),
+      status: 'scheduled',
+      createdAt: now(),
+      createdBy: req.user.name
+    };
+    db.callSchedules.unshift(call);
+    activity(db, req.user, 'created', 'call-schedule', call.id, `تمت إضافة مكالمة مجدولة مع ${call.leadName}`);
+    return call;
+  });
+
+  res.status(201).json(result);
+});
+
+app.get('/api/response-scripts', async (req, res) => {
+  const db = await readDb();
+  res.json(getScopedItems(db.responseScripts || [], req.user.companyId));
+});
+
+app.get('/api/daily-reports/status', async (req, res) => {
+  const db = await readDb();
+  const companyId = req.user.companyId;
+  const date = String(req.query?.date || todayKey()).slice(0, 10);
+  const employee = findScoped(db.employees, companyId, item => item.email?.toLowerCase() === req.user.email?.toLowerCase());
+  const employeeId = employee?.id || '';
+  const report = getScopedItems(db.dailyReports || [], companyId).find(item => item.userId === req.user.sub && item.date === date) || null;
+  const metrics = {
+    newLeads: getScopedItems(db.leads || [], companyId).filter(lead => lead.consultantId === employeeId && String(lead.createdAt || '').startsWith(date)).length,
+    contacted: getScopedItems(db.leads || [], companyId).filter(lead => lead.consultantId === employeeId && lead.stage === 'Contacted' && String(lead.updatedAt || '').startsWith(date)).length,
+    submitted: getScopedItems(db.applications || [], companyId).filter(app => String(app.updatedAt || app.createdAt || '').startsWith(date)).length,
+    followUps: getScopedItems(db.tasks || [], companyId).filter(task => task.createdBy === req.user.name && task.status === 'done' && String(task.updatedAt || task.createdAt || '').startsWith(date)).length
+  };
+  res.json({ date, submitted: Boolean(report), report, metrics });
+});
+
+app.post('/api/daily-reports', async (req, res) => {
+  const date = String(req.body?.date || todayKey()).slice(0, 10);
+  const result = await mutateDb(db => {
+    db.dailyReports ||= [];
+    const existing = getScopedItems(db.dailyReports, req.user.companyId).find(item => item.userId === req.user.sub && item.date === date);
+    if (existing) throw Object.assign(new Error('تم إرسال التقرير لهذا اليوم بالفعل'), { status: 409 });
+    const report = {
+      id: randomUUID(),
+      companyId: req.user.companyId,
+      userId: req.user.sub,
+      userName: req.user.name,
+      date,
+      startTime: String(req.body?.startTime || '09:00'),
+      endTime: String(req.body?.endTime || '18:00'),
+      tookBreak: Boolean(req.body?.tookBreak),
+      notes: String(req.body?.notes || '').trim(),
+      metrics: {
+        newLeads: Number(req.body?.metrics?.newLeads || 0),
+        contacted: Number(req.body?.metrics?.contacted || 0),
+        submitted: Number(req.body?.metrics?.submitted || 0),
+        followUps: Number(req.body?.metrics?.followUps || 0)
+      },
+      createdAt: now()
+    };
+    db.dailyReports.unshift(report);
+    activity(db, req.user, 'created', 'daily-report', report.id, `تم إرسال التقرير اليومي بتاريخ ${date}`);
+    return report;
+  });
+
+  res.status(201).json(result);
+});
+
+app.get('/api/sales/markets', async (req, res) => {
+  const db = await readDb();
+  const companyId = req.user.companyId;
+  const currentMonth = monthKey('2026-08-22T12:00:00');
+  const marketConfigs = [
+    { key: 'turkey', label: 'Turkey Market', match: value => value === 'Turkey', target: 180000 },
+    { key: 'poland', label: 'Poland Market', match: value => value === 'Poland', target: 120000 }
+  ];
+
+  const students = getScopedItems(db.students || [], companyId);
+  const leads = getScopedItems(db.leads || [], companyId);
+  const applications = getScopedItems(db.applications || [], companyId);
+  const invoices = getScopedItems(db.invoices || [], companyId).map(invoice => enrichInvoice(db, invoice));
+
+  const markets = marketConfigs.map(config => {
+    const enrolledStudents = students.filter(student => config.match(student.country || student.targetCountry || ''));
+    const achieved = invoices
+      .filter(invoice => config.match(invoice.application?.country || invoice.student?.country || invoice.student?.targetCountry || ''))
+      .reduce((sum, invoice) => sum + money(invoice.paid), 0);
+    const relatedApplications = applications.filter(app => config.match(app.country || ''));
+    const relatedLeads = leads.filter(lead => config.match(lead.targetCountry || lead.country || ''));
+    const trend = Array.from({ length: 7 }, (_, index) => {
+      const day = String(index + 16).padStart(2, '0');
+      const dateKey = `2026-08-${day}`;
+      return relatedApplications.filter(app => String(app.updatedAt || app.createdAt || '').startsWith(dateKey)).length
+        + relatedLeads.filter(lead => String(lead.updatedAt || lead.createdAt || '').startsWith(dateKey)).length;
+    });
+    return {
+      key: config.key,
+      label: config.label,
+      month: currentMonth,
+      target: config.target,
+      achieved,
+      enrolled: enrolledStudents.length,
+      leads: relatedLeads.length,
+      applications: relatedApplications.length,
+      trend
+    };
+  });
+
+  res.json(markets);
 });
 
 app.post('/api/dashboard/executive-actions/:id/decision', allowRoles('admin', 'management'), async (req, res) => {
@@ -3085,6 +4122,12 @@ app.post('/api/tasks', async (req, res) => {
 
   const result = await mutateDb(db => {
     db.tasks ||= [];
+    const users = getScopedItems(db.users || [], req.user.companyId);
+    const assignedUserId = String(payload.assignedUserId || '').trim();
+    const assignedUser = assignedUserId ? users.find(user => user.id === assignedUserId) || null : null;
+    if (assignedUserId && !assignedUser) {
+      throw Object.assign(new Error('Ø§Ù„Ù…ÙˆØ¸Ù Ø§Ù„Ù…Ø³Ù†Ø¯ Ø¥Ù„ÙŠÙ‡ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯'), { status: 400 });
+    }
     const task = {
       id: randomUUID(),
       companyId: req.user.companyId,
@@ -3095,7 +4138,9 @@ app.post('/api/tasks', async (req, res) => {
       status: payload.status || 'open',
       kind: 'manual',
       source: 'task',
-      assignedRole: payload.assignedRole || '',
+      assignedRole: payload.assignedRole || assignedUser?.role || '',
+      assignedUserId: assignedUser?.id || '',
+      assignedByUserId: req.user.sub,
       createdBy: req.user.name,
       createdAt: now()
     };
@@ -3110,8 +4155,15 @@ app.post('/api/tasks', async (req, res) => {
 app.patch('/api/tasks/:id', async (req, res) => {
   const result = await mutateDb(db => {
     db.tasks ||= [];
+    const users = getScopedItems(db.users || [], req.user.companyId);
     const task = db.tasks.find(item => item.id === req.params.id && item.companyId === req.user.companyId);
     if (!task) throw Object.assign(new Error('المهمة غير موجودة'), { status: 404 });
+
+    const nextAssignedUserId = req.body.assignedUserId !== undefined ? String(req.body.assignedUserId || '').trim() : String(task.assignedUserId || '');
+    const nextAssignedUser = nextAssignedUserId ? users.find(user => user.id === nextAssignedUserId) || null : null;
+    if (nextAssignedUserId && !nextAssignedUser) {
+      throw Object.assign(new Error('Ø§Ù„Ù…ÙˆØ¸Ù Ø§Ù„Ù…Ø³Ù†Ø¯ Ø¥Ù„ÙŠÙ‡ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯'), { status: 400 });
+    }
 
     Object.assign(task, {
       title: req.body.title ?? task.title,
@@ -3119,7 +4171,8 @@ app.patch('/api/tasks/:id', async (req, res) => {
       dueDate: req.body.dueDate ?? task.dueDate,
       priority: req.body.priority ?? task.priority,
       status: req.body.status ?? task.status,
-      assignedRole: req.body.assignedRole ?? task.assignedRole
+      assignedRole: req.body.assignedRole ?? (nextAssignedUser ? nextAssignedUser.role : task.assignedRole),
+      assignedUserId: nextAssignedUserId
     });
 
     activity(db, req.user, 'updated', 'task', task.id, `تم تحديث المهمة ${task.title}`);

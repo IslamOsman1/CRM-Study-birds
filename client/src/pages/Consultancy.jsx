@@ -38,8 +38,9 @@ const budgetOptions = [
 ];
 
 const currentLevelOptions = ['High School', 'Bachelor', 'Master'];
+const defaultVisibleCards = 10;
 
-const blank = {
+const blankLead = {
   name: '',
   phone: '',
   email: '',
@@ -58,10 +59,14 @@ const blank = {
   notes: ''
 };
 
-const filterBlank = {
+const blankFilters = {
   consultantId: '',
   priority: '',
   targetCountry: '',
+  currentLevel: '',
+  university: '',
+  source: '',
+  stage: '',
   overdueOnly: false
 };
 
@@ -81,7 +86,7 @@ function collectUniqueOptions(...groups) {
     .flatMap(group => group || [])
     .map(value => String(value || '').trim())
     .filter(Boolean);
-  return [...new Set(values)].sort((a, b) => a.localeCompare(b));
+  return [...new Set(values)].sort((a, b) => a.localeCompare(b, 'ar'));
 }
 
 function parseUniversitySelection(value) {
@@ -155,18 +160,19 @@ export default function Consultancy() {
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [formUniversitiesMenuOpen, setFormUniversitiesMenuOpen] = useState(false);
   const [editUniversitiesMenuOpen, setEditUniversitiesMenuOpen] = useState(false);
-  const [form, setForm] = useState(blank);
-  const [editForm, setEditForm] = useState(blank);
+  const [form, setForm] = useState(blankLead);
+  const [editForm, setEditForm] = useState(blankLead);
   const [leadDocumentType, setLeadDocumentType] = useState('Passport');
   const [leadDocumentFile, setLeadDocumentFile] = useState(null);
   const [followUpValue, setFollowUpValue] = useState('');
   const [editingLead, setEditingLead] = useState(null);
   const [followUpLead, setFollowUpLead] = useState(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filters, setFilters] = useState(filterBlank);
+  const [filters, setFilters] = useState(blankFilters);
   const [focusedStage, setFocusedStage] = useState('');
+  const [columnLimits, setColumnLimits] = useState({});
   const [toast, setToast] = useState(null);
   const formUniversitiesMenuRef = useRef(null);
   const editUniversitiesMenuRef = useRef(null);
@@ -176,25 +182,39 @@ export default function Consultancy() {
   const canDeleteLead = can(user.role, 'deleteLead');
   const canMoveLead = can(user.role, 'moveLead');
 
-  const load = () =>
-    Promise.all([api('/api/leads'), api('/api/settings')])
-      .then(([leadData, settingData]) => {
-        setLeads(leadData);
-        setSettings(settingData);
-      })
-      .catch(error => setToast({ type: 'error', message: error.message }))
-      .finally(() => setLoading(false));
+  const load = async () => {
+    try {
+      const [leadData, settingData] = await Promise.all([api('/api/leads'), api('/api/settings')]);
+      setLeads(leadData);
+      setSettings(settingData);
+    } catch (error) {
+      setToast({ type: 'error', message: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     load();
   }, []);
 
   const catalogLinks = settings?.catalogLinks || {};
-  const consultants = useMemo(() => settings?.employees.filter(employee => employee.department === 'Consultancy') || [], [settings]);
+  const consultants = useMemo(
+    () => settings?.employees?.filter(employee => employee.department === 'Consultancy') || [],
+    [settings]
+  );
   const targetCountryOptions = useMemo(
     () => collectUniqueOptions(catalogLinks.countries, settings?.availableCountries),
     [catalogLinks.countries, settings?.availableCountries]
   );
+  const stages = settings?.pipelineStages || [];
+  const sourceOptions = useMemo(() => collectUniqueOptions(leads.map(lead => lead.source)), [leads]);
+  const currentLevelFilterOptions = useMemo(() => collectUniqueOptions(leads.map(lead => lead.currentLevel)), [leads]);
+  const universityFilterOptions = useMemo(
+    () => collectUniqueOptions(leads.flatMap(lead => parseUniversitySelection(lead.university))),
+    [leads]
+  );
+
   const majorOptions = useMemo(() => {
     const selectedCountry = editOpen ? (editForm.targetCountry || editForm.country) : (form.targetCountry || form.country);
     if (selectedCountry && Array.isArray(catalogLinks.programsByCountry?.[selectedCountry])) {
@@ -211,6 +231,7 @@ export default function Consultancy() {
     form.targetCountry,
     settings?.availablePrograms
   ]);
+
   const universityOptions = useMemo(() => {
     const selectedCountry = editOpen ? (editForm.targetCountry || editForm.country) : (form.targetCountry || form.country);
     const selectedMajor = editOpen ? (editForm.targetMajor || editForm.program) : (form.targetMajor || form.program);
@@ -236,9 +257,19 @@ export default function Consultancy() {
     form.targetMajor,
     settings?.availableUniversities
   ]);
-  const leadDocumentOptions = useMemo(() => (settings?.documentTypes?.length ? settings.documentTypes : fallbackLeadDocumentTypes), [settings?.documentTypes]);
-  const formUniversityOptions = useMemo(() => collectUniqueOptions(universityOptions, parseUniversitySelection(form.university)), [form.university, universityOptions]);
-  const editUniversityOptions = useMemo(() => collectUniqueOptions(universityOptions, parseUniversitySelection(editForm.university)), [editForm.university, universityOptions]);
+
+  const leadDocumentOptions = useMemo(
+    () => (settings?.documentTypes?.length ? settings.documentTypes : fallbackLeadDocumentTypes),
+    [settings?.documentTypes]
+  );
+  const formUniversityOptions = useMemo(
+    () => collectUniqueOptions(universityOptions, parseUniversitySelection(form.university)),
+    [form.university, universityOptions]
+  );
+  const editUniversityOptions = useMemo(
+    () => collectUniqueOptions(universityOptions, parseUniversitySelection(editForm.university)),
+    [editForm.university, universityOptions]
+  );
   const formUniversitiesLabel = useMemo(() => getUniversitiesLabel(form.university), [form.university]);
   const editUniversitiesLabel = useMemo(() => getUniversitiesLabel(editForm.university), [editForm.university]);
   const leadDocumentsByType = useMemo(() => {
@@ -251,7 +282,7 @@ export default function Consultancy() {
     });
     return map;
   }, [editingLead?.documents]);
-  const stages = settings?.pipelineStages || [];
+
   const shown = useMemo(
     () =>
       leads.filter(lead => {
@@ -268,16 +299,18 @@ export default function Consultancy() {
           lead.currentLevel,
           lead.lostReason
         ].some(value => String(value || '').toLowerCase().includes(search.toLowerCase()));
-
         const matchesConsultant = !filters.consultantId || lead.consultantId === filters.consultantId;
         const matchesPriority = !filters.priority || lead.priority === filters.priority;
         const matchesCountry = !filters.targetCountry || (lead.targetCountry || lead.country) === filters.targetCountry;
+        const matchesLevel = !filters.currentLevel || lead.currentLevel === filters.currentLevel;
+        const matchesUniversity = !filters.university || parseUniversitySelection(lead.university).includes(filters.university);
+        const matchesSource = !filters.source || lead.source === filters.source;
+        const matchesStage = !filters.stage || lead.stage === filters.stage;
         const matchesOverdue = !filters.overdueOnly || isOverdue(lead);
         const matchesFocusedStage = !focusedStage || lead.stage === focusedStage;
-
-        return matchesSearch && matchesConsultant && matchesPriority && matchesCountry && matchesOverdue && matchesFocusedStage;
+        return matchesSearch && matchesConsultant && matchesPriority && matchesCountry && matchesLevel && matchesUniversity && matchesSource && matchesStage && matchesOverdue && matchesFocusedStage;
       }),
-    [filters.consultantId, filters.overdueOnly, filters.priority, filters.targetCountry, focusedStage, leads, search]
+    [filters, focusedStage, leads, search]
   );
 
   useEffect(() => {
@@ -302,17 +335,19 @@ export default function Consultancy() {
   }, [leadDocumentOptions, leadDocumentType]);
 
   useEffect(() => {
+    setColumnLimits({});
+  }, [search, filters, focusedStage, leads.length]);
+
+  useEffect(() => {
     if (!open) {
       setFormUniversitiesMenuOpen(false);
       return undefined;
     }
-
     const handleClickOutside = event => {
       if (formUniversitiesMenuRef.current && !formUniversitiesMenuRef.current.contains(event.target)) {
         setFormUniversitiesMenuOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
@@ -322,16 +357,30 @@ export default function Consultancy() {
       setEditUniversitiesMenuOpen(false);
       return undefined;
     }
-
     const handleClickOutside = event => {
       if (editUniversitiesMenuRef.current && !editUniversitiesMenuRef.current.contains(event.target)) {
         setEditUniversitiesMenuOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [editOpen]);
+
+  const toggleFormUniversitySelection = university => {
+    const currentSelection = parseUniversitySelection(form.university);
+    const nextSelection = currentSelection.includes(university)
+      ? currentSelection.filter(item => item !== university)
+      : [...currentSelection, university];
+    setForm(current => ({ ...current, university: serializeUniversitySelection(nextSelection) }));
+  };
+
+  const toggleEditUniversitySelection = university => {
+    const currentSelection = parseUniversitySelection(editForm.university);
+    const nextSelection = currentSelection.includes(university)
+      ? currentSelection.filter(item => item !== university)
+      : [...currentSelection, university];
+    setEditForm(current => ({ ...current, university: serializeUniversitySelection(nextSelection) }));
+  };
 
   const move = async (id, stage) => {
     try {
@@ -341,22 +390,6 @@ export default function Consultancy() {
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
-  };
-
-  const toggleFormUniversitySelection = university => {
-    const currentSelection = parseUniversitySelection(form.university);
-    const nextSelection = currentSelection.includes(university)
-      ? currentSelection.filter(item => item !== university)
-      : [...currentSelection, university];
-    setForm({ ...form, university: serializeUniversitySelection(nextSelection) });
-  };
-
-  const toggleEditUniversitySelection = university => {
-    const currentSelection = parseUniversitySelection(editForm.university);
-    const nextSelection = currentSelection.includes(university)
-      ? currentSelection.filter(item => item !== university)
-      : [...currentSelection, university];
-    setEditForm({ ...editForm, university: serializeUniversitySelection(nextSelection) });
   };
 
   const create = async event => {
@@ -371,9 +404,9 @@ export default function Consultancy() {
         })
       });
       setOpen(false);
-      setForm(blank);
+      setForm(blankLead);
       await load();
-      setToast({ message: 'تمت إضافة العميل المحتمل إلى مسار الاستشارات بنجاح' });
+      setToast({ message: 'تمت إضافة العميل المحتمل بنجاح.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
@@ -417,7 +450,7 @@ export default function Consultancy() {
       setEditOpen(false);
       setEditingLead(null);
       await load();
-      setToast({ message: 'تم تحديث بيانات العميل المحتمل' });
+      setToast({ message: 'تم تحديث بيانات العميل المحتمل.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
@@ -426,11 +459,9 @@ export default function Consultancy() {
   const uploadLeadDocument = async event => {
     event.preventDefault();
     if (!editingLead || !leadDocumentFile) return;
-
     const body = new FormData();
     body.append('file', leadDocumentFile);
     body.append('type', leadDocumentType);
-
     try {
       const result = await api(`/api/leads/${editingLead.id}/documents`, { method: 'POST', body });
       setEditingLead(result.lead);
@@ -446,12 +477,11 @@ export default function Consultancy() {
   const deleteLeadDocument = async document => {
     if (!editingLead) return;
     if (!window.confirm(`هل تريد حذف المستند ${document.originalName}؟`)) return;
-
     try {
       await api(`/api/leads/${editingLead.id}/documents/${document.id}`, { method: 'DELETE' });
       setEditingLead(current => current ? { ...current, documents: (current.documents || []).filter(item => item.id !== document.id) } : current);
       await load();
-      setToast({ message: 'تم حذف مستند الطالب.' });
+      setToast({ message: 'تم حذف المستند.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
@@ -475,7 +505,7 @@ export default function Consultancy() {
       setFollowUpLead(null);
       setFollowUpValue('');
       await load();
-      setToast({ message: 'تم تحديد موعد المتابعة القادم' });
+      setToast({ message: 'تم تحديد موعد المتابعة القادم.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
@@ -486,7 +516,7 @@ export default function Consultancy() {
     try {
       await api(`/api/leads/${lead.id}`, { method: 'DELETE' });
       await load();
-      setToast({ message: 'تم حذف العميل المحتمل' });
+      setToast({ message: 'تم حذف العميل المحتمل.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
@@ -494,145 +524,215 @@ export default function Consultancy() {
 
   if (loading) return <div className="loading-page"><Spinner />جارٍ تحميل مسار العملاء...</div>;
 
-  const activeFiltersCount = Number(Boolean(filters.consultantId)) + Number(Boolean(filters.priority)) + Number(Boolean(filters.targetCountry)) + Number(Boolean(filters.overdueOnly)) + Number(Boolean(focusedStage));
+  const activeFiltersCount =
+    Number(Boolean(filters.consultantId)) +
+    Number(Boolean(filters.priority)) +
+    Number(Boolean(filters.targetCountry)) +
+    Number(Boolean(filters.currentLevel)) +
+    Number(Boolean(filters.university)) +
+    Number(Boolean(filters.source)) +
+    Number(Boolean(filters.stage)) +
+    Number(Boolean(filters.overdueOnly)) +
+    Number(Boolean(focusedStage));
+
+  const visibleStages = stages.filter(stage => !focusedStage || stage === focusedStage);
 
   return (
     <>
+      <div className="kpi-grid reports-kpis">
+        <div className="card kpi-card">
+          <div className="kpi-meta">
+            <span>إجمالي العملاء الظاهرين</span>
+            <strong>{shown.length}</strong>
+            <small>بعد البحث والتصفية الحالية</small>
+          </div>
+        </div>
+        <div className="card kpi-card">
+          <div className="kpi-meta">
+            <span>المتابعات المتأخرة</span>
+            <strong>{shown.filter(isOverdue).length}</strong>
+            <small>تحتاج تدخلًا سريعًا</small>
+          </div>
+        </div>
+        <div className="card kpi-card">
+          <div className="kpi-meta">
+            <span>جاهزون للقبول</span>
+            <strong>{shown.filter(lead => lead.stage === 'Closed / Won').length}</strong>
+            <small>يمكن تحويلهم مباشرة</small>
+          </div>
+        </div>
+        <div className="card kpi-card">
+          <div className="kpi-meta">
+            <span>عالي الأولوية</span>
+            <strong>{shown.filter(lead => lead.priority === 'High').length}</strong>
+            <small>Hot leads في اللوحة الحالية</small>
+          </div>
+        </div>
+      </div>
+
       <div className="toolbar">
         <div className="search-box">
           <Search />
           <input value={search} onChange={event => setSearch(event.target.value)} placeholder="ابحث داخل مسار الاستشارات..." />
         </div>
         <div className="toolbar-right">
-          <Button variant="secondary" onClick={() => setFiltersOpen(true)} type="button"><SlidersHorizontal /> تصفية {activeFiltersCount ? `(${activeFiltersCount})` : ''}</Button>
+          <Button variant="secondary" onClick={() => setFiltersOpen(true)} type="button">
+            <SlidersHorizontal /> تصفية {activeFiltersCount ? `(${activeFiltersCount})` : ''}
+          </Button>
           {canCreateLead && <Button onClick={() => setOpen(true)} type="button"><Plus /> عميل جديد</Button>}
         </div>
       </div>
 
       <div className="pipeline-board">
-        {stages.filter(stage => !focusedStage || stage === focusedStage).map(stage => (
-          <section
-            className="kanban-column"
-            key={stage}
-            onDragOver={event => event.preventDefault()}
-            onDrop={event => canMoveLead && move(event.dataTransfer.getData('text/plain'), stage)}
-          >
-            <header>
-              <div>
-                <i className={`stage-dot tone-${stageTone[stage] || 'neutral'}`} />
-                <strong>{tr(stage)}</strong>
-                <span>{shown.filter(lead => lead.stage === stage).length}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const nextStage = focusedStage === stage ? '' : stage;
-                  setFocusedStage(nextStage);
-                  setSearchParams(current => {
-                    const next = new URLSearchParams(current);
-                    next.delete('leadId');
-                    return next;
-                  });
-                }}
-                title={focusedStage === stage ? 'إظهار كل المراحل' : 'التركيز على هذه المرحلة'}
+        {visibleStages.map(stage => {
+          const stageLeads = shown.filter(lead => lead.stage === stage);
+          const visibleCount = columnLimits[stage] || defaultVisibleCards;
+          const visibleLeads = stageLeads.slice(0, visibleCount);
+          return (
+            <section
+              className="kanban-column"
+              key={stage}
+              onDragOver={event => event.preventDefault()}
+              onDrop={event => canMoveLead && move(event.dataTransfer.getData('text/plain'), stage)}
+            >
+              <header>
+                <div>
+                  <i className={`stage-dot tone-${stageTone[stage] || 'neutral'}`} />
+                  <strong>{tr(stage)}</strong>
+                  <span>{stageLeads.length}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextStage = focusedStage === stage ? '' : stage;
+                    setFocusedStage(nextStage);
+                    setSearchParams(current => {
+                      const next = new URLSearchParams(current);
+                      next.delete('leadId');
+                      return next;
+                    });
+                  }}
+                  title={focusedStage === stage ? 'إظهار كل المراحل' : 'التركيز على هذه المرحلة'}
+                >
+                  {focusedStage === stage ? 'الكل' : '...'}
+                </button>
+              </header>
+
+              <div
+                className="kanban-stack"
+                onDragOver={event => event.preventDefault()}
+                onDrop={event => canMoveLead && move(event.dataTransfer.getData('text/plain'), stage)}
               >
-                {focusedStage === stage ? 'الكل' : '...'}
-              </button>
-            </header>
+                {visibleLeads.map(lead => {
+                  const consultant = consultants.find(item => item.id === lead.consultantId);
+                  const overdue = isOverdue(lead);
+                  return (
+                    <article
+                      className={`lead-card consultancy-lead-card ${overdue ? 'is-overdue' : ''}`}
+                      draggable={canMoveLead}
+                      onDragStart={event => canMoveLead && event.dataTransfer.setData('text/plain', lead.id)}
+                      key={lead.id}
+                    >
+                      <div className="lead-top">
+                        <div className="lead-top-main">
+                          <GripVertical />
+                          <h3>{lead.name}</h3>
+                        </div>
+                        <div className="lead-top-badges">
+                          {overdue && <span className="overdue-pill"><CircleAlert size={13} /> متابعة متأخرة</span>}
+                          <Badge tone={lead.priority === 'High' ? 'red' : lead.priority === 'Medium' ? 'amber' : 'neutral'}>{tr(lead.priority)}</Badge>
+                        </div>
+                      </div>
 
-            <div className="kanban-stack">
-              {shown.filter(lead => lead.stage === stage).map(lead => {
-                const consultant = consultants.find(item => item.id === lead.consultantId);
-                const overdue = isOverdue(lead);
-                return (
-                  <article className={`lead-card consultancy-lead-card ${overdue ? 'is-overdue' : ''}`} draggable={canMoveLead} onDragStart={event => canMoveLead && event.dataTransfer.setData('text/plain', lead.id)} key={lead.id}>
-                    <div className="lead-top">
-                      <div className="lead-top-main">
-                        <GripVertical />
-                        <h3>{lead.name}</h3>
-                      </div>
-                      <div className="lead-top-badges">
-                        {overdue && <span className="overdue-pill"><CircleAlert size={13} /> متابعة متأخرة</span>}
-                        <Badge tone={lead.priority === 'High' ? 'red' : lead.priority === 'Medium' ? 'amber' : 'neutral'}>{tr(lead.priority)}</Badge>
-                      </div>
-                    </div>
+                      <p className="lead-main-major">{lead.targetMajor || lead.program || 'التخصص قيد التحديد'}</p>
+                      <div className="lead-country">{lead.targetCountry || lead.country || 'الدولة المستهدفة قيد التحديد'}</div>
 
-                    <p className="lead-main-major">{lead.targetMajor || lead.program || 'التخصص قيد التحديد'}</p>
-                    <div className="lead-country">
-                      {lead.targetCountry || lead.country || 'الدولة المستهدفة قيد التحديد'}
-                    </div>
+                      <div className="lead-profile-grid">
+                        <div>
+                          <span>الدولة المستهدفة</span>
+                          <strong>{tr(lead.targetCountry || lead.country || '—')}</strong>
+                        </div>
+                        <div>
+                          <span>التخصص المطلوب</span>
+                          <strong>{tr(lead.targetMajor || lead.program || '—')}</strong>
+                        </div>
+                        <div>
+                          <span>الميزانية</span>
+                          <strong>{tr(lead.budget || '—')}</strong>
+                        </div>
+                        <div>
+                          <span>المؤهل الحالي</span>
+                          <strong>{tr(lead.currentLevel || '—')}</strong>
+                        </div>
+                      </div>
 
-                    <div className="lead-profile-grid">
-                      <div>
-                        <span>الدولة المستهدفة</span>
-                        <strong>{tr(lead.targetCountry || lead.country || '—')}</strong>
+                      <div className="lead-details compact">
+                        {lead.phone && <span><Phone /> {lead.phone}</span>}
+                        {lead.email && <span><Mail /> {lead.email}</span>}
+                        {lead.nextFollowUp && (
+                          <span className={overdue ? 'overdue' : ''}>
+                            <CalendarClock /> {formatDate(lead.nextFollowUp)} · {formatArabicTime(lead.nextFollowUp)}
+                          </span>
+                        )}
+                        {stage === 'Lost' && lead.lostReason && (
+                          <span><Wallet /> سبب الفقد: {lead.lostReason}</span>
+                        )}
                       </div>
-                      <div>
-                        <span>التخصص المطلوب</span>
-                        <strong>{tr(lead.targetMajor || lead.program || '—')}</strong>
-                      </div>
-                      <div>
-                        <span>الميزانية</span>
-                        <strong>{tr(lead.budget || '—')}</strong>
-                      </div>
-                      <div>
-                        <span>المؤهل الحالي</span>
-                        <strong>{tr(lead.currentLevel || '—')}</strong>
-                      </div>
-                    </div>
 
-                    <div className="lead-details compact">
-                      {lead.phone && <span><Phone />{lead.phone}</span>}
-                      {lead.email && <span><Mail />{lead.email}</span>}
-                      {lead.nextFollowUp && (
-                        <span className={overdue ? 'overdue' : ''}>
-                          <CalendarClock />{formatDate(lead.nextFollowUp)} · {formatArabicTime(lead.nextFollowUp)}
-                        </span>
-                      )}
-                      {stage === 'Lost' && lead.lostReason && (
-                        <span><Wallet />سبب الفقد: {lead.lostReason}</span>
-                      )}
-                    </div>
-
-                    {canMoveLead && lead.stage !== 'Closed / Won' && (
-                      <button
-                        className="btn btn-secondary lead-transfer-btn"
-                        onClick={() => move(lead.id, 'Closed / Won')}
-                        type="button"
-                      >
-                        نقل إلى القبول والتسجيل
-                      </button>
-                    )}
-
-                    <footer className="lead-footer">
-                      <div className="lead-meta">
-                        <div className="mini-avatar" title={consultant?.name}>{initials(consultant?.name || '?')}</div>
-                        <span>{consultant?.name || 'غير مسند'} · {tr(lead.source)}</span>
-                      </div>
-                      <div className="card-actions">
-                        <a className="icon-btn small whatsapp-btn" href={whatsappLink(lead.phone)} target="_blank" rel="noreferrer" title="واتساب مباشر">
-                          <WhatsAppIcon width={14} height={14} />
-                        </a>
-                        <a className="icon-btn small gmail-btn" href={gmailComposeLink(lead.email)} target="_blank" rel="noreferrer" title="إرسال عبر Gmail">
-                          <Mail size={14} />
-                        </a>
-                        <a className="icon-btn small phone-btn" href={phoneLink(lead.phone)} title="اتصال هاتفي">
-                          <Phone size={14} />
-                        </a>
-                        <button className="icon-btn small" onClick={() => openFollowUpModal(lead)} type="button" title="تحديد متابعة">
-                          <CalendarClock size={14} />
+                      {canMoveLead && lead.stage !== 'Closed / Won' && (
+                        <button
+                          className="btn btn-secondary lead-transfer-btn"
+                          onClick={() => move(lead.id, 'Closed / Won')}
+                          type="button"
+                        >
+                          نقل إلى القبول والتسجيل
                         </button>
-                        {canEditLead && <button className="icon-btn small" onClick={() => startEdit(lead)} type="button" title="تعديل"><Pencil size={14} /></button>}
-                        {canDeleteLead && <button className="icon-btn small danger" onClick={() => removeLead(lead)} type="button" title="حذف"><Trash2 size={14} /></button>}
-                      </div>
-                    </footer>
-                  </article>
-                );
-              })}
-              {!shown.some(lead => lead.stage === stage) && <div className="kanban-empty">اسحب عميلاً محتملاً إلى هنا</div>}
-            </div>
-          </section>
-        ))}
+                      )}
+
+                      <footer className="lead-footer">
+                        <div className="lead-meta">
+                          <div className="mini-avatar" title={consultant?.name}>{initials(consultant?.name || '?')}</div>
+                          <span>{consultant?.name || 'غير مسند'} · {tr(lead.source)}</span>
+                        </div>
+                        <button className="btn btn-ghost lead-view-btn" onClick={() => startEdit(lead)} type="button">
+                          View Details
+                        </button>
+                        <div className="card-actions">
+                          <a className="icon-btn small whatsapp-btn" href={whatsappLink(lead.phone)} target="_blank" rel="noreferrer" title="واتساب مباشر">
+                            <WhatsAppIcon width={14} height={14} />
+                          </a>
+                          <a className="icon-btn small gmail-btn" href={gmailComposeLink(lead.email)} target="_blank" rel="noreferrer" title="إرسال عبر Gmail">
+                            <Mail size={14} />
+                          </a>
+                          <a className="icon-btn small phone-btn" href={phoneLink(lead.phone)} title="اتصال هاتفي">
+                            <Phone size={14} />
+                          </a>
+                          <button className="icon-btn small" onClick={() => openFollowUpModal(lead)} type="button" title="تحديد متابعة">
+                            <CalendarClock size={14} />
+                          </button>
+                          {canEditLead && <button className="icon-btn small" onClick={() => startEdit(lead)} type="button" title="تعديل"><Pencil size={14} /></button>}
+                          {canDeleteLead && <button className="icon-btn small danger" onClick={() => removeLead(lead)} type="button" title="حذف"><Trash2 size={14} /></button>}
+                        </div>
+                      </footer>
+                    </article>
+                  );
+                })}
+
+                {!stageLeads.length && <div className="kanban-empty">لا توجد بطاقات في هذه المرحلة</div>}
+                {!!stageLeads.length && <div className="kanban-drop-zone">اسحب البطاقة وأفلتها هنا</div>}
+                {stageLeads.length > visibleLeads.length && (
+                  <button
+                    className="btn btn-secondary show-more-btn"
+                    onClick={() => setColumnLimits(current => ({ ...current, [stage]: visibleCount + defaultVisibleCards }))}
+                    type="button"
+                  >
+                    عرض المزيد ({stageLeads.length - visibleLeads.length})
+                  </button>
+                )}
+              </div>
+            </section>
+          );
+        })}
       </div>
 
       <Modal open={filtersOpen} onClose={() => setFiltersOpen(false)} title="تصفية مسار الاستشارات" subtitle="اعرض البطاقات الأكثر أهمية فقط">
@@ -657,6 +757,30 @@ export default function Consultancy() {
               {targetCountryOptions.map(option => <option value={option} key={option}>{tr(option)}</option>)}
             </select>
           </Field>
+          <Field label="الدرجة">
+            <select value={filters.currentLevel} onChange={event => setFilters(current => ({ ...current, currentLevel: event.target.value }))}>
+              <option value="">كل الدرجات</option>
+              {currentLevelFilterOptions.map(option => <option value={option} key={option}>{tr(option)}</option>)}
+            </select>
+          </Field>
+          <Field label="الجامعة">
+            <select value={filters.university} onChange={event => setFilters(current => ({ ...current, university: event.target.value }))}>
+              <option value="">كل الجامعات</option>
+              {universityFilterOptions.map(option => <option value={option} key={option}>{option}</option>)}
+            </select>
+          </Field>
+          <Field label="المصدر / الحملة">
+            <select value={filters.source} onChange={event => setFilters(current => ({ ...current, source: event.target.value }))}>
+              <option value="">كل المصادر</option>
+              {sourceOptions.map(option => <option value={option} key={option}>{tr(option)}</option>)}
+            </select>
+          </Field>
+          <Field label="الحالة">
+            <select value={filters.stage} onChange={event => setFilters(current => ({ ...current, stage: event.target.value }))}>
+              <option value="">كل المراحل</option>
+              {stages.map(option => <option value={option} key={option}>{tr(option)}</option>)}
+            </select>
+          </Field>
           <label className="check-row">
             <input type="checkbox" checked={filters.overdueOnly} onChange={event => setFilters(current => ({ ...current, overdueOnly: event.target.checked }))} />
             <span>
@@ -669,7 +793,7 @@ export default function Consultancy() {
               type="button"
               variant="secondary"
               onClick={() => {
-                setFilters(filterBlank);
+                setFilters(blankFilters);
                 setFocusedStage('');
                 setFiltersOpen(false);
               }}
@@ -726,13 +850,9 @@ export default function Consultancy() {
           <Field label="موعد المتابعة القادم">
             <input type="datetime-local" value={form.nextFollowUp} onChange={event => setForm({ ...form, nextFollowUp: event.target.value })} />
           </Field>
-          <Field label="الجامعات" className="field-full" hint="الخيارات هنا من قسم الجامعات والبرامج ويمكنك اختيار أكثر من جامعة.">
+          <Field label="الجامعات" className="field-full" hint="يمكنك اختيار أكثر من جامعة من الخيارات المتاحة.">
             <div className="multi-select" ref={formUniversitiesMenuRef}>
-              <button
-                className={`multi-select-trigger ${formUniversitiesMenuOpen ? 'is-open' : ''}`}
-                onClick={() => setFormUniversitiesMenuOpen(value => !value)}
-                type="button"
-              >
+              <button className={`multi-select-trigger ${formUniversitiesMenuOpen ? 'is-open' : ''}`} onClick={() => setFormUniversitiesMenuOpen(value => !value)} type="button">
                 <span className={parseUniversitySelection(form.university).length ? '' : 'is-placeholder'}>{formUniversitiesLabel}</span>
                 <ChevronDown size={16} />
               </button>
@@ -740,15 +860,11 @@ export default function Consultancy() {
                 <div className="multi-select-menu">
                   {formUniversityOptions.length ? formUniversityOptions.map(option => (
                     <label className="multi-select-option" key={option}>
-                      <input
-                        type="checkbox"
-                        checked={parseUniversitySelection(form.university).includes(option)}
-                        onChange={() => toggleFormUniversitySelection(option)}
-                      />
+                      <input type="checkbox" checked={parseUniversitySelection(form.university).includes(option)} onChange={() => toggleFormUniversitySelection(option)} />
                       <span>{option}</span>
                     </label>
                   )) : (
-                    <div className="multi-select-empty">أضف جامعات أولاً من قسم الجامعات والبرامج.</div>
+                    <div className="multi-select-empty">أضف جامعات أولًا من قسم الجامعات والبرامج.</div>
                   )}
                 </div>
               )}
@@ -815,13 +931,9 @@ export default function Consultancy() {
           <Field label="سبب الفقد" className="field-full">
             <input value={editForm.lostReason} onChange={event => setEditForm({ ...editForm, lostReason: event.target.value })} placeholder="مثال: الميزانية، عدم توفر التخصص..." />
           </Field>
-          <Field label="الجامعات" className="field-full" hint="الخيارات هنا من قسم الجامعات والبرامج ويمكنك اختيار أكثر من جامعة.">
+          <Field label="الجامعات" className="field-full" hint="يمكنك اختيار أكثر من جامعة من الخيارات المتاحة.">
             <div className="multi-select" ref={editUniversitiesMenuRef}>
-              <button
-                className={`multi-select-trigger ${editUniversitiesMenuOpen ? 'is-open' : ''}`}
-                onClick={() => setEditUniversitiesMenuOpen(value => !value)}
-                type="button"
-              >
+              <button className={`multi-select-trigger ${editUniversitiesMenuOpen ? 'is-open' : ''}`} onClick={() => setEditUniversitiesMenuOpen(value => !value)} type="button">
                 <span className={parseUniversitySelection(editForm.university).length ? '' : 'is-placeholder'}>{editUniversitiesLabel}</span>
                 <ChevronDown size={16} />
               </button>
@@ -829,15 +941,11 @@ export default function Consultancy() {
                 <div className="multi-select-menu">
                   {editUniversityOptions.length ? editUniversityOptions.map(option => (
                     <label className="multi-select-option" key={option}>
-                      <input
-                        type="checkbox"
-                        checked={parseUniversitySelection(editForm.university).includes(option)}
-                        onChange={() => toggleEditUniversitySelection(option)}
-                      />
+                      <input type="checkbox" checked={parseUniversitySelection(editForm.university).includes(option)} onChange={() => toggleEditUniversitySelection(option)} />
                       <span>{option}</span>
                     </label>
                   )) : (
-                    <div className="multi-select-empty">أضف جامعات أولاً من قسم الجامعات والبرامج.</div>
+                    <div className="multi-select-empty">أضف جامعات أولًا من قسم الجامعات والبرامج.</div>
                   )}
                 </div>
               )}
@@ -848,6 +956,7 @@ export default function Consultancy() {
               </div>
             )}
           </Field>
+
           <div className="field-full lead-documents-panel">
             <div className="documents-head compact-head">
               <div>
@@ -919,6 +1028,7 @@ export default function Consultancy() {
               )}
             </div>
           </div>
+
           <Field label="ملاحظات" className="field-full"><textarea value={editForm.notes} onChange={event => setEditForm({ ...editForm, notes: event.target.value })} /></Field>
           <div className="form-actions field-full">
             <Button type="button" variant="secondary" onClick={() => setEditOpen(false)}>إلغاء</Button>

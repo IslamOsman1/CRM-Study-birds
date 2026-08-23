@@ -18,6 +18,12 @@ import InboxPage from './pages/InboxPage.jsx';
 import UniversitiesPage from './pages/UniversitiesPage.jsx';
 import ProgramsCatalogPage from './pages/ProgramsCatalogPage.jsx';
 import ScholarshipsPage from './pages/ScholarshipsPage.jsx';
+import RemindersPage from './pages/RemindersPage.jsx';
+import CallsSchedulePage from './pages/CallsSchedulePage.jsx';
+import ScriptsLibraryPage from './pages/ScriptsLibraryPage.jsx';
+import DailyReportPage from './pages/DailyReportPage.jsx';
+import LeaveManagementPage from './pages/LeaveManagementPage.jsx';
+import SalesPortalPage from './pages/SalesPortalPage.jsx';
 import { canOpenModule } from './permissions.js';
 
 function Guard({ module, children }) {
@@ -46,6 +52,12 @@ export default function App() {
         <Route path="inbox" element={<Guard module="inbox"><InboxPage /></Guard>} />
         <Route path="reports" element={<Guard module="reports"><ReportsPage /></Guard>} />
         <Route path="tasks" element={<Guard module="tasks"><TasksPage /></Guard>} />
+        <Route path="reminders" element={<Guard module="reminders"><RemindersPage /></Guard>} />
+        <Route path="calls" element={<Guard module="calls"><CallsSchedulePage /></Guard>} />
+        <Route path="scripts" element={<Guard module="scripts"><ScriptsLibraryPage /></Guard>} />
+        <Route path="daily-report" element={<Guard module="dailyReport"><DailyReportPage /></Guard>} />
+        <Route path="leave" element={<Guard module="leave"><LeaveManagementPage /></Guard>} />
+        <Route path="sales" element={<Guard module="sales"><SalesPortalPage /></Guard>} />
         <Route path="reception" element={<Guard module="reception"><Reception /></Guard>} />
         <Route path="hr" element={<Guard module="hr"><HR /></Guard>} />
         <Route path="finance" element={<Guard module="finance"><Finance /></Guard>} />

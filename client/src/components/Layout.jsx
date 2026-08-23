@@ -1,6 +1,30 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, BarChart3, Bell, BookOpenCheck, BriefcaseBusiness, Building2, ChevronDown, CircleCheckBig, GraduationCap, Headphones, LineChart, LogOut, Menu, MessageCircleMore, Search, Settings2, Sparkles, UserSquare2, UsersRound, WalletCards, X } from 'lucide-react';
+import {
+  Activity,
+  BarChart3,
+  Bell,
+  BookOpenCheck,
+  BriefcaseBusiness,
+  Building2,
+  CalendarDays,
+  ChevronDown,
+  CircleCheckBig,
+  GraduationCap,
+  Headphones,
+  LineChart,
+  LogOut,
+  Menu,
+  MessageCircleMore,
+  NotebookPen,
+  Search,
+  Settings2,
+  Sparkles,
+  UserSquare2,
+  UsersRound,
+  WalletCards,
+  X
+} from 'lucide-react';
 import { api, formatDate } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { tr } from '../i18n.js';
@@ -16,19 +40,22 @@ const modules = [
   { to: '/admissions', label: 'القبول والتسجيل', icon: GraduationCap, roles: ['admin', 'management', 'consultant', 'admissions'] },
   { to: '/inbox', label: 'الصندوق الموحد', icon: MessageCircleMore, roles: ['admin', 'management', 'consultant', 'admissions', 'reception'] },
   { to: '/reports', label: 'التقارير', icon: LineChart, roles: ['admin', 'management', 'finance', 'hr', 'admissions'] },
-  { to: '/tasks', label: 'المهام والتنبيهات', icon: CircleCheckBig, roles: ['admin', 'management', 'consultant', 'admissions', 'reception', 'hr', 'finance'] },
+  { to: '/tasks', label: 'المهام', icon: CircleCheckBig, roles: ['admin', 'management', 'consultant', 'admissions', 'reception', 'hr', 'finance'] },
+  { to: '/reminders', label: 'تذكيراتي', icon: Bell, roles: ['admin', 'management', 'consultant', 'admissions', 'reception', 'hr', 'finance'] },
+  { to: '/calls', label: 'جدول المكالمات', icon: CalendarDays, roles: ['admin', 'management', 'consultant', 'admissions', 'reception'] },
+  { to: '/scripts', label: 'اسكريبتات', icon: NotebookPen, roles: ['admin', 'management', 'consultant', 'admissions', 'reception'] },
+  { to: '/daily-report', label: 'التقرير اليومي', icon: LineChart, roles: ['admin', 'management', 'consultant', 'admissions', 'reception', 'hr', 'finance'] },
+  { to: '/leave', label: 'الإجازات', icon: CalendarDays, roles: ['admin', 'management', 'consultant', 'admissions', 'reception', 'hr', 'finance'] },
+  { to: '/sales', label: 'بوابة المبيعات', icon: WalletCards, roles: ['admin', 'management', 'consultant'] },
   { to: '/reception', label: 'الاستقبال', icon: Headphones, roles: ['admin', 'management', 'reception'] },
   { to: '/hr', label: 'الموارد البشرية', icon: UsersRound, roles: ['admin', 'management', 'hr'] },
   { to: '/finance', label: 'المالية', icon: WalletCards, roles: ['admin', 'management', 'finance'] },
   { to: '/activity', label: 'سجل النشاط', icon: Activity, roles: ['admin', 'management'] },
+  { to: '/universities', label: 'دليل الجامعات', icon: Building2, roles: ['admin', 'management', 'consultant'] },
+  { to: '/programs', label: 'البرامج', icon: BookOpenCheck, roles: ['admin', 'management'] },
+  { to: '/scholarships', label: 'المنح', icon: Sparkles, roles: ['admin', 'management'] },
   { to: '/settings', label: 'الإعدادات', icon: Settings2, roles: ['admin', 'management'] }
 ];
-
-modules.splice(modules.length - 1, 0,
-  { to: '/universities', label: 'الجامعات', icon: Building2, roles: ['admin', 'management'] },
-  { to: '/programs', label: 'البرامج', icon: BookOpenCheck, roles: ['admin', 'management'] },
-  { to: '/scholarships', label: 'المنح', icon: Sparkles, roles: ['admin', 'management'] }
-);
 
 const titles = {
   '/': ['لوحة الإدارة', 'نظرة موحدة على المبيعات والقبول والموارد البشرية والإيرادات.'],
@@ -37,17 +64,35 @@ const titles = {
   '/admissions': ['القبول والتسجيل', 'إدارة الطلبات والمستندات وقرارات الجامعات من مكان واحد.'],
   '/inbox': ['الصندوق الموحد', 'إدارة رسائل واتساب وماسنجر وإنستغرام من واجهة تشغيل واحدة.'],
   '/reports': ['التقارير', 'تابع مؤشرات الأداء والقبول والتحصيل مع فلاتر زمنية وتصدير فوري.'],
-  '/tasks': ['المهام والتنبيهات', 'متابعة يومية للتنبيهات الآلية والمهام اليدوية حسب كل قسم.'],
+  '/tasks': ['المهام', 'إدارة المهام اليومية بحالات انتظار وتنفيذ واكتمال.'],
+  '/reminders': ['تذكيراتي', 'تابع التذكيرات حسب النوع مع إمكانية الأرشفة والإنجاز السريع.'],
+  '/calls': ['جدول المكالمات', 'نظم المكالمات اليومية والأسبوعية واربط كل موعد بعميل محدد.'],
+  '/scripts': ['اسكريبتات الردود', 'مكتبة قابلة للبحث والنسخ السريع لردود المبيعات والمتابعة.'],
+  '/daily-report': ['التقرير اليومي', 'تقرير نهاية اليوم بمؤشرات محسوبة وملاحظات الموظف.'],
+  '/leave': ['الإجازات والحضور', 'قدّم طلبات الإجازة وتابع الأيام المعلقة والمعتمدة.'],
+  '/sales': ['بوابة المبيعات', 'تابع الأهداف والإنجاز لكل سوق أو فرع خلال الشهر الحالي.'],
   '/reception': ['الاستقبال وخدمة العملاء', 'سجل الاستفسارات الجديدة ووجّهها بسرعة إلى المستشار المناسب.'],
   '/hr': ['الموارد البشرية', 'ملفات الموظفين والحضور والأداء داخل الفريق.'],
   '/finance': ['القسم المالي', 'الفواتير والمدفوعات والعمولات والأرصدة المستحقة.'],
   '/activity': ['سجل النشاط', 'تسلسل زمني للنشاطات عبر جميع الأقسام.'],
+  '/universities': ['دليل الجامعات', 'أداة تشغيلية للبحث المتقدم عن الجامعات والبرامج وإنشاء عروض الأسعار.'],
+  '/programs': ['البرامج', 'عرض البرامج الدراسية بشكل مستقل مع الأسعار والفلاتر والبحث السريع.'],
+  '/scholarships': ['المنح', 'عرض المنح الدراسية بشكل مستقل مع تفاصيلها الكاملة وفلاتر البحث.'],
   '/settings': ['الإعدادات', 'إدارة بيانات الشركة والمراحل والحالات والمستندات والمستخدمين.']
 };
 
-titles['/universities'] = ['الجامعات', 'عرض الجامعات المتاحة مع المدن والدول والأحرام المرتبطة بها.'];
-titles['/programs'] = ['البرامج', 'عرض البرامج الدراسية بشكل مستقل مع الأسعار والفلاتر والبحث السريع.'];
-titles['/scholarships'] = ['المنح', 'عرض المنح الدراسية بشكل مستقل مع تفاصيلها الكاملة وفلاتر البحث.'];
+function getRoleModules(role) {
+  if (role === 'reception') {
+    return ['/reception', '/inbox', '/tasks', '/reminders', '/calls', '/scripts', '/daily-report', '/leave'];
+  }
+  if (role === 'finance') {
+    return ['/finance', '/reports', '/tasks', '/reminders', '/daily-report', '/leave'];
+  }
+  if (role === 'hr') {
+    return ['/hr', '/tasks', '/reminders', '/daily-report', '/leave'];
+  }
+  return null;
+}
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -67,24 +112,21 @@ export default function Layout() {
   const knownTaskIdsRef = useRef(new Set());
   const seenNotificationIdsRef = useRef(new Set());
   const globalSearchRef = useRef(null);
+
   const allowed = useMemo(() => {
-    if (user.role === 'reception') {
-      return modules.filter(item => ['/reception', '/inbox', '/tasks'].includes(item.to));
-    }
-    if (user.role === 'finance') {
-      return modules.filter(item => ['/finance', '/reports', '/tasks'].includes(item.to));
-    }
-    if (user.role === 'hr') {
-      return modules.filter(item => ['/hr', '/tasks'].includes(item.to));
+    const roleModules = getRoleModules(user.role);
+    if (roleModules) {
+      return modules.filter(item => roleModules.includes(item.to));
     }
     return modules.filter(item => item.roles.includes(user.role));
   }, [user.role]);
+
   const [title, subtitle] = titles[location.pathname] || titles['/'];
   const today = new Intl.DateTimeFormat('ar-EG', {
     day: 'numeric',
     month: 'long',
     year: 'numeric'
-  }).format(new Date('2026-07-18'));
+  }).format(new Date('2026-08-22T12:00:00'));
 
   useEffect(() => {
     let active = true;
@@ -141,6 +183,7 @@ export default function Layout() {
 
     loadNotifications();
     const intervalId = window.setInterval(loadNotifications, REFRESH_MS);
+
     return () => {
       active = false;
       window.clearInterval(intervalId);
@@ -183,8 +226,7 @@ export default function Layout() {
                       application.university,
                       application.country
                     ])
-                  ]
-                    .some(value => String(value || '').toLowerCase().includes(trimmed.toLowerCase()))
+                  ].some(value => String(value || '').toLowerCase().includes(trimmed.toLowerCase()))
                 )
                 .slice(0, 4)
                 .map(student => ({
@@ -291,6 +333,7 @@ export default function Layout() {
         .sort((a, b) => (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31')),
     [tasks]
   );
+
   const unreadNotifications = useMemo(() => notifications.filter(item => !item.readAt), [notifications]);
   const unreadCount = notificationOpen ? 0 : unreadNotifications.length;
   const criticalNotifications = useMemo(
@@ -298,10 +341,7 @@ export default function Layout() {
     [notifications]
   );
   const criticalTasks = useMemo(
-    () =>
-      openTasks
-        .filter(task => task.priority === 'High' || task.kind === 'alert')
-        .slice(0, 4),
+    () => openTasks.filter(task => task.priority === 'High' || task.kind === 'alert').slice(0, 4),
     [openTasks]
   );
   const regularNotifications = useMemo(
@@ -399,7 +439,7 @@ export default function Layout() {
                 <input
                   value={globalQuery}
                   onChange={event => setGlobalQuery(event.target.value)}
-                  placeholder="ابحث عن طالب أو عميل محتمل أو فاتورة..."
+                  placeholder="ابحث عن طالب أو عميل أو فاتورة..."
                 />
               </form>
               {(globalSearching || globalResults.length > 0 || globalQuery.trim().length >= 2) && (
@@ -407,7 +447,7 @@ export default function Layout() {
                   {globalSearching ? (
                     <div className="global-search-empty">
                       <strong>جارٍ البحث...</strong>
-                      <span>نبحث داخل الملفات والأقسام المتاحة لك الآن.</span>
+                      <span>نبحث داخل الأقسام المتاحة لك الآن.</span>
                     </div>
                   ) : globalResults.length ? (
                     globalResults.map(item => (
@@ -427,7 +467,7 @@ export default function Layout() {
                   ) : (
                     <div className="global-search-empty">
                       <strong>لا توجد نتائج مطابقة</strong>
-                      <span>جرّب الاسم أو الهاتف أو رقم الطلب أو رقم الفاتورة.</span>
+                      <span>جرّب الاسم أو الهاتف أو البريد أو رقم الفاتورة.</span>
                     </div>
                   )}
                 </div>
@@ -448,7 +488,7 @@ export default function Layout() {
                   <div className="notification-menu-head">
                     <div>
                       <strong>التنبيهات</strong>
-                      <span>تحديث تلقائي كل 10 ثوانٍ · {criticalNotifications.length + criticalTasks.length} تنبيه جدي</span>
+                      <span>تحديث تلقائي كل 10 ثوانٍ · {criticalNotifications.length + criticalTasks.length} تنبيه مهم</span>
                     </div>
                     <NavLink to="/tasks" className="notification-link">عرض الكل</NavLink>
                   </div>
@@ -486,7 +526,7 @@ export default function Layout() {
                     ))}
 
                     {!!(regularNotifications.length || regularTasks.length) && (
-                      <div className="notification-section-label">جديد وغير مقروء</div>
+                      <div className="notification-section-label">أخرى</div>
                     )}
 
                     {regularNotifications.map(item => (
@@ -519,7 +559,7 @@ export default function Layout() {
                     {!notifications.length && !openTasks.length && (
                       <div className="notification-empty">
                         <strong>لا توجد تنبيهات مفتوحة</strong>
-                        <span>كل المهام تحت السيطرة حالياً.</span>
+                        <span>كل المهام تحت السيطرة حاليًا.</span>
                       </div>
                     )}
                   </div>
@@ -564,6 +604,7 @@ export default function Layout() {
           </div>
           <Outlet />
         </div>
+
         {popupNotification && (
           <div className="live-popup">
             <div className="live-popup-head">

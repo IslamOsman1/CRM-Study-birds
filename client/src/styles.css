@@ -99,6 +99,8 @@ th{text-align:right}
 .task-card.done{background:#f7fbf8;border-color:#cfe7d9}
 .task-top,.task-meta,.task-actions,.settings-users-head,.user-badges,.user-permissions{display:flex;align-items:center;gap:8px}
 .task-top,.task-meta,.task-actions{justify-content:space-between}
+.inline-form-row{display:flex;align-items:center;gap:8px}
+.inline-form-row select{flex:1}
 .task-card h3,.user-card h3{font-size:12px;margin:10px 0 4px}
 .task-card p,.user-card p{font-size:9.5px;color:#61697a;margin:0}
 .task-meta{font-size:8.5px;color:#818999;margin-top:10px;flex-wrap:wrap}
@@ -380,3 +382,54 @@ th{text-align:right}
 .multi-select{position:relative}.multi-select-trigger{width:100%;height:42px;border:1px solid #dfe3eb;border-radius:9px;padding:0 11px;background:#fff;color:#20273a;font-size:11px;display:flex;align-items:center;justify-content:space-between;gap:10px}.multi-select-trigger.is-open,.multi-select-trigger:focus{border-color:#9e94ff;box-shadow:0 0 0 3px rgba(70,49,255,.07)}.multi-select-trigger .is-placeholder{color:#8b92a1}.multi-select-menu{position:absolute;top:46px;right:0;left:0;z-index:8;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:8px;max-height:220px;overflow:auto}.multi-select-option{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:10px;cursor:pointer}.multi-select-option:hover{background:#f8f9fc}.multi-select-option input{margin:0}.multi-select-option span{font-size:10.5px;color:#20273a}.multi-select-empty{padding:12px 10px;text-align:center;font-size:9.5px;color:#8b92a1}.multi-select-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 @media(max-width:1250px){.catalog-grid,.catalog-filters-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:620px){.catalog-grid,.catalog-filters-grid{grid-template-columns:1fr}.catalog-actions,.catalog-toolbar{flex-direction:column;align-items:stretch}.multi-select-menu{left:0;right:0}.catalog-results-count{text-align:center}}
+.crm-tabs{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 16px}
+.crm-tabs.compact{margin:0}
+.crm-tab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:10px 14px;font-size:10px;font-weight:800;color:#596174;display:inline-flex;align-items:center;gap:8px}
+.crm-tab.active{background:#eeecff;border-color:#d7d2ff;color:#4631ff}
+.crm-grid{display:grid;gap:16px}
+.crm-grid-two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.reminder-card,.script-card,.quote-cart-card,.calls-board-card,.leave-calendar-card{padding:20px}
+.reminder-head,.script-card-head,.university-card-head,.week-day-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.reminder-card p,.script-card p,.call-slot-card p,.university-card span,.daily-report-lock span{color:#617084;font-size:10px;line-height:1.8}
+.reminder-action{margin-top:14px}
+.week-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:18px}
+.week-day-card{background:#f8faff;border:1px solid #e8ecf4;border-radius:16px;padding:14px}
+.week-day-head strong{font-size:11px;color:#192236}
+.week-day-slots{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.call-slot-card{background:#fff;border:1px solid #e6eaf3;border-radius:12px;padding:12px}
+.call-slot-card strong,.university-card strong,.selection-tag span,.daily-report-lock strong{display:block;color:#172033}
+.call-slot-time{display:inline-flex;background:#eef4ff;color:#1f4d93;border-radius:999px;padding:5px 8px;font-size:8.5px;font-weight:800;margin-bottom:8px}
+.daily-report-lock{padding:18px;margin-bottom:16px;background:#fff5e8;border-color:#f0d29e}
+.daily-report-lock-head{display:flex;align-items:center;gap:12px}
+.leave-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;margin-top:18px}
+.leave-day{min-height:102px;border:1px solid #e4e9f1;background:#fff;border-radius:14px;padding:12px;text-align:right;display:flex;flex-direction:column;justify-content:space-between}
+.leave-day span,.leave-day small{font-size:8.5px;color:#7b8393}
+.leave-day strong{font-size:18px;color:#172033}
+.leave-day.status-pending{background:#fff8e8;border-color:#f3deb0}
+.leave-day.status-approved{background:#eefaf2;border-color:#cde7d6}
+.leave-day.status-rejected{background:#fff2f0;border-color:#f3c6c2}
+.tasks-board-toolbar{gap:12px;flex-wrap:wrap}
+.tasks-layout-triple{grid-template-columns:repeat(3,minmax(0,1fr))}
+.quote-cart-card{margin:16px 0}
+.selection-tags{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.selection-tag{border:1px solid #ddd8ff;background:#f7f5ff;border-radius:999px;padding:10px 14px;display:inline-flex;align-items:center;gap:8px;font-size:10px}
+.filter-chip-list{display:flex;flex-wrap:wrap;gap:8px}
+.university-results-grid{align-items:start}
+.university-card{padding:18px}
+.university-card-meta{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.university-card-meta span{background:#f6f8fc;border:1px solid #e8ecf4;border-radius:999px;padding:6px 10px}
+.price-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.price-grid>div{background:#f9fbff;border:1px solid #e8ecf4;border-radius:12px;padding:11px}
+.price-grid small{display:block;font-size:8px;color:#7b8393;margin-bottom:5px}
+.price-grid strong{font-size:11px}
+.sales-mini-chart{margin-top:24px}
+.lead-view-btn{padding:7px 10px}
+@media(max-width:1250px){.week-grid,.crm-grid-two,.tasks-layout-triple{grid-template-columns:1fr 1fr}}
+@media(max-width:900px){.leave-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:620px){.crm-grid-two,.week-grid,.tasks-layout-triple,.leave-grid,.price-grid{grid-template-columns:1fr}.selection-tags{flex-direction:column}.selection-tag{justify-content:space-between}}
+
+.pipeline-board{align-items:stretch}
+.kanban-column{display:flex;flex-direction:column;height:auto;align-self:stretch}
+.kanban-stack{flex:1;min-height:320px}
+.kanban-drop-zone{margin-top:auto;min-height:76px;border:1px dashed #cfd3dd;border-radius:12px;display:grid;place-items:center;color:#8f97a7;font-size:9px;background:rgba(255,255,255,.45)}
+.kanban-empty{min-height:120px}
