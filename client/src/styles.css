@@ -392,6 +392,14 @@ th{text-align:right}
 .reminder-head,.script-card-head,.university-card-head,.week-day-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .reminder-card p,.script-card p,.call-slot-card p,.university-card span,.daily-report-lock span{color:#617084;font-size:10px;line-height:1.8}
 .reminder-action{margin-top:14px}
+.reminder-admin-card{display:flex;flex-direction:column;gap:12px}
+.reminder-admin-card h3{margin:0;font-size:12px;color:#14213d}
+.reminder-meta,.reminder-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.reminder-meta{font-size:8.5px;color:#7b8494}
+.reminder-date{font-size:8.5px;color:#7b8494}
+.reminder-field{margin-top:2px}
+.reminder-field select{width:100%}
+.reminder-actions .btn{margin-top:0}
 .week-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:18px}
 .week-day-card{background:#f8faff;border:1px solid #e8ecf4;border-radius:16px;padding:14px}
 .week-day-head strong{font-size:11px;color:#192236}

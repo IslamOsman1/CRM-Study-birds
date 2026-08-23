@@ -3873,28 +3873,44 @@ app.get('/api/tasks', async (req, res) => {
 
 app.get('/api/reminders', async (req, res) => {
   const db = await readDb();
+  const users = getScopedItems(db.users || [], req.user.companyId);
+  const safeUsers = new Map(users.map(({ passwordHash, ...user }) => [user.id, user]));
   const reminders = getScopedItems(db.reminders || [], req.user.companyId)
-    .filter(item => item.userId === req.user.sub || ['admin', 'management'].includes(req.user.role))
+    .filter(item => (item.assignedUserId || item.userId) === req.user.sub || ['admin', 'management'].includes(req.user.role))
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-  res.json(reminders);
+  res.json(reminders.map(item => ({
+    ...item,
+    assignedUser: (item.assignedUserId || item.userId) ? safeUsers.get(item.assignedUserId || item.userId) || null : null
+  })));
 });
 
 app.post('/api/reminders', async (req, res) => {
+  const payload = req.body || {};
   const text = String(req.body?.text || '').trim();
   const type = ['tasks', 'admissions', 'personal'].includes(req.body?.type) ? req.body.type : 'tasks';
   if (!text) return res.status(400).json({ message: 'نص التذكير مطلوب' });
 
   const result = await mutateDb(db => {
     db.reminders ||= [];
+    const users = getScopedItems(db.users || [], req.user.companyId);
+    const requestedAssigneeId = String(payload.assignedUserId || '').trim();
+    const assignedUserId = ['admin', 'management'].includes(req.user.role) ? requestedAssigneeId || req.user.sub : req.user.sub;
+    const assignedUser = users.find(user => user.id === assignedUserId);
+    if (!assignedUser) throw Object.assign(new Error('الموظف المسند إليه غير موجود'), { status: 400 });
     const reminder = {
       id: randomUUID(),
       companyId: req.user.companyId,
-      userId: req.user.sub,
+      userId: assignedUserId,
+      assignedUserId,
+      assignedRole: assignedUser.role || '',
+      title: String(payload.title || '').trim(),
       type,
       text,
+      dueDate: String(payload.dueDate || '').trim(),
       archived: false,
       createdAt: now(),
-      createdBy: req.user.name
+      createdBy: req.user.name,
+      assignedByUserId: req.user.sub
     };
     db.reminders.unshift(reminder);
     activity(db, req.user, 'created', 'reminder', reminder.id, `تم إنشاء تذكير جديد: ${text}`);
@@ -3908,16 +3924,73 @@ app.patch('/api/reminders/:id', async (req, res) => {
   const result = await mutateDb(db => {
     const reminder = findScoped(db.reminders || [], req.user.companyId, item => item.id === req.params.id);
     if (!reminder) throw Object.assign(new Error('التذكير غير موجود'), { status: 404 });
-    if (reminder.userId !== req.user.sub && !['admin', 'management'].includes(req.user.role)) {
+    if ((reminder.assignedUserId || reminder.userId) !== req.user.sub && !['admin', 'management'].includes(req.user.role)) {
       throw Object.assign(new Error('ليس لديك صلاحية لتعديل هذا التذكير'), { status: 403 });
+    }
+    const users = getScopedItems(db.users || [], req.user.companyId);
+    if (req.body?.assignedUserId !== undefined) {
+      const nextAssignedUserId = ['admin', 'management'].includes(req.user.role)
+        ? String(req.body.assignedUserId || '').trim() || req.user.sub
+        : req.user.sub;
+      const nextAssignedUser = users.find(user => user.id === nextAssignedUserId);
+      if (!nextAssignedUser) throw Object.assign(new Error('الموظف المسند إليه غير موجود'), { status: 400 });
+      reminder.assignedUserId = nextAssignedUserId;
+      reminder.userId = nextAssignedUserId;
+      reminder.assignedRole = nextAssignedUser.role || reminder.assignedRole || '';
     }
     if (typeof req.body?.archived === 'boolean') reminder.archived = req.body.archived;
     if (typeof req.body?.text === 'string' && req.body.text.trim()) reminder.text = req.body.text.trim();
+    if (typeof req.body?.title === 'string') reminder.title = req.body.title.trim();
+    if (typeof req.body?.dueDate === 'string') reminder.dueDate = req.body.dueDate.trim();
+    if (['tasks', 'admissions', 'personal'].includes(req.body?.type)) reminder.type = req.body.type;
     reminder.updatedAt = now();
     return reminder;
   });
 
   res.json(result);
+});
+
+app.post('/api/reminders/:id/convert-to-task', async (req, res) => {
+  const result = await mutateDb(db => {
+    db.tasks ||= [];
+    const users = getScopedItems(db.users || [], req.user.companyId);
+    const reminder = findScoped(db.reminders || [], req.user.companyId, item => item.id === req.params.id);
+    if (!reminder) throw Object.assign(new Error('التذكير غير موجود'), { status: 404 });
+    if ((reminder.assignedUserId || reminder.userId) !== req.user.sub && !['admin', 'management'].includes(req.user.role)) {
+      throw Object.assign(new Error('ليس لديك صلاحية لتحويل هذا التذكير'), { status: 403 });
+    }
+
+    const assignedUserId = String(req.body?.assignedUserId || reminder.assignedUserId || reminder.userId || '').trim();
+    const assignedUser = assignedUserId ? users.find(user => user.id === assignedUserId) || null : null;
+    if (assignedUserId && !assignedUser) throw Object.assign(new Error('الموظف المسند إليه غير موجود'), { status: 400 });
+
+    const task = {
+      id: randomUUID(),
+      companyId: req.user.companyId,
+      title: String(req.body?.title || reminder.title || reminder.text.slice(0, 80)).trim(),
+      description: String(req.body?.description || reminder.text || '').trim(),
+      dueDate: String(req.body?.dueDate || reminder.dueDate || '').trim(),
+      priority: req.body?.priority || 'Medium',
+      status: 'open',
+      kind: 'manual',
+      source: 'task',
+      assignedRole: assignedUser?.role || reminder.assignedRole || '',
+      assignedUserId: assignedUser?.id || '',
+      assignedByUserId: req.user.sub,
+      createdBy: req.user.name,
+      createdAt: now()
+    };
+
+    db.tasks.unshift(task);
+    reminder.archived = true;
+    reminder.convertedTaskId = task.id;
+    reminder.convertedAt = now();
+    reminder.updatedAt = now();
+    activity(db, req.user, 'created', 'task', task.id, `تم تحويل تذكير إلى مهمة ${task.title}`);
+    return task;
+  });
+
+  res.status(201).json(result);
 });
 
 app.get('/api/calls', async (req, res) => {
