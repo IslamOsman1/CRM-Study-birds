@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { EyeOff, FileDown, Search, ShoppingCart, UserRound, X } from 'lucide-react';
+import { EyeOff, FileDown, Search, UserRound } from 'lucide-react';
 import { api, apiDownload, formatMoney } from '../api.js';
 import { Badge, Button, Card, Field, Spinner, Toast } from '../components/UI.jsx';
 
@@ -55,7 +55,6 @@ function normalizePrograms(catalog) {
     prepFee: parseAmount(item.prep_school_fee || item.prep_fee),
     currency: parseCurrency(item.currency || item.fees || item.discount_fees),
     campus: item.campus_name || '',
-    logo: item.logo || '',
     raw: item
   }));
 }
@@ -68,7 +67,6 @@ export default function UniversitiesPage() {
   const [quoteForm, setQuoteForm] = useState(defaultQuoteForm);
   const [search, setSearch] = useState('');
   const [hiddenIds, setHiddenIds] = useState([]);
-  const [selectedIds, setSelectedIds] = useState([]);
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
   useEffect(() => {
@@ -119,11 +117,6 @@ export default function UniversitiesPage() {
     [filters, hiddenIds, rows, search]
   );
 
-  const selectedItems = useMemo(
-    () => rows.filter(row => selectedIds.includes(row.id) && !hiddenIds.includes(row.id)),
-    [hiddenIds, rows, selectedIds]
-  );
-
   const toggleListValue = (key, value) => {
     setFilters(current => ({
       ...current,
@@ -131,18 +124,13 @@ export default function UniversitiesPage() {
     }));
   };
 
-  const toggleSelected = rowId => {
-    setSelectedIds(current => (current.includes(rowId) ? current.filter(id => id !== rowId) : [...current, rowId]));
-  };
-
   const hideRow = rowId => {
-    setHiddenIds(current => [...current, rowId]);
-    setSelectedIds(current => current.filter(id => id !== rowId));
+    setHiddenIds(current => (current.includes(rowId) ? current : [...current, rowId]));
   };
 
   const generateQuote = async () => {
-    if (!selectedItems.length) {
-      setToast({ type: 'error', message: 'اختر برنامجًا واحدًا على الأقل قبل إنشاء العرض.' });
+    if (!filtered.length) {
+      setToast({ type: 'error', message: 'لا توجد نتائج حالية لإضافتها إلى ملف الـ PDF.' });
       return;
     }
     if (!quoteForm.studentName.trim()) {
@@ -156,7 +144,7 @@ export default function UniversitiesPage() {
         method: 'POST',
         body: JSON.stringify({
           student: quoteForm,
-          items: selectedItems
+          items: filtered
         })
       });
       const url = URL.createObjectURL(blob);
@@ -185,7 +173,7 @@ export default function UniversitiesPage() {
           <div>
             <p className="eyebrow">Quote Generator</p>
             <h2>البحث المتقدم والعرض السعري</h2>
-            <span>فلترة دقيقة مع سلة اختيار، ثم توليد PDF احترافي من السيرفر بالشعار وبيانات الطالب والجامعات المختارة.</span>
+            <span>نتائج الفلترة الحالية تدخل تلقائيًا في ملف الـ PDF، وزر الإخفاء فقط هو الذي يستبعد أي جامعة من الملف.</span>
           </div>
         </div>
 
@@ -284,11 +272,11 @@ export default function UniversitiesPage() {
       <Card className="quote-cart-card">
         <div className="section-head">
           <div>
-            <p className="eyebrow">Selection Cart</p>
-            <h2>العناصر المختارة</h2>
-            <span>{selectedItems.length} تخصص/جامعة جاهزة للدخول في ملف العرض.</span>
+            <p className="eyebrow">PDF Scope</p>
+            <h2>العناصر التي ستظهر في الملف</h2>
+            <span>{filtered.length} تخصص/جامعة من نتائج الفلترة الحالية ستدخل تلقائيًا في ملف العرض.</span>
           </div>
-          <Badge tone="purple"><ShoppingCart size={14} /> {selectedItems.length}</Badge>
+          <Badge tone="purple">{filtered.length}</Badge>
         </div>
         <div className="daily-report-lock card" style={{ marginBottom: 14 }}>
           <div className="daily-report-lock-head">
@@ -300,13 +288,12 @@ export default function UniversitiesPage() {
           </div>
         </div>
         <div className="selection-tags">
-          {selectedItems.map(item => (
-            <button key={item.id} className="selection-tag" onClick={() => toggleSelected(item.id)} type="button">
-              <span>{item.university} · {item.major}</span>
-              <X size={14} />
-            </button>
-          ))}
-          {!selectedItems.length && <div className="kanban-empty">لا توجد عناصر مختارة حتى الآن.</div>}
+          {hiddenIds.length > 0 ? (
+            <Button variant="secondary" type="button" onClick={() => setHiddenIds([])}>
+              إلغاء كل الإخفاءات
+            </Button>
+          ) : null}
+          {!filtered.length && <div className="kanban-empty">لا توجد نتائج ظاهرة حاليًا. عدّل الفلاتر أو ألغِ الإخفاء لإضافة نتائج إلى الملف.</div>}
         </div>
       </Card>
 
@@ -341,10 +328,6 @@ export default function UniversitiesPage() {
               <Button variant="secondary" onClick={() => hideRow(row.id)} type="button">
                 <EyeOff size={15} />
                 إخفاء
-              </Button>
-              <Button onClick={() => toggleSelected(row.id)} type="button">
-                <ShoppingCart size={15} />
-                {selectedIds.includes(row.id) ? 'إزالة من الاختيار' : 'إضافة للعرض'}
               </Button>
             </div>
           </Card>

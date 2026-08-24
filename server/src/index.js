@@ -2758,7 +2758,6 @@ async function prepareDb() {
     db.settings.availableCountries = sanitizeOptionList(db.settings.availableCountries || []);
 
     db.tasks ||= [];
-    const users = getScopedItems(db.users || [], req.user.companyId);
     for (const user of db.users) {
       if (typeof user.isActive !== 'boolean') user.isActive = true;
       if (!user.companyId) user.companyId = fallbackCompanyId;
