@@ -106,7 +106,7 @@ function renderReceiptPrintMarkup(payment, invoice) {
         <div class="receipt-head">
           <div>
             <span>EduGlobal CRM</span>
-            <h3>سند قبض رسمي</h3>
+            <h3>سند طالب رسمي</h3>
             <p>${escapeHtml(payment.receiptNumber)}</p>
           </div>
           <div class="receipt-stamp">
@@ -209,7 +209,7 @@ function ReceiptSheet({ payment, invoice }) {
       <div className="receipt-head">
         <div>
           <span>EduGlobal CRM</span>
-          <h3>سند قبض رسمي</h3>
+          <h3>سند طالب رسمي</h3>
           <p>{payment.receiptNumber}</p>
         </div>
         <div className="receipt-stamp">
@@ -424,7 +424,7 @@ export default function Finance() {
       setReceiptOpen(true);
       setPayment(paymentBlank);
       await load();
-      setToast({ message: 'تم تسجيل الدفعة وإصدار سند القبض.' });
+      setToast({ message: 'تم تسجيل الدفعة وإصدار سند الطالب.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
     }
@@ -524,7 +524,7 @@ export default function Finance() {
     const studentPhone = String(selectedReceipt.studentSnapshot?.phone || selected.student?.phone || '').replace(/[^\d]/g, '');
     const message = [
       'مرحباً،',
-      `تم إصدار سند القبض رقم ${selectedReceipt.receiptNumber}.`,
+      `تم إصدار سند الطالب رقم ${selectedReceipt.receiptNumber}.`,
       `المبلغ: ${formatMoney(selectedReceipt.amount, selectedReceipt.currency)}`,
       `البيان: ${selectedReceipt.statement || selected.paymentStatement || selected.description}`,
       `المتبقي: ${formatMoney(selectedReceipt.financialSummary?.remainingBalance || selected.balance, selected.currency)}`
@@ -752,7 +752,7 @@ export default function Finance() {
           </Field>
           <div className="form-actions field-full">
             <Button type="button" variant="secondary" onClick={() => setPaymentOpen(false)}>إلغاء</Button>
-            <Button type="submit"><Plus /> إصدار سند القبض</Button>
+            <Button type="submit"><Plus /> إصدار سند الطالب</Button>
           </div>
         </form>
       </Modal>
@@ -791,13 +791,13 @@ export default function Finance() {
             <div className="document-empty compact-empty">
               <ReceiptText />
               <strong>لا توجد دفعات مسجلة</strong>
-              <span>ابدأ بإضافة أول دفعة لإصدار أول سند قبض.</span>
+              <span>ابدأ بإضافة أول دفعة لإصدار أول سند طالب.</span>
             </div>
           )}
         </div>
       </Modal>
 
-      <Modal open={receiptOpen} onClose={() => setReceiptOpen(false)} title={`سند قبض · ${selectedReceipt?.receiptNumber || ''}`} subtitle="جاهز للطباعة والمشاركة" size="lg">
+      <Modal open={receiptOpen} onClose={() => setReceiptOpen(false)} title={`سند طالب · ${selectedReceipt?.receiptNumber || ''}`} subtitle="جاهز للطباعة والمشاركة" size="lg">
         <ReceiptSheet payment={selectedReceipt} invoice={selected} />
         <div className="form-actions">
           <Button type="button" variant="secondary" onClick={printReceipt}><ReceiptText /> طباعة سند</Button>

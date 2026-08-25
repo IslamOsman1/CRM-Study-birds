@@ -37,6 +37,16 @@ const useCloudinaryStorage = Boolean(cloudinaryCloudName && cloudinaryApiKey && 
 const quoteLogoPath = path.join(__dirname, '..', '..', 'client', 'src', 'assets', 'logo.jpeg');
 const windowsArabicRegularFontPath = 'C:\\Windows\\Fonts\\arial.ttf';
 const windowsArabicBoldFontPath = 'C:\\Windows\\Fonts\\arialbd.ttf';
+const linuxArabicRegularFontPaths = [
+  '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+  '/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf',
+  '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
+];
+const linuxArabicBoldFontPaths = [
+  '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+  '/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf',
+  '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'
+];
 const chromeExecutableCandidates = [
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
   'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
@@ -389,8 +399,8 @@ function safePdfMoney(value, currency = 'USD') {
 
 function loadPdfFontPath(weight = 'regular') {
   const candidatePaths = weight === 'bold'
-    ? [windowsArabicBoldFontPath, pdfArabicBoldFontPath, windowsArabicRegularFontPath, pdfArabicRegularFontPath]
-    : [windowsArabicRegularFontPath, pdfArabicRegularFontPath, windowsArabicBoldFontPath, pdfArabicBoldFontPath];
+    ? [windowsArabicBoldFontPath, ...linuxArabicBoldFontPaths, windowsArabicRegularFontPath, ...linuxArabicRegularFontPaths, pdfArabicBoldFontPath, pdfArabicRegularFontPath]
+    : [windowsArabicRegularFontPath, ...linuxArabicRegularFontPaths, windowsArabicBoldFontPath, ...linuxArabicBoldFontPaths, pdfArabicRegularFontPath, pdfArabicBoldFontPath];
 
   return candidatePaths.find(fontPath => fs.existsSync(fontPath)) || null;
 }
