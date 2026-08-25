@@ -381,12 +381,21 @@ function containsArabic(value) {
   return /[\u0600-\u06FF]/.test(String(value || ''));
 }
 
+function reorderArabicWordsForPdf(value) {
+  return String(value || '')
+    .split(/(\s+)/)
+    .filter(part => part.length > 0)
+    .reverse()
+    .join('');
+}
+
 function preparePdfDisplayText(value, fallback = '—') {
   const normalized = safePdfText(value, fallback);
   if (!containsArabic(normalized)) return normalized;
-  return reshaper?.ArabicShaper?.convertArabic
+  const shaped = reshaper?.ArabicShaper?.convertArabic
     ? reshaper.ArabicShaper.convertArabic(normalized)
     : normalized;
+  return reorderArabicWordsForPdf(shaped);
 }
 
 function safePdfMoney(value, currency = 'USD') {
@@ -917,7 +926,7 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
   doc.y += 14;
 
   const tableX = doc.page.margins.left;
-  const columnWidths = [150, 170, 170, pageWidth - 150 - 170 - 170];
+  const columnWidths = [180, 120, 120, pageWidth - 180 - 120 - 120];
   const headerHeight = 30;
   const rowHeight = 96;
   const tableHeaders = ['PROGRAM', 'UNIVERSITY', 'INFORMATION', 'FEES'];
@@ -953,7 +962,7 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
     doc
       .font(boldFont || 'Helvetica-Bold')
       .fillColor(textColor)
-      .fontSize(9)
+      .fontSize(10)
       .text(preparePdfDisplayText(item.major || 'Program'), programX + 10, rowY + 18, {
         width: columnWidths[0] - 20,
         align: containsArabic(item.major) ? 'right' : 'left'
@@ -1024,24 +1033,26 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
     doc.y += rowHeight;
   });
 
-  ensureSpace(80);
-  doc.y += 8;
-  doc.roundedRect(doc.page.margins.left, doc.y, pageWidth, 52, 12).fillAndStroke('#ecfdf5', '#b7e4d7');
-  doc
-    .font(boldFont || 'Helvetica-Bold')
-    .fillColor(accentColor)
-    .fontSize(11)
-    .text('Consultant Note', doc.page.margins.left + 14, doc.y + 12);
-  doc
-    .font(regularFont || 'Helvetica')
-    .fillColor('#14532d')
-    .fontSize(9)
-    .text(
-      'This quotation is generated from the CRM catalog on Saturday, August 22, 2026 and should be confirmed against the latest university availability before final submission.',
-      doc.page.margins.left + 14,
-      doc.y + 28,
-      { width: pageWidth - 28 }
-    );
+  const noteBlockHeight = 60;
+  if (doc.y + noteBlockHeight <= doc.page.height - doc.page.margins.bottom) {
+    doc.y += 8;
+    doc.roundedRect(doc.page.margins.left, doc.y, pageWidth, 52, 12).fillAndStroke('#ecfdf5', '#b7e4d7');
+    doc
+      .font(boldFont || 'Helvetica-Bold')
+      .fillColor(accentColor)
+      .fontSize(11)
+      .text('Consultant Note', doc.page.margins.left + 14, doc.y + 12);
+    doc
+      .font(regularFont || 'Helvetica')
+      .fillColor('#14532d')
+      .fontSize(9)
+      .text(
+        'This quotation is generated from the CRM catalog on Saturday, August 22, 2026 and should be confirmed against the latest university availability before final submission.',
+        doc.page.margins.left + 14,
+        doc.y + 28,
+        { width: pageWidth - 28 }
+      );
+  }
 
   const pageRange = doc.bufferedPageRange();
   for (let pageIndex = 0; pageIndex < pageRange.count; pageIndex += 1) {
