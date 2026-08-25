@@ -855,15 +855,16 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
     doc
       .font(boldFont || 'Helvetica-Bold')
       .fillColor(mutedColor)
-      .fontSize(8)
+      .fontSize(7.5)
       .text(label, x, y, { width: labelWidth, align: 'left' });
     doc
       .font(regularFont || 'Helvetica')
       .fillColor(textColor)
-      .fontSize(9)
+      .fontSize(8.5)
       .text(preparePdfDisplayText(value), x + labelWidth + 8, y, {
         width: valueWidth,
-        align: containsArabic(value) ? 'right' : 'left'
+        align: containsArabic(value) ? 'right' : 'left',
+        lineBreak: false
       });
   };
 
@@ -936,7 +937,7 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
   const tableX = doc.page.margins.left;
   const columnWidths = [170, 115, 110, pageWidth - 170 - 115 - 110];
   const headerHeight = 30;
-  const rowHeight = 96;
+  const rowHeight = 100;
   const tableHeaders = ['PROGRAM', 'UNIVERSITY', 'INFORMATION', 'FEES'];
   const headerY = doc.y;
 
@@ -1019,7 +1020,7 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
       ['Prep School', safePdfMoney(item.prepFee, item.currency)]
     ];
     infoLines.forEach(([label, value], infoIndex) => {
-      drawKeyValueLine(label, value, infoX + 10, rowY + 12 + (infoIndex * 18), 62, columnWidths[2] - 84);
+      drawKeyValueLine(label, value, infoX + 10, rowY + 12 + (infoIndex * 20), 58, columnWidths[2] - 76);
     });
 
     doc
