@@ -478,9 +478,24 @@ export default function Finance() {
 
   const printReceipt = () => {
     if (!selectedReceipt || !selected) return;
-    const printWindow = window.open('', '_blank', 'width=960,height=900');
-    if (!printWindow) return;
-    printWindow.document.write(`
+    const frame = document.createElement('iframe');
+    frame.style.position = 'fixed';
+    frame.style.right = '0';
+    frame.style.bottom = '0';
+    frame.style.width = '0';
+    frame.style.height = '0';
+    frame.style.border = '0';
+    document.body.appendChild(frame);
+
+    const printDocument = frame.contentWindow?.document;
+    if (!printDocument || !frame.contentWindow) {
+      frame.remove();
+      setToast({ type: 'error', message: 'تعذر فتح معاينة السند للطباعة.' });
+      return;
+    }
+
+    printDocument.open();
+    printDocument.write(`
       <html lang="ar" dir="rtl">
         <head>
           <meta charset="utf-8" />
@@ -492,63 +507,16 @@ export default function Finance() {
         </body>
       </html>
     `);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    return;
-    const snapshot = selectedReceipt.studentSnapshot || {};
-    printWindow.document.write(`
-      <html lang="ar" dir="rtl">
-        <head>
-          <title>${selectedReceipt.receiptNumber}</title>
-          <style>
-            body{font-family:Arial,sans-serif;padding:32px;color:#1a1f2b}
-            .head,.summary,.foot{display:flex;justify-content:space-between;gap:16px}
-            .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
-            .card{border:1px solid #d9dfec;border-radius:12px;padding:14px;margin:18px 0}
-            h1,h2,h3,p{margin:0}
-            span{font-size:12px;color:#667085;display:block;margin-bottom:6px}
-            strong{font-size:14px}
-            .summary .item{flex:1;border:1px solid #d9dfec;border-radius:12px;padding:14px}
-            .sig{margin-top:36px;border-top:1px solid #d9dfec;padding-top:20px}
-          </style>
-        </head>
-        <body>
-          <div class="head">
-            <div>
-              <h2>EduGlobal CRM</h2>
-              <h1>سند قبض رسمي</h1>
-              <p>${selectedReceipt.receiptNumber}</p>
-            </div>
-            <div><strong>تاريخ التحصيل:</strong> ${formatDateTime(selectedReceipt.createdAt || selectedReceipt.date)}</div>
-          </div>
-          <div class="card">
-            <div class="grid">
-              <div><span>اسم الطالب</span><strong>${snapshot.name || selected.student?.name || '-'}</strong></div>
-              <div><span>الهاتف / الكود المرجعي</span><strong>${snapshot.phone || selected.student?.phone || '-'} / ${snapshot.referenceCode || selected.student?.id || '-'}</strong></div>
-              <div><span>الدولة والتخصص</span><strong>${snapshot.targetMajor || selected.application?.program || '-'} - ${snapshot.targetCountry || selected.application?.country || '-'}</strong></div>
-              <div><span>المستشار</span><strong>${snapshot.consultantName || selected.consultant?.name || 'غير محدد'}</strong></div>
-              <div><span>طريقة الدفع</span><strong>${selectedReceipt.method}</strong></div>
-              <div><span>المبلغ</span><strong>${formatMoney(selectedReceipt.amount, selectedReceipt.currency)}</strong></div>
-            </div>
-            <div><span>البيان</span><strong>${selectedReceipt.statement || selected.paymentStatement || selected.description}</strong></div>
-            <div style="margin-top:14px"><span>التفقيط</span><strong>${selectedReceipt.amountInWords || '-'}</strong></div>
-          </div>
-          <div class="summary">
-            <div class="item"><span>إجمالي المستحق</span><strong>${formatMoney(selectedReceipt.financialSummary?.totalDue || selected.total, selected.currency)}</strong></div>
-            <div class="item"><span>إجمالي المدفوع</span><strong>${formatMoney(selectedReceipt.financialSummary?.totalPaid || selected.paid, selected.currency)}</strong></div>
-            <div class="item"><span>المتبقي</span><strong>${formatMoney(selectedReceipt.financialSummary?.remainingBalance || selected.balance, selected.currency)}</strong></div>
-          </div>
-          <div class="foot sig">
-            <div><span>توقيع المحاسب</span><strong>__________________</strong></div>
-            <div><span>ختم الشركة</span><strong>__________________</strong></div>
-          </div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
+    printDocument.close();
+
+    const triggerPrint = () => {
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+      window.setTimeout(() => frame.remove(), 1000);
+    };
+
+    frame.onload = triggerPrint;
+    window.setTimeout(triggerPrint, 250);
   };
 
   const sendWhatsApp = () => {

@@ -753,7 +753,7 @@ function buildUniversityQuoteHtml({ companyName, preparedBy, student, items, log
 async function generateUniversityQuotePdfChrome({ companyName, preparedBy, student, items }) {
   const chromePath = getChromeExecutablePath();
   if (!chromePath) {
-    throw Object.assign(new Error('Chrome or Edge is required on the server to generate the PDF correctly.'), { status: 500 });
+    return generateUniversityQuotePdf({ companyName, preparedBy, student, items });
   }
 
   const tempDir = path.join(os.tmpdir(), `eduglobal-quote-${randomUUID()}`);
@@ -779,6 +779,8 @@ async function generateUniversityQuotePdfChrome({ companyName, preparedBy, stude
     ], { windowsHide: true });
 
     return fs.readFileSync(pdfPath);
+  } catch {
+    return generateUniversityQuotePdf({ companyName, preparedBy, student, items });
   } finally {
     try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch {}
   }
