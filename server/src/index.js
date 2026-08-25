@@ -930,18 +930,23 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
   const headerHeight = 30;
   const rowHeight = 96;
   const tableHeaders = ['PROGRAM', 'UNIVERSITY', 'INFORMATION', 'FEES'];
+  const headerY = doc.y;
 
   let headerCursorX = tableX;
   tableHeaders.forEach((label, index) => {
-    doc.rect(headerCursorX, doc.y, columnWidths[index], headerHeight).fillAndStroke('#edf4ff', '#d9e6f5');
+    doc.rect(headerCursorX, headerY, columnWidths[index], headerHeight).fillAndStroke('#edf4ff', '#d9e6f5');
     doc
       .font(boldFont || 'Helvetica-Bold')
       .fillColor('#2450a6')
       .fontSize(8.5)
-      .text(label, headerCursorX + 8, doc.y + 10, { width: columnWidths[index] - 16, align: 'center' });
+      .text(label, headerCursorX + 8, headerY + 10, {
+        width: columnWidths[index] - 16,
+        align: 'center',
+        lineBreak: false
+      });
     headerCursorX += columnWidths[index];
   });
-  doc.y += headerHeight;
+  doc.y = headerY + headerHeight;
 
   items.forEach((item, index) => {
     ensureSpace(rowHeight + 2);
@@ -965,7 +970,8 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
       .fontSize(10)
       .text(preparePdfDisplayText(item.major || 'Program'), programX + 10, rowY + 18, {
         width: columnWidths[0] - 20,
-        align: containsArabic(item.major) ? 'right' : 'left'
+        align: containsArabic(item.major) ? 'right' : 'left',
+        lineBreak: false
       });
     doc
       .roundedRect(programX + 10, rowY + 54, 60, 18, 8)
@@ -985,7 +991,8 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
       .fontSize(9)
       .text(preparePdfDisplayText(item.university), universityX + 10, rowY + 18, {
         width: columnWidths[1] - 20,
-        align: containsArabic(item.university) ? 'right' : 'left'
+        align: containsArabic(item.university) ? 'right' : 'left',
+        lineBreak: false
       });
     doc
       .font(regularFont || 'Helvetica')
@@ -993,7 +1000,8 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
       .fontSize(8)
       .text(preparePdfDisplayText([safePdfText(item.country, ''), safePdfText(item.city, '')].filter(Boolean).join(' / ') || '-'), universityX + 10, rowY + 40, {
         width: columnWidths[1] - 20,
-        align: containsArabic(item.country) || containsArabic(item.city) ? 'right' : 'left'
+        align: containsArabic(item.country) || containsArabic(item.city) ? 'right' : 'left',
+        lineBreak: false
       });
 
     const infoLines = [
@@ -1013,24 +1021,24 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
       .font(boldFont || 'Helvetica-Bold')
       .fillColor('#356fe8')
       .fontSize(7.5)
-      .text('DISCOUNTED', feesX + 18, rowY + 22, { width: columnWidths[3] - 36, align: 'left' });
+      .text('DISCOUNTED', feesX + 18, rowY + 22, { width: columnWidths[3] - 36, align: 'left', lineBreak: false });
     doc
       .font(boldFont || 'Helvetica-Bold')
       .fillColor('#356fe8')
       .fontSize(13)
-      .text(safePdfMoney(item.tuitionFee, item.currency), feesX + 18, rowY + 32, { width: columnWidths[3] - 36, align: 'left' });
+      .text(safePdfMoney(item.tuitionFee, item.currency), feesX + 18, rowY + 32, { width: columnWidths[3] - 36, align: 'left', lineBreak: false });
     doc
       .font(boldFont || 'Helvetica-Bold')
       .fillColor(mutedColor)
       .fontSize(7)
-      .text('CASH PAYMENT', feesX + 18, rowY + 60, { width: columnWidths[3] - 36, align: 'left' });
+      .text('CASH PAYMENT', feesX + 18, rowY + 60, { width: columnWidths[3] - 36, align: 'left', lineBreak: false });
     doc
       .font(boldFont || 'Helvetica-Bold')
       .fillColor('#10a46f')
       .fontSize(11)
-      .text(safePdfMoney(item.cashFee, item.currency), feesX + 18, rowY + 70, { width: columnWidths[3] - 36, align: 'left' });
+      .text(safePdfMoney(item.cashFee, item.currency), feesX + 18, rowY + 70, { width: columnWidths[3] - 36, align: 'left', lineBreak: false });
 
-    doc.y += rowHeight;
+    doc.y = rowY + rowHeight;
   });
 
   const noteBlockHeight = 60;
