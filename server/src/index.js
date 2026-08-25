@@ -35,14 +35,22 @@ const cloudinaryApiKey = String(process.env.CLOUDINARY_API_KEY || '').trim();
 const cloudinaryApiSecret = String(process.env.CLOUDINARY_API_SECRET || '').trim();
 const useCloudinaryStorage = Boolean(cloudinaryCloudName && cloudinaryApiKey && cloudinaryApiSecret);
 const quoteLogoPath = path.join(__dirname, '..', '..', 'client', 'src', 'assets', 'logo.jpeg');
-const windowsArabicRegularFontPath = 'C:\\Windows\\Fonts\\arial.ttf';
-const windowsArabicBoldFontPath = 'C:\\Windows\\Fonts\\arialbd.ttf';
+const windowsArabicRegularFontPaths = [
+  'C:\\Windows\\Fonts\\tahoma.ttf',
+  'C:\\Windows\\Fonts\\arial.ttf'
+];
+const windowsArabicBoldFontPaths = [
+  'C:\\Windows\\Fonts\\tahomabd.ttf',
+  'C:\\Windows\\Fonts\\arialbd.ttf'
+];
 const linuxArabicRegularFontPaths = [
+  '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf',
   '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
   '/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf',
   '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
 ];
 const linuxArabicBoldFontPaths = [
+  '/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf',
   '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
   '/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf',
   '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'
@@ -408,8 +416,8 @@ function safePdfMoney(value, currency = 'USD') {
 
 function loadPdfFontPath(weight = 'regular') {
   const candidatePaths = weight === 'bold'
-    ? [windowsArabicBoldFontPath, ...linuxArabicBoldFontPaths, windowsArabicRegularFontPath, ...linuxArabicRegularFontPaths, pdfArabicBoldFontPath, pdfArabicRegularFontPath]
-    : [windowsArabicRegularFontPath, ...linuxArabicRegularFontPaths, windowsArabicBoldFontPath, ...linuxArabicBoldFontPaths, pdfArabicRegularFontPath, pdfArabicBoldFontPath];
+    ? [...windowsArabicBoldFontPaths, ...linuxArabicBoldFontPaths, ...windowsArabicRegularFontPaths, ...linuxArabicRegularFontPaths, pdfArabicBoldFontPath, pdfArabicRegularFontPath]
+    : [...windowsArabicRegularFontPaths, ...linuxArabicRegularFontPaths, ...windowsArabicBoldFontPaths, ...linuxArabicBoldFontPaths, pdfArabicRegularFontPath, pdfArabicBoldFontPath];
 
   return candidatePaths.find(fontPath => fs.existsSync(fontPath)) || null;
 }
