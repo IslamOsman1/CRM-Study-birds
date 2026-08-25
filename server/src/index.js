@@ -5142,6 +5142,7 @@ app.post('/api/invoices', allowRoles('admin', 'management', 'finance'), async (r
     const installments = sanitizeInstallments(req.body.installments);
     const invoice = {
       id: randomUUID(),
+      companyId: req.user.companyId,
       number: nextSerial('INV', db.invoices),
       studentId: student.id,
       description: req.body.description || 'Educational consultancy services',
@@ -5187,6 +5188,7 @@ app.post('/api/invoices/:id/payments', allowRoles('admin', 'management', 'financ
     const consultant = student?.consultantId ? db.employees.find(item => item.id === student.consultantId) || null : null;
     const payment = {
       id: randomUUID(),
+      companyId: req.user.companyId,
       invoiceId: invoice.id,
       installmentId,
       receiptNumber: nextSerial('REC', db.payments),
