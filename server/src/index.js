@@ -1069,7 +1069,10 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
       .font(regularFont || 'Helvetica')
       .fillColor('#8a94a6')
       .fontSize(8)
-      .text(`Page ${pageIndex + 1} of ${pageRange.count}`, 0, doc.page.height - 32, { align: 'center' });
+      .text(`Page ${pageIndex + 1} of ${pageRange.count}`, 0, doc.page.height - 32, {
+        align: 'center',
+        lineBreak: false
+      });
   }
 
   doc.end();
