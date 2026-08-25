@@ -926,7 +926,7 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
   doc.y += 14;
 
   const tableX = doc.page.margins.left;
-  const columnWidths = [180, 120, 120, pageWidth - 180 - 120 - 120];
+  const columnWidths = [170, 115, 110, pageWidth - 170 - 115 - 110];
   const headerHeight = 30;
   const rowHeight = 96;
   const tableHeaders = ['PROGRAM', 'UNIVERSITY', 'INFORMATION', 'FEES'];
@@ -1030,13 +1030,13 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
     doc
       .font(boldFont || 'Helvetica-Bold')
       .fillColor(mutedColor)
-      .fontSize(7)
-      .text('CASH PAYMENT', feesX + 18, rowY + 60, { width: columnWidths[3] - 36, align: 'left', lineBreak: false });
+      .fontSize(6)
+      .text('CASH', feesX + 18, rowY + 58, { width: columnWidths[3] - 36, align: 'left', lineBreak: false });
     doc
       .font(boldFont || 'Helvetica-Bold')
       .fillColor('#10a46f')
       .fontSize(11)
-      .text(safePdfMoney(item.cashFee, item.currency), feesX + 18, rowY + 70, { width: columnWidths[3] - 36, align: 'left', lineBreak: false });
+      .text(safePdfMoney(item.cashFee, item.currency), feesX + 18, rowY + 72, { width: columnWidths[3] - 36, align: 'left', lineBreak: false });
 
     doc.y = rowY + rowHeight;
   });
