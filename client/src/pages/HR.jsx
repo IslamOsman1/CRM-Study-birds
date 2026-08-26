@@ -279,6 +279,16 @@ export default function HR() {
     setPendingAction({ type: 'delete', employee });
   };
 
+  const openEmployeeModal = () => {
+    setEmployeeForm(employeeBlank);
+    setEmployeeOpen(true);
+  };
+
+  const closeEmployeeModal = () => {
+    setEmployeeOpen(false);
+    setEmployeeForm(employeeBlank);
+  };
+
   const closePendingAction = () => {
     if (submittingAction) return;
     setPendingAction(null);
@@ -439,7 +449,7 @@ export default function HR() {
             <input value={query} onChange={event => setQuery(event.target.value)} placeholder="ابحث عن موظف..." />
           </div>
           <div className="toolbar-right">
-            {canCreateEmployee && <Button variant="secondary" onClick={() => setEmployeeOpen(true)} type="button"><UserPlus /> موظف جديد</Button>}
+            {canCreateEmployee && <Button variant="secondary" onClick={openEmployeeModal} type="button"><UserPlus /> موظف جديد</Button>}
             {canLogAttendance && <Button onClick={() => setAttendanceOpen(true)} type="button"><Plus /> تسجيل حضور</Button>}
           </div>
         </div>
@@ -730,7 +740,7 @@ export default function HR() {
         </form>
       </Modal>
 
-      <Modal open={employeeOpen} onClose={() => setEmployeeOpen(false)} title="إضافة موظف جديد" subtitle="إنشاء سجل موظف جديد داخل النظام" size="lg">
+      <Modal open={employeeOpen} onClose={closeEmployeeModal} title="إضافة موظف جديد" subtitle="إنشاء سجل موظف جديد داخل النظام" size="lg">
         <form className="form-grid" autoComplete="off" onSubmit={createEmployee}>
           <Field label="الاسم"><input required autoComplete="off" value={employeeForm.name} onChange={event => setEmployeeForm({ ...employeeForm, name: event.target.value })} /></Field>
           <Field label="البريد الإلكتروني"><input required type="email" autoComplete="off" value={employeeForm.email} onChange={event => setEmployeeForm({ ...employeeForm, email: event.target.value })} /></Field>
@@ -764,7 +774,7 @@ export default function HR() {
             <span>الحساب مفعل ويمكنه تسجيل الدخول</span>
           </label>
           <div className="form-actions field-full">
-            <Button type="button" variant="secondary" onClick={() => setEmployeeOpen(false)}>إلغاء</Button>
+            <Button type="button" variant="secondary" onClick={closeEmployeeModal}>إلغاء</Button>
             <Button type="submit">إضافة الموظف</Button>
           </div>
         </form>
