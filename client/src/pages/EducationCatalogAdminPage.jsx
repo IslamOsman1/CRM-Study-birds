@@ -81,6 +81,7 @@ export default function EducationCatalogAdminPage() {
   const [catalogImporting, setCatalogImporting] = useState(false);
   const [toast, setToast] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [createDraft, setCreateDraft] = useState(createCountry());
   const [catalogLinks, setCatalogLinks] = useState({});
   const [catalogTab, setCatalogTab] = useState('countries');
@@ -191,7 +192,49 @@ export default function EducationCatalogAdminPage() {
     }));
   };
 
+  const getCatalogRowLabel = (group, row) => {
+    if (!row) return '';
+    if (group === 'countries') return row.name || row.code || '';
+    if (group === 'universities') return row.name || '';
+    if (group === 'programs') return row.department || row.university || '';
+    if (group === 'scholarships') return row.name || row.university || '';
+    return '';
+  };
+
+  const requestRemoveCatalogRow = (group, rowId) => {
+    const row = (catalogForm[group] || []).find(item => item.id === rowId);
+    const label = getCatalogRowLabel(group, row);
+    setDeleteConfirm({
+      type: 'single',
+      group,
+      rowId,
+      title: 'تأكيد الحذف',
+      subtitle: label ? `سيتم حذف "${label}" بعد التأكيد.` : 'سيتم حذف هذا العنصر بعد التأكيد.',
+      actionLabel: 'تأكيد الحذف'
+    });
+  };
+
+  const executeRemoveCatalogRow = (group, rowId) => {
+    setCatalogForm(current => ({
+      ...current,
+      [group]: current[group].filter(item => item.id !== rowId)
+    }));
+    setCatalogSelection(current => ({
+      ...current,
+      [group]: current[group].filter(item => item !== rowId)
+    }));
+  };
+
   const removeCatalogRow = (group, rowId) => {
+    const row = (catalogForm[group] || []).find(item => item.id === rowId);
+    const label = getCatalogRowLabel(group, row);
+    const confirmed = window.confirm(
+      label
+        ? `هل أنت متأكد من حذف "${label}" من قسم ${catalogFieldLabels[group]}؟`
+        : `هل أنت متأكد من حذف هذا العنصر من قسم ${catalogFieldLabels[group]}؟`
+    );
+    if (!confirmed) return;
+
     setCatalogForm(current => ({
       ...current,
       [group]: current[group].filter(item => item.id !== rowId)
@@ -246,6 +289,8 @@ export default function EducationCatalogAdminPage() {
 
   const deleteSelectedCatalogRows = async () => {
     if (!selectedCatalogIds.length) return;
+    const confirmed = window.confirm(`هل أنت متأكد من حذف ${selectedCatalogIds.length} عنصر من قسم ${catalogFieldLabels[catalogTab]}؟`);
+    if (!confirmed) return;
     const nextCatalogForm = {
       ...catalogForm,
       [catalogTab]: catalogForm[catalogTab].filter(item => !selectedCatalogIds.includes(item.id))
@@ -253,6 +298,40 @@ export default function EducationCatalogAdminPage() {
     setCatalogForm(nextCatalogForm);
     setCatalogSelection(current => ({ ...current, [catalogTab]: [] }));
     await saveCatalogPayload(nextCatalogForm, `تم حذف العناصر المحددة من قسم ${catalogFieldLabels[catalogTab]} بنجاح`);
+  };
+
+  const executeBulkDeleteCatalogRows = async () => {
+    if (!selectedCatalogIds.length) return;
+    const nextCatalogForm = {
+      ...catalogForm,
+      [catalogTab]: catalogForm[catalogTab].filter(item => !selectedCatalogIds.includes(item.id))
+    };
+    setCatalogForm(nextCatalogForm);
+    setCatalogSelection(current => ({ ...current, [catalogTab]: [] }));
+    await saveCatalogPayload(nextCatalogForm, `تم حذف العناصر المحددة من قسم ${catalogFieldLabels[catalogTab]} بنجاح`);
+  };
+
+  const requestDeleteSelectedCatalogRows = () => {
+    if (!selectedCatalogIds.length) return;
+    setDeleteConfirm({
+      type: 'bulk',
+      title: 'تأكيد الحذف الجماعي',
+      subtitle: `سيتم حذف ${selectedCatalogIds.length} عنصر من هذا القسم بعد التأكيد.`,
+      actionLabel: `حذف ${selectedCatalogIds.length} عنصر`
+    });
+  };
+
+  const confirmDeleteAction = async () => {
+    if (!deleteConfirm) return;
+    if (deleteConfirm.type === 'single') {
+      setDeleteConfirm(null);
+      executeRemoveCatalogRow(deleteConfirm.group, deleteConfirm.rowId);
+      return;
+    }
+    if (deleteConfirm.type === 'bulk') {
+      setDeleteConfirm(null);
+      await executeBulkDeleteCatalogRows();
+    }
   };
 
   const triggerCatalogImport = () => {
@@ -369,7 +448,7 @@ export default function EducationCatalogAdminPage() {
             disabled={!canManageSettings || !selectedCatalogIds.length || catalogSaving}
             variant="ghost"
             type="button"
-            onClick={deleteSelectedCatalogRows}
+            onClick={requestDeleteSelectedCatalogRows}
           >
             <Trash2 /> حذف جماعي ({selectedCatalogIds.length})
           </Button>
@@ -394,7 +473,7 @@ export default function EducationCatalogAdminPage() {
                   <Field label="رمز الدولة"><input disabled={!canManageSettings} value={item.code} onChange={event => updateCatalogRow('countries', item.id, { code: event.target.value })} placeholder="TR / DE / EG" /></Field>
                 </div>
                 <div className="task-actions">
-                  <Button disabled={!canManageSettings} variant="ghost" type="button" onClick={() => removeCatalogRow('countries', item.id)}><Trash2 /> حذف الدولة</Button>
+                  <Button disabled={!canManageSettings} variant="ghost" type="button" onClick={() => requestRemoveCatalogRow('countries', item.id)}><Trash2 /> حذف الدولة</Button>
                 </div>
               </article>
             ))}
@@ -425,7 +504,7 @@ export default function EducationCatalogAdminPage() {
                   <Field label="العنوان" className="field-full"><textarea disabled={!canManageSettings} value={item.address} onChange={event => updateCatalogRow('universities', item.id, { address: event.target.value })} /></Field>
                 </div>
                 <div className="task-actions">
-                  <Button disabled={!canManageSettings} variant="ghost" type="button" onClick={() => removeCatalogRow('universities', item.id)}><Trash2 /> حذف الجامعة</Button>
+                  <Button disabled={!canManageSettings} variant="ghost" type="button" onClick={() => requestRemoveCatalogRow('universities', item.id)}><Trash2 /> حذف الجامعة</Button>
                 </div>
               </article>
             ))}
@@ -483,7 +562,7 @@ export default function EducationCatalogAdminPage() {
                   <Field label="الفرع / الحرم" className="field-full"><input disabled={!canManageSettings} value={item.campus_name} onChange={event => updateCatalogRow('programs', item.id, { campus_name: event.target.value })} /></Field>
                 </div>
                 <div className="task-actions">
-                  <Button disabled={!canManageSettings} variant="ghost" type="button" onClick={() => removeCatalogRow('programs', item.id)}><Trash2 /> حذف البرنامج</Button>
+                  <Button disabled={!canManageSettings} variant="ghost" type="button" onClick={() => requestRemoveCatalogRow('programs', item.id)}><Trash2 /> حذف البرنامج</Button>
                 </div>
               </article>
             ))}
@@ -522,7 +601,7 @@ export default function EducationCatalogAdminPage() {
                   <Field label="ملاحظات" className="field-full"><textarea disabled={!canManageSettings} value={item.notes} onChange={event => updateCatalogRow('scholarships', item.id, { notes: event.target.value })} /></Field>
                 </div>
                 <div className="task-actions">
-                  <Button disabled={!canManageSettings} variant="ghost" type="button" onClick={() => removeCatalogRow('scholarships', item.id)}><Trash2 /> حذف المنحة</Button>
+                  <Button disabled={!canManageSettings} variant="ghost" type="button" onClick={() => requestRemoveCatalogRow('scholarships', item.id)}><Trash2 /> حذف المنحة</Button>
                 </div>
               </article>
             ))}
@@ -638,6 +717,22 @@ export default function EducationCatalogAdminPage() {
             <Button type="submit">إضافة الآن</Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        title={deleteConfirm?.title || 'تأكيد الحذف'}
+        subtitle={deleteConfirm?.subtitle || 'سيتم تنفيذ الحذف بعد تأكيدك.'}
+        size="sm"
+      >
+        <div className="stack">
+          <p>هذا الإجراء سيحذف العنصر من الدليل الدراسي داخل النظام.</p>
+          <div className="form-actions">
+            <Button type="button" variant="secondary" onClick={() => setDeleteConfirm(null)}>إلغاء</Button>
+            <Button type="button" onClick={confirmDeleteAction}>{deleteConfirm?.actionLabel || 'تأكيد الحذف'}</Button>
+          </div>
+        </div>
       </Modal>
 
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}

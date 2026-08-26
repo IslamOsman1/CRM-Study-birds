@@ -66,6 +66,7 @@ export const actionPermissions = {
   createInvoice: ['admin', 'management', 'finance'],
   recordPayment: ['admin', 'management', 'finance'],
   deleteInvoice: ['admin', 'management', 'finance'],
+  manageScripts: ['admin', 'management'],
   manageTasks: ['admin', 'management', 'consultant', 'admissions', 'reception', 'hr', 'finance'],
   manageSettings: ['admin', 'management'],
   manageUsers: ['admin', 'management']
@@ -91,6 +92,7 @@ export const actionLabels = {
   createInvoice: 'إنشاء فاتورة',
   recordPayment: 'تسجيل دفعة',
   deleteInvoice: 'حذف فاتورة',
+  manageScripts: 'إنشاء وإدارة الاسكربتات',
   manageTasks: 'إدارة المهام',
   manageSettings: 'تعديل إعدادات النظام',
   manageUsers: 'إدارة المستخدمين'

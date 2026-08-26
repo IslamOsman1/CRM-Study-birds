@@ -22,6 +22,7 @@ const modulePermissions = {
   universities: ['admin', 'management', 'consultant'],
   programs: ['admin', 'management'],
   scholarships: ['admin', 'management'],
+  catalogManagement: ['admin', 'management'],
   settings: ['admin', 'management']
 };
 
@@ -45,6 +46,7 @@ const actionPermissions = {
   createInvoice: ['admin', 'management', 'finance'],
   recordPayment: ['admin', 'management', 'finance'],
   deleteInvoice: ['admin', 'management', 'finance'],
+  manageScripts: ['admin', 'management'],
   manageTasks: ['admin', 'management', 'consultant', 'admissions', 'reception', 'hr', 'finance'],
   manageSettings: ['admin', 'management'],
   manageUsers: ['admin', 'management']

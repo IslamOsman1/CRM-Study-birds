@@ -4481,6 +4481,33 @@ app.get('/api/response-scripts', async (req, res) => {
   res.json(getScopedItems(db.responseScripts || [], req.user.companyId));
 });
 
+app.post('/api/response-scripts', allowAction('manageScripts'), async (req, res) => {
+  const result = await mutateDb(db => {
+    db.responseScripts ||= [];
+
+    const script = {
+      id: randomUUID(),
+      companyId: req.user.companyId,
+      category: String(req.body?.category || '').trim() || 'عام',
+      title: String(req.body?.title || '').trim(),
+      body: String(req.body?.body || '').trim(),
+      createdAt: now(),
+      updatedAt: now(),
+      createdBy: req.user.name
+    };
+
+    if (!script.title || !script.body) {
+      throw Object.assign(new Error('عنوان الاسكربت والنص مطلوبان'), { status: 400 });
+    }
+
+    db.responseScripts.unshift(script);
+    activity(db, req.user, 'created', 'response-script', script.id, `تم إنشاء اسكربت جديد: ${script.title}`);
+    return script;
+  });
+
+  res.status(201).json(result);
+});
+
 app.get('/api/daily-reports/status', async (req, res) => {
   const db = await readDb();
   const companyId = req.user.companyId;
