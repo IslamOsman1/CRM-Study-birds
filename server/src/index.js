@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import multer from 'multer';
+import XLSX from 'xlsx';
 import PDFDocument from 'pdfkit';
 import reshaper from 'arabic-persian-reshaper';
 import bcrypt from 'bcryptjs';
@@ -262,7 +263,216 @@ function sortCatalogOptions(values) {
     .sort((left, right) => left.localeCompare(right, 'ar'));
 }
 
+function sanitizeCatalogCountries(items) {
+  return (items || [])
+    .map((item, index) => {
+      const name = normalizeCatalogValue(item?.name || item);
+      if (!name) return null;
+      return {
+        id: String(item?.id || `country-${index + 1}`),
+        name,
+        code: normalizeCatalogValue(item?.code)
+      };
+    })
+    .filter(Boolean);
+}
+
+function sanitizeCatalogUniversities(items) {
+  return (items || [])
+    .map((item, index) => {
+      const name = normalizeCatalogValue(item?.name);
+      if (!name) return null;
+      return {
+        id: String(item?.id || `university-${index + 1}`),
+        name,
+        country: normalizeCatalogValue(item?.country),
+        city: normalizeCatalogValue(item?.city),
+        website: normalizeCatalogValue(item?.website),
+        address: normalizeCatalogValue(item?.address)
+      };
+    })
+    .filter(Boolean);
+}
+
+function sanitizeCatalogPrograms(items) {
+  return (items || [])
+    .map((item, index) => {
+      const university = normalizeCatalogValue(item?.university);
+      const department = normalizeCatalogValue(item?.department || item?.program);
+      if (!university || !department) return null;
+      return {
+        id: String(item?.id || `program-${index + 1}`),
+        university,
+        country: normalizeCatalogValue(item?.country),
+        city: normalizeCatalogValue(item?.city),
+        degree: normalizeCatalogValue(item?.degree),
+        department,
+        program: department,
+        language: normalizeCatalogValue(item?.language),
+        availability: normalizeCatalogValue(item?.availability || 'Available'),
+        fees: normalizeCatalogValue(item?.fees),
+        discount_fees: normalizeCatalogValue(item?.discount_fees),
+        deposit_amount: normalizeCatalogValue(item?.deposit_amount),
+        prep_school_fee: normalizeCatalogValue(item?.prep_school_fee),
+        currency: normalizeCatalogValue(item?.currency || 'USD'),
+        campus_name: normalizeCatalogValue(item?.campus_name)
+      };
+    })
+    .filter(Boolean);
+}
+
+function sanitizeCatalogScholarships(items) {
+  return (items || [])
+    .map((item, index) => {
+      const name = normalizeCatalogValue(item?.name || item?.program_scope || item?.department);
+      if (!name) return null;
+      return {
+        id: String(item?.id || `scholarship-${index + 1}`),
+        name,
+        university: normalizeCatalogValue(item?.university),
+        country: normalizeCatalogValue(item?.country),
+        degree: normalizeCatalogValue(item?.degree),
+        language: normalizeCatalogValue(item?.language),
+        department: normalizeCatalogValue(item?.department || item?.program_scope),
+        program_scope: normalizeCatalogValue(item?.program_scope || item?.department),
+        amount: normalizeCatalogValue(item?.amount),
+        notes: normalizeCatalogValue(item?.notes)
+      };
+    })
+    .filter(Boolean);
+}
+
+function sanitizeEducationCatalog(catalog = {}) {
+  return {
+    countries: sanitizeCatalogCountries(catalog.countries || []),
+    universities: sanitizeCatalogUniversities(catalog.universities || []),
+    programs: sanitizeCatalogPrograms(catalog.programs || []),
+    scholarships: sanitizeCatalogScholarships(catalog.scholarships || [])
+  };
+}
+
+function normalizeCatalogHeader(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '');
+}
+
+function rowValue(row, aliases = []) {
+  for (const alias of aliases) {
+    const key = normalizeCatalogHeader(alias);
+    if (key && row[key] != null && String(row[key]).trim()) return String(row[key]).trim();
+  }
+  return '';
+}
+
+function catalogImportFactory(target) {
+  if (target === 'countries') {
+    return rawRow => ({
+      id: `country-${randomUUID()}`,
+      name: rowValue(rawRow, ['name', 'country', 'countryname', 'الدولة', 'اسم الدولة']),
+      code: rowValue(rawRow, ['code', 'countrycode', 'iso', 'رمز الدولة', 'الكود'])
+    });
+  }
+
+  if (target === 'universities') {
+    return rawRow => ({
+      id: `university-${randomUUID()}`,
+      name: rowValue(rawRow, ['name', 'university', 'universityname', 'الجامعة', 'اسم الجامعة']),
+      country: rowValue(rawRow, ['country', 'الدولة']),
+      city: rowValue(rawRow, ['city', 'المدينة']),
+      website: rowValue(rawRow, ['website', 'url', 'site', 'الموقع', 'الموقع الإلكتروني']),
+      address: rowValue(rawRow, ['address', 'العنوان'])
+    });
+  }
+
+  if (target === 'programs') {
+    return rawRow => {
+      const department = rowValue(rawRow, ['department', 'program', 'programname', 'major', 'specialization', 'التخصص', 'البرنامج']);
+      return {
+        id: `program-${randomUUID()}`,
+        university: rowValue(rawRow, ['university', 'اسم الجامعة', 'الجامعة']),
+        country: rowValue(rawRow, ['country', 'الدولة']),
+        city: rowValue(rawRow, ['city', 'المدينة']),
+        degree: rowValue(rawRow, ['degree', 'الدرجة']),
+        department,
+        program: department,
+        language: rowValue(rawRow, ['language', 'لغة الدراسة', 'اللغة']),
+        availability: rowValue(rawRow, ['availability', 'status', 'الحالة', 'الاتاحة']) || 'Available',
+        fees: rowValue(rawRow, ['fees', 'tuition', 'tuitionfees', 'الرسوم']),
+        discount_fees: rowValue(rawRow, ['discountfees', 'cashfees', 'discount', 'الخصم', 'رسوم الكاش']),
+        deposit_amount: rowValue(rawRow, ['depositamount', 'deposit', 'الدفعة الأولى', 'الدفعةالاولى']),
+        prep_school_fee: rowValue(rawRow, ['prepschoolfee', 'prepfee', 'التحضيري']),
+        currency: rowValue(rawRow, ['currency', 'العملة']) || 'USD',
+        campus_name: rowValue(rawRow, ['campusname', 'campus', 'branch', 'الحرم', 'الفرع'])
+      };
+    };
+  }
+
+  return rawRow => {
+    const programScope = rowValue(rawRow, ['programscope', 'department', 'program', 'التخصص', 'نطاق المنحة']);
+    return {
+      id: `scholarship-${randomUUID()}`,
+      name: rowValue(rawRow, ['name', 'scholarship', 'scholarshipname', 'المنحة', 'اسم المنحة']) || programScope,
+      university: rowValue(rawRow, ['university', 'اسم الجامعة', 'الجامعة']),
+      country: rowValue(rawRow, ['country', 'الدولة']),
+      degree: rowValue(rawRow, ['degree', 'الدرجة']),
+      language: rowValue(rawRow, ['language', 'اللغة']),
+      department: programScope,
+      program_scope: programScope,
+      amount: rowValue(rawRow, ['amount', 'value', 'discount', 'القيمة']),
+      notes: rowValue(rawRow, ['notes', 'ملاحظات'])
+    };
+  };
+}
+
+function parseCatalogImportRows(file, target) {
+  if (!file?.buffer?.length) return [];
+  const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) return [];
+  const worksheet = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(worksheet, {
+    defval: '',
+    raw: false
+  });
+  const mapRow = catalogImportFactory(target);
+  return rows.map(rawRow => {
+    const normalizedRow = Object.fromEntries(
+      Object.entries(rawRow || {}).map(([key, value]) => [normalizeCatalogHeader(key), value])
+    );
+    return mapRow(normalizedRow);
+  });
+}
+
+function mergeCatalogGroup(currentItems = [], importedItems = [], mode = 'append') {
+  if (mode === 'replace') return importedItems;
+  return [...currentItems, ...importedItems];
+}
+
+function updateEducationCatalogDerivedSettings(db) {
+  const links = buildEducationCatalogLinks(db.educationCatalog);
+  db.settings.availableCountries = links.countries;
+  db.settings.availableUniversities = links.universities;
+  db.settings.availablePrograms = links.programs;
+  db.settings.availableScholarships = sanitizeOptionList(
+    db.educationCatalog.scholarships.map(item => [item.university, item.program_scope || item.department || item.name].filter(Boolean).join(' - '))
+  );
+  return links;
+}
+
+function getEffectiveCatalogCountries(catalog, catalogLinks) {
+  const explicitCountries = Array.isArray(catalog?.countries) ? catalog.countries : [];
+  if (explicitCountries.length) return explicitCountries;
+  return (catalogLinks?.countries || []).map((name, index) => ({
+    id: `country-derived-${index + 1}`,
+    name: normalizeCatalogValue(name),
+    code: ''
+  }));
+}
+
 function buildEducationCatalogLinks(catalog = {}) {
+  const countries = Array.isArray(catalog.countries) ? catalog.countries : [];
   const universities = Array.isArray(catalog.universities) ? catalog.universities : [];
   const programs = Array.isArray(catalog.programs) ? catalog.programs : [];
   const scholarships = Array.isArray(catalog.scholarships) ? catalog.scholarships : [];
@@ -285,6 +495,11 @@ function buildEducationCatalogLinks(catalog = {}) {
     if (!map.has(normalizedKey)) map.set(normalizedKey, new Set());
     map.get(normalizedKey).add(normalizedValue);
   };
+
+  for (const countryEntry of countries) {
+    const country = normalizeCatalogValue(countryEntry?.name || countryEntry);
+    if (country) countrySet.add(country);
+  }
 
   for (const university of universities) {
     const name = normalizeCatalogValue(university?.name);
@@ -435,7 +650,57 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function getQuotePrimaryCountry(student = {}, items = []) {
+  const selectedCountry = String(student?.targetCountry || '').trim();
+  if (selectedCountry) return selectedCountry;
+
+  const counts = new Map();
+  for (const item of items || []) {
+    const country = String(item?.country || '').trim();
+    if (!country) continue;
+    counts.set(country, (counts.get(country) || 0) + 1);
+  }
+
+  return [...counts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] || '';
+}
+
+function getQuoteFooterLocation(student = {}, items = []) {
+  const country = getQuotePrimaryCountry(student, items);
+  const city = (items || []).find(item => String(item?.country || '').trim() === country && String(item?.city || '').trim())?.city
+    || (items || []).find(item => String(item?.city || '').trim())?.city
+    || '';
+  return [country, city].filter(Boolean).join(' / ');
+}
+
+function getQuoteHeaderTitle(student = {}, items = []) {
+  const country = getQuotePrimaryCountry(student, items);
+  return `${country || 'University'} Programs`;
+}
+
+function getQuoteDateParts() {
+  const currentDate = new Date('2026-08-26T12:00:00+03:00');
+  return {
+    numeric: new Intl.DateTimeFormat('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'Europe/Istanbul'
+    }).format(currentDate),
+    verbose: new Intl.DateTimeFormat('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'Europe/Istanbul'
+    }).format(currentDate)
+  };
+}
+
 function buildUniversityQuoteHtml({ companyName, preparedBy, student, items, logoDataUri }) {
+  const quoteCountry = getQuotePrimaryCountry(student, items);
+  const quoteLocation = getQuoteFooterLocation(student, items);
+  const quoteTitle = getQuoteHeaderTitle(student, items);
+  const quoteDate = getQuoteDateParts();
   const rows = items.map(item => {
     const location = [safePdfText(item.country, ''), safePdfText(item.city, '')].filter(Boolean).join(' / ') || '-';
     return `
@@ -472,7 +737,7 @@ function buildUniversityQuoteHtml({ companyName, preparedBy, student, items, log
     ['Student Name', student.studentName],
     ['Phone', student.studentPhone],
     ['Email', student.studentEmail],
-    ['Target Country', student.targetCountry],
+    ['Target Country', quoteCountry || student.targetCountry],
     ['Prepared By', preparedBy],
     ['Programs Count', String(items.length)]
   ].map(([label, value]) => `
@@ -741,10 +1006,10 @@ function buildUniversityQuoteHtml({ companyName, preparedBy, student, items, log
               ${logoDataUri ? `<img src="${logoDataUri}" alt="logo" />` : ''}
             </div>
             <div class="hero-right">
-              <div class="title">Turkey Programs</div>
+              <div class="title">${escapeHtml(quoteTitle)}</div>
               <div class="hero-line"></div>
               <div class="hero-meta">
-                <div class="meta-chip">Date: 22/08/2026</div>
+                <div class="meta-chip">Date: ${escapeHtml(quoteDate.numeric)}</div>
                 <div class="meta-chip">Total: ${escapeHtml(String(items.length))} Programs</div>
               </div>
             </div>
@@ -767,10 +1032,10 @@ function buildUniversityQuoteHtml({ companyName, preparedBy, student, items, log
 
           <div class="note-box">
             <strong>Consultant Note</strong>
-            <p>This quotation is generated from ${escapeHtml(companyName || 'EduGlobal CRM')} on Saturday, August 22, 2026 and should be confirmed against the latest university availability before final submission.</p>
+            <p>This quotation is generated from ${escapeHtml(companyName || 'EduGlobal CRM')} on ${escapeHtml(quoteDate.verbose)} and should be confirmed against the latest university availability before final submission.</p>
           </div>
 
-          <div class="footer-mark">turkey / istanbul</div>
+          <div class="footer-mark">${escapeHtml(quoteLocation || quoteCountry || '')}</div>
         </div>
       </body>
     </html>
@@ -823,6 +1088,10 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
   const mutedColor = '#627086';
   const accentColor = '#0f766e';
   const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const quoteCountry = getQuotePrimaryCountry(student, items);
+  const quoteTitle = getQuoteHeaderTitle(student, items);
+  const quoteLocation = getQuoteFooterLocation(student, items);
+  const quoteDate = getQuoteDateParts();
   const drawCell = (text, x, y, width, options = {}) => {
     const preparedText = preparePdfDisplayText(text);
     const isArabicText = containsArabic(text);
@@ -881,13 +1150,13 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
     .font(boldFont || 'Helvetica-Bold')
     .fillColor(textColor)
     .fontSize(20)
-    .text('University Offer Quote', 0, 44, { align: 'right' });
+    .text(quoteTitle, 0, 44, { align: 'right' });
   doc
     .font(regularFont || 'Helvetica')
     .fillColor(mutedColor)
     .fontSize(10)
     .text(companyName || 'EduGlobal CRM', 0, 68, { align: 'right' })
-    .text('Prepared on Saturday, August 22, 2026', 0, 84, { align: 'right' })
+    .text(`Prepared on ${quoteDate.verbose}`, 0, 84, { align: 'right' })
     .text(`Prepared by ${safePdfText(preparedBy, 'CRM Team')}`, 0, 100, { align: 'right' });
 
   doc.moveTo(doc.page.margins.left, 132).lineTo(doc.page.width - doc.page.margins.right, 132).strokeColor(lineColor).stroke();
@@ -904,7 +1173,7 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
     ['Student Name', safePdfText(student.studentName)],
     ['Phone', safePdfText(student.studentPhone)],
     ['Email', safePdfText(student.studentEmail)],
-    ['Target Country', safePdfText(student.targetCountry)],
+    ['Target Country', safePdfText(quoteCountry || student.targetCountry)],
     ['Selected Programs', String(items.length)],
     ['Notes', safePdfText(student.notes)]
   ];
@@ -1064,11 +1333,23 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
       .fillColor('#14532d')
       .fontSize(9)
       .text(
-        'This quotation is generated from the CRM catalog on Saturday, August 22, 2026 and should be confirmed against the latest university availability before final submission.',
+        `This quotation is generated from the CRM catalog on ${quoteDate.verbose} and should be confirmed against the latest university availability before final submission.`,
         doc.page.margins.left + 14,
         doc.y + 28,
         { width: pageWidth - 28 }
       );
+  }
+
+  if (quoteLocation || quoteCountry) {
+    doc
+      .font(boldFont || 'Helvetica-Bold')
+      .fillColor('#2450a6')
+      .fontSize(14)
+      .text(quoteLocation || quoteCountry, doc.page.margins.left, doc.page.height - 58, {
+        width: pageWidth,
+        align: 'left',
+        lineBreak: false
+      });
   }
 
   const pageRange = doc.bufferedPageRange();
@@ -2710,6 +2991,7 @@ async function prepareDb() {
     db.userNotifications ||= [];
     db.leaveRequests ||= [];
     db.receptionState ||= {};
+    db.educationCatalog = sanitizeEducationCatalog(db.educationCatalog || {});
     db.settings ||= {
       companyName: 'EduGlobal CRM',
       workspace: 'Global Hub',
@@ -3703,16 +3985,18 @@ app.get('/api/settings', async (_req, res) => {
 
 app.get('/api/education-catalog', allowAnyModule('universities', 'programs', 'scholarships'), async (_req, res) => {
   const db = await readDb();
-  const catalog = db.educationCatalog || {};
+  const catalog = sanitizeEducationCatalog(db.educationCatalog || {});
   const catalogLinks = buildEducationCatalogLinks(catalog);
+  const effectiveCountries = getEffectiveCatalogCountries(catalog, catalogLinks);
   res.json({
     summary: {
+      countries: effectiveCountries.length,
       universities: Array.isArray(catalog.universities) ? catalog.universities.length : 0,
       programs: Array.isArray(catalog.programs) ? catalog.programs.length : 0,
       scholarships: Array.isArray(catalog.scholarships) ? catalog.scholarships.length : 0,
-      uniqueDepartments: catalogLinks.programs.length,
-      countries: catalogLinks.countries.length
+      uniqueDepartments: catalogLinks.programs.length
     },
+    countries: effectiveCountries,
     universities: Array.isArray(catalog.universities) ? catalog.universities : [],
     programs: Array.isArray(catalog.programs) ? catalog.programs : [],
     scholarships: Array.isArray(catalog.scholarships) ? catalog.scholarships : [],
@@ -3721,6 +4005,90 @@ app.get('/api/education-catalog', allowAnyModule('universities', 'programs', 'sc
     availableCountries: catalogLinks.countries,
     catalogLinks
   });
+});
+
+app.patch('/api/education-catalog', allowAction('manageSettings'), async (req, res) => {
+  const payload = req.body || {};
+
+  const result = await mutateDb(db => {
+    db.educationCatalog = sanitizeEducationCatalog({
+      countries: payload.countries,
+      universities: payload.universities,
+      programs: payload.programs,
+      scholarships: payload.scholarships
+    });
+
+    const links = updateEducationCatalogDerivedSettings(db);
+
+    activity(db, req.user, 'updated', 'education-catalog', 'education-catalog', 'تم تحديث دليل الدول والجامعات والبرامج والمنح');
+    return {
+      ...db.educationCatalog,
+      summary: {
+        countries: db.educationCatalog.countries.length,
+        universities: db.educationCatalog.universities.length,
+        programs: db.educationCatalog.programs.length,
+        scholarships: db.educationCatalog.scholarships.length
+      },
+      catalogLinks: links
+    };
+  });
+
+  res.json(result);
+});
+
+app.post('/api/education-catalog/import', allowAction('manageSettings'), upload.single('file'), async (req, res) => {
+  const target = normalizeCatalogValue(req.body?.target).toLowerCase();
+  const mode = normalizeCatalogValue(req.body?.mode).toLowerCase() === 'replace' ? 'replace' : 'append';
+  const validTargets = ['countries', 'universities', 'programs', 'scholarships'];
+
+  if (!validTargets.includes(target)) {
+    return res.status(400).json({ message: 'نوع بيانات الاستيراد غير صالح.' });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ message: 'يرجى اختيار ملف Excel أو CSV للاستيراد.' });
+  }
+
+  const importedRows = parseCatalogImportRows(req.file, target);
+  if (!importedRows.length) {
+    return res.status(400).json({ message: 'لم يتم العثور على صفوف قابلة للاستيراد داخل الملف.' });
+  }
+
+  const result = await mutateDb(db => {
+    const currentCatalog = sanitizeEducationCatalog(db.educationCatalog || {});
+    const nextCatalog = {
+      ...currentCatalog,
+      [target]: mergeCatalogGroup(currentCatalog[target], importedRows, mode)
+    };
+
+    db.educationCatalog = sanitizeEducationCatalog(nextCatalog);
+    const links = updateEducationCatalogDerivedSettings(db);
+
+    activity(
+      db,
+      req.user,
+      'imported',
+      'education-catalog',
+      target,
+      `تم استيراد ${importedRows.length} عنصر إلى قسم ${target}`
+    );
+
+    return {
+      imported: importedRows.length,
+      target,
+      mode,
+      ...db.educationCatalog,
+      summary: {
+        countries: db.educationCatalog.countries.length,
+        universities: db.educationCatalog.universities.length,
+        programs: db.educationCatalog.programs.length,
+        scholarships: db.educationCatalog.scholarships.length
+      },
+      catalogLinks: links
+    };
+  });
+
+  res.json(result);
 });
 
 app.post('/api/education-catalog/quote-pdf', allowModule('universities'), async (req, res, next) => {

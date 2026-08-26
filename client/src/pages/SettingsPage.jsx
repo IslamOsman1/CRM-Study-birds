@@ -43,6 +43,58 @@ function createWorkflowTemplate() {
   };
 }
 
+function createCountry() {
+  return {
+    id: `country-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name: '',
+    code: ''
+  };
+}
+
+function createUniversity() {
+  return {
+    id: `university-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name: '',
+    country: '',
+    city: '',
+    website: '',
+    address: ''
+  };
+}
+
+function createProgram() {
+  return {
+    id: `program-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    university: '',
+    country: '',
+    city: '',
+    degree: '',
+    department: '',
+    language: '',
+    availability: 'Available',
+    fees: '',
+    discount_fees: '',
+    deposit_amount: '',
+    prep_school_fee: '',
+    currency: 'USD',
+    campus_name: ''
+  };
+}
+
+function createScholarship() {
+  return {
+    id: `scholarship-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name: '',
+    university: '',
+    country: '',
+    degree: '',
+    language: '',
+    program_scope: '',
+    amount: '',
+    notes: ''
+  };
+}
+
 function ArrayEditor({ title, items, onAdd, onChange, onRemove, placeholder, withRequired = false, disabled = false }) {
   return (
     <Card className="settings-card">
@@ -106,6 +158,8 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [catalogSaving, setCatalogSaving] = useState(false);
+  const [catalogImporting, setCatalogImporting] = useState(false);
   const [toast, setToast] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -115,6 +169,25 @@ export default function SettingsPage() {
   const [metaSession, setMetaSession] = useState(null);
   const [selectedAssetIds, setSelectedAssetIds] = useState([]);
   const [catalogLinks, setCatalogLinks] = useState({});
+  const [catalogTab, setCatalogTab] = useState('countries');
+  const [catalogSearch, setCatalogSearch] = useState({
+    countries: '',
+    universities: '',
+    programs: '',
+    scholarships: ''
+  });
+  const [catalogSelection, setCatalogSelection] = useState({
+    countries: [],
+    universities: [],
+    programs: [],
+    scholarships: []
+  });
+  const [catalogForm, setCatalogForm] = useState({
+    countries: [],
+    universities: [],
+    programs: [],
+    scholarships: []
+  });
   const [form, setForm] = useState({
     companyName: '',
     workspace: '',
@@ -135,9 +208,21 @@ export default function SettingsPage() {
   const teamUsers = useMemo(() => form.users.filter(item => item.role !== 'admin'), [form.users]);
 
   const load = () =>
-    Promise.all([api('/api/settings'), api('/api/integrations/meta/status')])
-      .then(([settings, meta]) => {
+    Promise.all([api('/api/settings'), api('/api/integrations/meta/status'), api('/api/education-catalog')])
+      .then(([settings, meta, catalog]) => {
         setCatalogLinks(settings.catalogLinks || {});
+        setCatalogForm({
+          countries: catalog.countries || [],
+          universities: catalog.universities || [],
+          programs: catalog.programs || [],
+          scholarships: catalog.scholarships || []
+        });
+        setCatalogSelection({
+          countries: [],
+          universities: [],
+          programs: [],
+          scholarships: []
+        });
         setForm({
           companyName: settings.companyName || '',
           workspace: settings.workspace || '',
@@ -194,6 +279,41 @@ export default function SettingsPage() {
   const departmentLabel = (role, department) => (role === 'admin' ? 'مسؤول' : tr(department));
   const moduleEntries = useMemo(() => Object.entries(moduleLabels), []);
   const actionEntries = useMemo(() => Object.entries(actionLabels), []);
+  const catalogTabs = useMemo(
+    () => [
+      { key: 'countries', label: 'إنشاء دولة', count: catalogForm.countries.length },
+      { key: 'universities', label: 'إنشاء جامعة', count: catalogForm.universities.length },
+      { key: 'programs', label: 'إنشاء برنامج', count: catalogForm.programs.length },
+      { key: 'scholarships', label: 'إنشاء منحة', count: catalogForm.scholarships.length }
+    ],
+    [catalogForm]
+  );
+  const catalogFieldLabels = useMemo(
+    () => ({
+      countries: 'الدول',
+      universities: 'الجامعات',
+      programs: 'البرامج',
+      scholarships: 'المنح'
+    }),
+    []
+  );
+  const catalogImportHints = useMemo(
+    () => ({
+      countries: 'الأعمدة المقترحة: name, code',
+      universities: 'الأعمدة المقترحة: name, country, city, website, address',
+      programs: 'الأعمدة المقترحة: university, country, city, degree, department, language, fees',
+      scholarships: 'الأعمدة المقترحة: name, university, country, degree, language, program_scope, amount'
+    }),
+    []
+  );
+  const filteredCatalogRows = useMemo(() => {
+    const query = String(catalogSearch[catalogTab] || '').trim().toLowerCase();
+    const rows = catalogForm[catalogTab] || [];
+    if (!query) return rows;
+    return rows.filter(item => Object.values(item || {}).some(value => String(value || '').toLowerCase().includes(query)));
+  }, [catalogForm, catalogSearch, catalogTab]);
+  const selectedCatalogIds = catalogSelection[catalogTab] || [];
+  const allFilteredSelected = !!filteredCatalogRows.length && filteredCatalogRows.every(item => selectedCatalogIds.includes(item.id));
 
   const togglePermission = (group, key) => {
     setUserForm(current => {
@@ -245,6 +365,69 @@ export default function SettingsPage() {
     }));
   };
 
+  const updateCatalogRow = (group, rowId, patch) => {
+    setCatalogForm(current => ({
+      ...current,
+      [group]: current[group].map(item => (item.id === rowId ? { ...item, ...patch } : item))
+    }));
+  };
+
+  const addCatalogRow = (group, factory) => {
+    setCatalogForm(current => ({
+      ...current,
+      [group]: [...current[group], factory()]
+    }));
+  };
+
+  const removeCatalogRow = (group, rowId) => {
+    setCatalogForm(current => ({
+      ...current,
+      [group]: current[group].filter(item => item.id !== rowId)
+    }));
+    setCatalogSelection(current => ({
+      ...current,
+      [group]: current[group].filter(item => item !== rowId)
+    }));
+  };
+
+  const toggleCatalogSelection = (group, rowId) => {
+    setCatalogSelection(current => ({
+      ...current,
+      [group]: current[group].includes(rowId)
+        ? current[group].filter(item => item !== rowId)
+        : [...current[group], rowId]
+    }));
+  };
+
+  const toggleSelectAllCatalogRows = group => {
+    const visibleIds = filteredCatalogRows.map(item => item.id);
+    setCatalogSelection(current => {
+      const everySelected = visibleIds.every(id => current[group].includes(id));
+      return {
+        ...current,
+        [group]: everySelected
+          ? current[group].filter(id => !visibleIds.includes(id))
+          : [...new Set([...current[group], ...visibleIds])]
+      };
+    });
+  };
+
+  const saveCatalogPayload = async (payload, successMessage) => {
+    setCatalogSaving(true);
+    try {
+      await api('/api/education-catalog', {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+      });
+      await load();
+      setToast({ message: successMessage });
+    } catch (error) {
+      setToast({ type: 'error', message: error.message });
+    } finally {
+      setCatalogSaving(false);
+    }
+  };
+
   const submit = async event => {
     event.preventDefault();
     setSaving(true);
@@ -267,6 +450,49 @@ export default function SettingsPage() {
       setToast({ type: 'error', message: error.message });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveCatalog = async () => {
+    await saveCatalogPayload(catalogForm, 'تم حفظ قسم الدول والجامعات والبرامج والمنح بنجاح');
+  };
+
+  const deleteSelectedCatalogRows = async () => {
+    if (!selectedCatalogIds.length) return;
+    const nextCatalogForm = {
+      ...catalogForm,
+      [catalogTab]: catalogForm[catalogTab].filter(item => !selectedCatalogIds.includes(item.id))
+    };
+    setCatalogForm(nextCatalogForm);
+    setCatalogSelection(current => ({ ...current, [catalogTab]: [] }));
+    await saveCatalogPayload(nextCatalogForm, `تم حذف العناصر المحددة من قسم ${catalogFieldLabels[catalogTab]} بنجاح`);
+  };
+
+  const triggerCatalogImport = () => {
+    if (!canManageSettings) return;
+    document.getElementById('catalog-import-input')?.click();
+  };
+
+  const importCatalogFile = async event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('target', catalogTab);
+    formData.append('mode', 'append');
+    setCatalogImporting(true);
+    try {
+      const result = await api('/api/education-catalog/import', {
+        method: 'POST',
+        body: formData
+      });
+      await load();
+      setToast({ message: `تم استيراد ${result.imported || 0} عنصر إلى قسم ${catalogFieldLabels[catalogTab]} بنجاح` });
+    } catch (error) {
+      setToast({ type: 'error', message: error.message });
+    } finally {
+      setCatalogImporting(false);
+      event.target.value = '';
     }
   };
 
@@ -485,6 +711,259 @@ export default function SettingsPage() {
               </article>
             </div>
           )}
+        </Card>
+
+        <Card className="settings-card">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">الدليل الدراسي</p>
+              <h2>إدارة الدول والجامعات والبرامج والمنح</h2>
+              <span>هذا القسم هو المصدر الموحد الذي يغذي الفلاتر والنماذج ودليل الجامعات داخل النظام كله.</span>
+            </div>
+            <Building2 />
+          </div>
+
+          <div className="hr-filter-bar">
+            {catalogTabs.map(tab => (
+              <button
+                key={tab.key}
+                type="button"
+                className={catalogTab === tab.key ? 'filter-chip active' : 'filter-chip'}
+                onClick={() => setCatalogTab(tab.key)}
+              >
+                {tab.label} ({tab.count})
+              </button>
+            ))}
+          </div>
+
+          <input id="catalog-import-input" hidden type="file" accept=".xlsx,.xls,.csv,.tsv" onChange={importCatalogFile} />
+
+          <div className="form-grid">
+            <Field label={`بحث داخل ${catalogFieldLabels[catalogTab]}`}>
+              <input
+                disabled={!canManageSettings}
+                value={catalogSearch[catalogTab]}
+                onChange={event => setCatalogSearch(current => ({ ...current, [catalogTab]: event.target.value }))}
+                placeholder="ابحث بالاسم أو الدولة أو الجامعة أو التخصص..."
+              />
+            </Field>
+          </div>
+
+          <div className="notes-box">
+            <strong>استيراد سريع من ملف</strong>
+            <p>{catalogImportHints[catalogTab]}</p>
+          </div>
+
+          <div className="task-actions">
+            <Button disabled={!canManageSettings || catalogImporting} variant="secondary" type="button" onClick={triggerCatalogImport}>
+              <Plus /> {catalogImporting ? 'جارٍ الاستيراد...' : 'استيراد Excel / CSV'}
+            </Button>
+            <Button
+              disabled={!canManageSettings || !filteredCatalogRows.length}
+              variant="ghost"
+              type="button"
+              onClick={() => toggleSelectAllCatalogRows(catalogTab)}
+            >
+              {allFilteredSelected ? 'إلغاء تحديد الكل' : 'تحديد كل النتائج'}
+            </Button>
+            <Button
+              disabled={!canManageSettings || !selectedCatalogIds.length || catalogSaving}
+              variant="ghost"
+              type="button"
+              onClick={deleteSelectedCatalogRows}
+            >
+              <Trash2 /> حذف جماعي ({selectedCatalogIds.length})
+            </Button>
+          </div>
+
+          {catalogTab === 'countries' && (
+            <div className="templates-stack">
+              {filteredCatalogRows.map(item => (
+                <article className="template-card" key={item.id}>
+                  <label className="check-row">
+                    <input
+                      disabled={!canManageSettings}
+                      type="checkbox"
+                      checked={selectedCatalogIds.includes(item.id)}
+                      onChange={() => toggleCatalogSelection('countries', item.id)}
+                    />
+                    <div>
+                      <strong>{item.name || 'دولة جديدة'}</strong>
+                      <small>{item.code || 'بدون رمز'}</small>
+                    </div>
+                  </label>
+                  <div className="form-grid">
+                    <Field label="اسم الدولة"><input disabled={!canManageSettings} value={item.name} onChange={event => updateCatalogRow('countries', item.id, { name: event.target.value })} /></Field>
+                    <Field label="رمز الدولة"><input disabled={!canManageSettings} value={item.code} onChange={event => updateCatalogRow('countries', item.id, { code: event.target.value })} placeholder="TR / DE / EG" /></Field>
+                  </div>
+                  <div className="task-actions">
+                    <Button disabled={!canManageSettings} variant="ghost" type="button" onClick={() => removeCatalogRow('countries', item.id)}><Trash2 /> حذف الدولة</Button>
+                  </div>
+                </article>
+              ))}
+              <Button disabled={!canManageSettings} variant="secondary" type="button" onClick={() => addCatalogRow('countries', createCountry)}>
+                <Plus /> إضافة دولة
+              </Button>
+            </div>
+          )}
+
+          {catalogTab === 'universities' && (
+            <div className="templates-stack">
+              {filteredCatalogRows.map(item => (
+                <article className="template-card" key={item.id}>
+                  <label className="check-row">
+                    <input
+                      disabled={!canManageSettings}
+                      type="checkbox"
+                      checked={selectedCatalogIds.includes(item.id)}
+                      onChange={() => toggleCatalogSelection('universities', item.id)}
+                    />
+                    <div>
+                      <strong>{item.name || 'جامعة جديدة'}</strong>
+                      <small>{[item.country, item.city].filter(Boolean).join(' · ') || 'بدون دولة/مدينة'}</small>
+                    </div>
+                  </label>
+                  <div className="form-grid">
+                    <Field label="اسم الجامعة"><input disabled={!canManageSettings} value={item.name} onChange={event => updateCatalogRow('universities', item.id, { name: event.target.value })} /></Field>
+                    <Field label="الدولة">
+                      <select disabled={!canManageSettings} value={item.country} onChange={event => updateCatalogRow('universities', item.id, { country: event.target.value })}>
+                        <option value="">اختر الدولة</option>
+                        {catalogForm.countries.map(country => <option key={country.id} value={country.name}>{country.name}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="المدينة"><input disabled={!canManageSettings} value={item.city} onChange={event => updateCatalogRow('universities', item.id, { city: event.target.value })} /></Field>
+                    <Field label="الموقع الإلكتروني"><input disabled={!canManageSettings} value={item.website} onChange={event => updateCatalogRow('universities', item.id, { website: event.target.value })} /></Field>
+                    <Field label="العنوان" className="field-full"><textarea disabled={!canManageSettings} value={item.address} onChange={event => updateCatalogRow('universities', item.id, { address: event.target.value })} /></Field>
+                  </div>
+                  <div className="task-actions">
+                    <Button disabled={!canManageSettings} variant="ghost" type="button" onClick={() => removeCatalogRow('universities', item.id)}><Trash2 /> حذف الجامعة</Button>
+                  </div>
+                </article>
+              ))}
+              <Button disabled={!canManageSettings} variant="secondary" type="button" onClick={() => addCatalogRow('universities', createUniversity)}>
+                <Plus /> إضافة جامعة
+              </Button>
+            </div>
+          )}
+
+          {catalogTab === 'programs' && (
+            <div className="templates-stack">
+              {filteredCatalogRows.map(item => (
+                <article className="template-card" key={item.id}>
+                  <label className="check-row">
+                    <input
+                      disabled={!canManageSettings}
+                      type="checkbox"
+                      checked={selectedCatalogIds.includes(item.id)}
+                      onChange={() => toggleCatalogSelection('programs', item.id)}
+                    />
+                    <div>
+                      <strong>{item.department || 'برنامج جديد'}</strong>
+                      <small>{[item.university, item.degree, item.country].filter(Boolean).join(' · ') || 'بيانات البرنامج'}</small>
+                    </div>
+                  </label>
+                  <div className="form-grid">
+                    <Field label="الجامعة">
+                      <select disabled={!canManageSettings} value={item.university} onChange={event => updateCatalogRow('programs', item.id, { university: event.target.value, country: catalogLinks.countryByUniversity?.[event.target.value] || item.country })}>
+                        <option value="">اختر الجامعة</option>
+                        {catalogForm.universities.map(university => <option key={university.id} value={university.name}>{university.name}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="الدولة">
+                      <select disabled={!canManageSettings} value={item.country} onChange={event => updateCatalogRow('programs', item.id, { country: event.target.value })}>
+                        <option value="">اختر الدولة</option>
+                        {catalogForm.countries.map(country => <option key={country.id} value={country.name}>{country.name}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="المدينة"><input disabled={!canManageSettings} value={item.city} onChange={event => updateCatalogRow('programs', item.id, { city: event.target.value })} /></Field>
+                    <Field label="الدرجة"><input disabled={!canManageSettings} value={item.degree} onChange={event => updateCatalogRow('programs', item.id, { degree: event.target.value })} placeholder="بكالوريوس / ماجستير" /></Field>
+                    <Field label="اسم البرنامج / التخصص"><input disabled={!canManageSettings} value={item.department} onChange={event => updateCatalogRow('programs', item.id, { department: event.target.value, program: event.target.value })} /></Field>
+                    <Field label="لغة الدراسة"><input disabled={!canManageSettings} value={item.language} onChange={event => updateCatalogRow('programs', item.id, { language: event.target.value })} /></Field>
+                    <Field label="حالة الإتاحة">
+                      <select disabled={!canManageSettings} value={item.availability} onChange={event => updateCatalogRow('programs', item.id, { availability: event.target.value })}>
+                        <option value="Available">Available</option>
+                        <option value="Not Available">Not Available</option>
+                        <option value="Quota Full">Quota Full</option>
+                      </select>
+                    </Field>
+                    <Field label="العملة">
+                      <select disabled={!canManageSettings} value={item.currency} onChange={event => updateCatalogRow('programs', item.id, { currency: event.target.value })}>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
+                        <option value="EGP">EGP</option>
+                        <option value="TRY">TRY</option>
+                      </select>
+                    </Field>
+                    <Field label="الرسوم الدراسية"><input disabled={!canManageSettings} value={item.fees} onChange={event => updateCatalogRow('programs', item.id, { fees: event.target.value })} /></Field>
+                    <Field label="رسوم الكاش / الخصم"><input disabled={!canManageSettings} value={item.discount_fees} onChange={event => updateCatalogRow('programs', item.id, { discount_fees: event.target.value })} /></Field>
+                    <Field label="الدفعة الأولى"><input disabled={!canManageSettings} value={item.deposit_amount} onChange={event => updateCatalogRow('programs', item.id, { deposit_amount: event.target.value })} /></Field>
+                    <Field label="التحضيري"><input disabled={!canManageSettings} value={item.prep_school_fee} onChange={event => updateCatalogRow('programs', item.id, { prep_school_fee: event.target.value })} /></Field>
+                    <Field label="الفرع / الحرم" className="field-full"><input disabled={!canManageSettings} value={item.campus_name} onChange={event => updateCatalogRow('programs', item.id, { campus_name: event.target.value })} /></Field>
+                  </div>
+                  <div className="task-actions">
+                    <Button disabled={!canManageSettings} variant="ghost" type="button" onClick={() => removeCatalogRow('programs', item.id)}><Trash2 /> حذف البرنامج</Button>
+                  </div>
+                </article>
+              ))}
+              <Button disabled={!canManageSettings} variant="secondary" type="button" onClick={() => addCatalogRow('programs', createProgram)}>
+                <Plus /> إضافة برنامج
+              </Button>
+            </div>
+          )}
+
+          {catalogTab === 'scholarships' && (
+            <div className="templates-stack">
+              {filteredCatalogRows.map(item => (
+                <article className="template-card" key={item.id}>
+                  <label className="check-row">
+                    <input
+                      disabled={!canManageSettings}
+                      type="checkbox"
+                      checked={selectedCatalogIds.includes(item.id)}
+                      onChange={() => toggleCatalogSelection('scholarships', item.id)}
+                    />
+                    <div>
+                      <strong>{item.name || 'منحة جديدة'}</strong>
+                      <small>{[item.university, item.degree, item.country].filter(Boolean).join(' · ') || 'بيانات المنحة'}</small>
+                    </div>
+                  </label>
+                  <div className="form-grid">
+                    <Field label="اسم المنحة"><input disabled={!canManageSettings} value={item.name} onChange={event => updateCatalogRow('scholarships', item.id, { name: event.target.value })} /></Field>
+                    <Field label="الجامعة">
+                      <select disabled={!canManageSettings} value={item.university} onChange={event => updateCatalogRow('scholarships', item.id, { university: event.target.value, country: catalogLinks.countryByUniversity?.[event.target.value] || item.country })}>
+                        <option value="">اختر الجامعة</option>
+                        {catalogForm.universities.map(university => <option key={university.id} value={university.name}>{university.name}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="الدولة">
+                      <select disabled={!canManageSettings} value={item.country} onChange={event => updateCatalogRow('scholarships', item.id, { country: event.target.value })}>
+                        <option value="">اختر الدولة</option>
+                        {catalogForm.countries.map(country => <option key={country.id} value={country.name}>{country.name}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="الدرجة"><input disabled={!canManageSettings} value={item.degree} onChange={event => updateCatalogRow('scholarships', item.id, { degree: event.target.value })} /></Field>
+                    <Field label="اللغة"><input disabled={!canManageSettings} value={item.language} onChange={event => updateCatalogRow('scholarships', item.id, { language: event.target.value })} /></Field>
+                    <Field label="نطاق المنحة / التخصص"><input disabled={!canManageSettings} value={item.program_scope} onChange={event => updateCatalogRow('scholarships', item.id, { program_scope: event.target.value, department: event.target.value })} /></Field>
+                    <Field label="قيمة المنحة"><input disabled={!canManageSettings} value={item.amount} onChange={event => updateCatalogRow('scholarships', item.id, { amount: event.target.value })} /></Field>
+                    <Field label="ملاحظات" className="field-full"><textarea disabled={!canManageSettings} value={item.notes} onChange={event => updateCatalogRow('scholarships', item.id, { notes: event.target.value })} /></Field>
+                  </div>
+                  <div className="task-actions">
+                    <Button disabled={!canManageSettings} variant="ghost" type="button" onClick={() => removeCatalogRow('scholarships', item.id)}><Trash2 /> حذف المنحة</Button>
+                  </div>
+                </article>
+              ))}
+              <Button disabled={!canManageSettings} variant="secondary" type="button" onClick={() => addCatalogRow('scholarships', createScholarship)}>
+                <Plus /> إضافة منحة
+              </Button>
+            </div>
+          )}
+
+          <div className="settings-actions">
+            <Button disabled={!canManageSettings || catalogSaving} type="button" onClick={saveCatalog}>
+              <Save /> {catalogSaving ? 'جارٍ الحفظ...' : 'حفظ قسم الدليل الدراسي'}
+            </Button>
+          </div>
         </Card>
 
         <ArrayEditor
@@ -836,6 +1315,32 @@ export default function SettingsPage() {
             </div>
           </Card>
         )}
+
+        <Card className="settings-card">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">اختصار سريع</p>
+              <h2>قسم الدليل الدراسي</h2>
+              <span>إذا كنت في آخر صفحة الإعدادات، استخدم هذا الزر للانتقال مباشرة إلى قسم الدول والجامعات والبرامج والمنح.</span>
+            </div>
+            <Building2 />
+          </div>
+
+          <div className="notes-box">
+            <strong>المحتوى الموجود داخل القسم</strong>
+            <p>إدارة الدول، الجامعات، البرامج، والمنح مع البحث، الاستيراد من Excel/CSV، والحذف الجماعي.</p>
+          </div>
+
+          <div className="form-actions">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => window.location.assign('/catalog-management')}
+            >
+              <Building2 /> فتح صفحة الدليل الدراسي
+            </Button>
+          </div>
+        </Card>
 
         {canManageSettings && (
           <div className="settings-actions">

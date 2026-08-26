@@ -18,6 +18,7 @@ import InboxPage from './pages/InboxPage.jsx';
 import UniversitiesPage from './pages/UniversitiesPage.jsx';
 import ProgramsCatalogPage from './pages/ProgramsCatalogPage.jsx';
 import ScholarshipsPage from './pages/ScholarshipsPage.jsx';
+import EducationCatalogAdminPage from './pages/EducationCatalogAdminPage.jsx';
 import RemindersPage from './pages/RemindersPage.jsx';
 import CallsSchedulePage from './pages/CallsSchedulePage.jsx';
 import ScriptsLibraryPage from './pages/ScriptsLibraryPage.jsx';
@@ -65,6 +66,7 @@ export default function App() {
         <Route path="universities" element={<Guard module="universities"><UniversitiesPage /></Guard>} />
         <Route path="programs" element={<Guard module="programs"><ProgramsCatalogPage /></Guard>} />
         <Route path="scholarships" element={<Guard module="scholarships"><ScholarshipsPage /></Guard>} />
+        <Route path="catalog-management" element={<Guard module="catalogManagement"><EducationCatalogAdminPage /></Guard>} />
         <Route path="settings" element={<Guard module="settings"><SettingsPage /></Guard>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

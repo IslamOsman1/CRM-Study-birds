@@ -573,7 +573,17 @@ export default function HR() {
                 {payroll.map(row => (
                   <tr key={row.employeeId}>
                     <td><strong>{row.employeeName}</strong><small>{tr(row.department)}</small></td>
-                    <td>{formatMoney(row.basicSalary, 'EGP')}</td>
+                    <td>
+                      <div className="inline-actions">
+                        <input
+                          defaultValue={row.basicSalary || 0}
+                          type="number"
+                          min="0"
+                          onBlur={event => saveHrConfig(row.employeeId, { basicSalary: event.target.value })}
+                        />
+                      </div>
+                      <small>{formatMoney(row.basicSalary, 'EGP')}</small>
+                    </td>
                     <td>{formatMoney(row.commissions, 'EGP')}</td>
                     <td>{formatMoney(row.bonuses, 'EGP')}</td>
                     <td>{formatMoney(row.deductions, 'EGP')}</td>

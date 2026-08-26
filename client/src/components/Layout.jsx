@@ -55,6 +55,7 @@ const modules = [
   { to: '/universities', label: 'دليل الجامعات', icon: Building2, roles: ['admin', 'management', 'consultant'] },
   { to: '/programs', label: 'البرامج', icon: BookOpenCheck, roles: ['admin', 'management'] },
   { to: '/scholarships', label: 'المنح', icon: Sparkles, roles: ['admin', 'management'] },
+  { to: '/catalog-management', label: 'إدارة الدليل الدراسي', icon: Building2, roles: ['admin', 'management'] },
   { to: '/settings', label: 'الإعدادات', icon: Settings2, roles: ['admin', 'management'] }
 ];
 
@@ -79,6 +80,7 @@ const titles = {
   '/universities': ['دليل الجامعات', 'أداة تشغيلية للبحث المتقدم عن الجامعات والبرامج وإنشاء عروض الأسعار.'],
   '/programs': ['البرامج', 'عرض البرامج الدراسية بشكل مستقل مع الأسعار والفلاتر والبحث السريع.'],
   '/scholarships': ['المنح', 'عرض المنح الدراسية بشكل مستقل مع تفاصيلها الكاملة وفلاتر البحث.'],
+  '/catalog-management': ['إدارة الدليل الدراسي', 'إنشاء وتعديل واستيراد الدول والجامعات والبرامج والمنح من صفحة موحدة.'],
   '/settings': ['الإعدادات', 'إدارة بيانات الشركة والمراحل والحالات والمستندات والمستخدمين.']
 };
 

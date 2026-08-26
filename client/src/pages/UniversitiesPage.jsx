@@ -88,13 +88,22 @@ export default function UniversitiesPage() {
   }, []);
 
   const rows = useMemo(() => normalizePrograms(catalog), [catalog]);
-  const countries = useMemo(() => unique(rows.map(row => row.country)), [rows]);
+  const countries = useMemo(
+    () => unique([...(catalog.availableCountries || []), ...rows.map(row => row.country)]),
+    [catalog.availableCountries, rows]
+  );
   const availableCities = useMemo(
     () => unique(rows.filter(row => !filters.country || row.country === filters.country).map(row => row.city)),
     [filters.country, rows]
   );
-  const universities = useMemo(() => unique(rows.map(row => row.university)), [rows]);
-  const majors = useMemo(() => unique(rows.map(row => row.major)), [rows]);
+  const universities = useMemo(
+    () => unique([...(catalog.availableUniversities || []), ...rows.map(row => row.university)]),
+    [catalog.availableUniversities, rows]
+  );
+  const majors = useMemo(
+    () => unique([...(catalog.availablePrograms || []), ...rows.map(row => row.major)]),
+    [catalog.availablePrograms, rows]
+  );
   const languages = useMemo(() => unique(rows.map(row => row.language)), [rows]);
 
   const filtered = useMemo(
@@ -143,7 +152,10 @@ export default function UniversitiesPage() {
       const blob = await apiDownload('/api/education-catalog/quote-pdf', {
         method: 'POST',
         body: JSON.stringify({
-          student: quoteForm,
+          student: {
+            ...quoteForm,
+            targetCountry: quoteForm.targetCountry || filters.country || filtered[0]?.country || ''
+          },
           items: filtered
         })
       });

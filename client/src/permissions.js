@@ -18,6 +18,7 @@ export const modulePermissions = {
   universities: ['admin', 'management', 'consultant'],
   programs: ['admin', 'management'],
   scholarships: ['admin', 'management'],
+  catalogManagement: ['admin', 'management'],
   settings: ['admin', 'management']
 };
 
@@ -41,6 +42,7 @@ export const moduleLabels = {
   universities: 'دليل الجامعات',
   programs: 'البرامج',
   scholarships: 'المنح',
+  catalogManagement: 'إدارة الدليل الدراسي',
   settings: 'الإعدادات'
 };
 
