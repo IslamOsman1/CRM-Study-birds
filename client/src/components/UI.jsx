@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { X, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export function Card({ children, className = '' }) {
@@ -30,17 +30,26 @@ export function Spinner() {
 }
 
 export function Modal({ open, onClose, title, subtitle, children, size = 'md' }) {
+  const modalRef = useRef(null);
+
   useEffect(() => {
     const handler = event => event.key === 'Escape' && onClose();
     if (open) document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open) return;
+    requestAnimationFrame(() => {
+      if (modalRef.current) modalRef.current.scrollTop = 0;
+    });
+  }, [open]);
+
   if (!open) return null;
 
   return (
     <div className="modal-backdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}>
-      <div className={`modal modal-${size}`}>
+      <div ref={modalRef} className={`modal modal-${size}`}>
         <div className="modal-head">
           <div>
             <h3>{title}</h3>
