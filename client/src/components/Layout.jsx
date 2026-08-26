@@ -572,7 +572,7 @@ export default function Layout() {
                 <div className="avatar">{user.avatar || user.name.split(' ').map(item => item[0]).slice(0, 2).join('')}</div>
                 <div>
                   <strong>{user.name}</strong>
-                  <span>{tr(user.department)}</span>
+                  <span>{user.role === 'admin' ? tr(user.role) : tr(user.department)}</span>
                 </div>
                 <ChevronDown size={16} />
               </button>
