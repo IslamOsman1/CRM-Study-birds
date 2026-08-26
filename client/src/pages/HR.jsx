@@ -106,6 +106,7 @@ export default function HR() {
   const [documentFile, setDocumentFile] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
   const [submittingAction, setSubmittingAction] = useState(false);
+  const [submittingLeave, setSubmittingLeave] = useState(false);
   const [toast, setToast] = useState(null);
 
   const canCreateEmployee = can(user.role, 'createEmployee');
@@ -174,6 +175,8 @@ export default function HR() {
       setToast({ message: 'تم حفظ سجل الحضور.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
+    } finally {
+      setSubmittingLeave(false);
     }
   };
 
@@ -222,7 +225,9 @@ export default function HR() {
   };
 
   const submitLeave = async event => {
-    event.preventDefault();
+    event?.preventDefault?.();
+    if (submittingLeave) return;
+    setSubmittingLeave(true);
     try {
       await api('/api/hr/leave-requests', { method: 'POST', body: JSON.stringify(leaveForm) });
       setLeaveOpen(false);

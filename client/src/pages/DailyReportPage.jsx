@@ -3,7 +3,7 @@ import { Lock, Send } from 'lucide-react';
 import { api } from '../api.js';
 import { Badge, Button, Card, Field, Spinner, Toast } from '../components/UI.jsx';
 
-const TODAY = '2026-08-22';
+const TODAY = '2026-08-26';
 const blankForm = {
   startTime: '09:00',
   endTime: '18:00',
@@ -15,6 +15,7 @@ export default function DailyReportPage() {
   const [form, setForm] = useState(blankForm);
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [submittedToday, setSubmittedToday] = useState(false);
   const [metrics, setMetrics] = useState({ newLeads: 0, contacted: 0, submitted: 0, followUps: 0 });
 
@@ -43,7 +44,9 @@ export default function DailyReportPage() {
   }, []);
 
   const submitReport = async event => {
-    event.preventDefault();
+    event?.preventDefault?.();
+    if (submittedToday || submitting) return;
+    setSubmitting(true);
     try {
       await api('/api/daily-reports', {
         method: 'POST',
@@ -53,6 +56,8 @@ export default function DailyReportPage() {
       setToast({ message: 'تم إرسال التقرير اليومي.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -66,7 +71,7 @@ export default function DailyReportPage() {
             <Lock />
             <div>
               <strong>التقرير اليومي إلزامي</strong>
-              <span>لم يتم إرسال تقرير يوم السبت 22 أغسطس 2026 بعد.</span>
+              <span>لم يتم إرسال تقرير يوم الأربعاء 26 أغسطس 2026 بعد.</span>
             </div>
           </div>
         </Card>
@@ -80,7 +85,7 @@ export default function DailyReportPage() {
       </div>
 
       <Card className="settings-card">
-        <form className="form-grid" onSubmit={submitReport}>
+        <form className="form-grid" autoComplete="off" noValidate onSubmit={event => event.preventDefault()}>
           <Field label="بداية الدوام">
             <input type="time" value={form.startTime} onChange={event => setForm({ ...form, startTime: event.target.value })} />
           </Field>
@@ -98,7 +103,9 @@ export default function DailyReportPage() {
           </Field>
           <div className="form-actions field-full">
             {submittedToday && <Badge tone="green">تم الإرسال اليوم</Badge>}
-            <Button type="submit" disabled={submittedToday}><Send size={15} /> إرسال التقرير اليومي</Button>
+            <Button type="button" disabled={submittedToday || submitting} onClick={submitReport}>
+              <Send size={15} /> {submitting ? 'جارٍ الإرسال...' : 'إرسال التقرير اليومي'}
+            </Button>
           </div>
         </form>
       </Card>

@@ -5,7 +5,7 @@ import { Badge, Button, Card, Field, Modal, Spinner, Toast } from '../components
 import { useAuth } from '../auth.jsx';
 import { tr } from '../i18n.js';
 
-const TODAY = '2026-08-23';
+const TODAY = '2026-08-26';
 
 const tabs = [
   { key: 'all', label: 'الكل', icon: BellRing },
@@ -34,6 +34,7 @@ export default function RemindersPage() {
   const [users, setUsers] = useState([]);
   const [form, setForm] = useState(blankReminder);
   const [busyId, setBusyId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const assignableUsers = useMemo(
     () =>
@@ -82,7 +83,9 @@ export default function RemindersPage() {
   );
 
   const createReminder = async event => {
-    event.preventDefault();
+    event?.preventDefault?.();
+    if (submitting) return;
+    setSubmitting(true);
     try {
       const targetAssigneeId = canManageAssignments ? form.assignedUserId : user.id;
       const created = await api('/api/reminders', {
@@ -99,6 +102,8 @@ export default function RemindersPage() {
       setToast({ message: 'تم إنشاء التذكير بنجاح.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -260,7 +265,7 @@ export default function RemindersPage() {
       </Card>
 
       <Modal open={open} onClose={() => setOpen(false)} title="إضافة تذكير جديد" subtitle="يمكن للأدمن أو الإدارة إسناد التذكير مباشرة أو تحويله لاحقًا إلى مهمة">
-        <form className="stack-form" onSubmit={createReminder}>
+        <form className="stack-form" autoComplete="off" noValidate onSubmit={event => event.preventDefault()}>
           <Field label="عنوان مختصر">
             <input value={form.title} onChange={event => setForm({ ...form, title: event.target.value })} />
           </Field>
@@ -289,7 +294,7 @@ export default function RemindersPage() {
           )}
           <div className="form-actions">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>إلغاء</Button>
-            <Button type="submit">حفظ التذكير</Button>
+            <Button type="button" disabled={submitting} onClick={createReminder}>{submitting ? 'جارٍ الحفظ...' : 'حفظ التذكير'}</Button>
           </div>
         </form>
       </Modal>

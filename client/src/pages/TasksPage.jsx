@@ -6,7 +6,7 @@ import { useAuth } from '../auth.jsx';
 import { tr } from '../i18n.js';
 import { can } from '../permissions.js';
 
-const TODAY = '2026-08-22';
+const TODAY = '2026-08-26';
 const WORKFLOW_KEY = 'eduglobal_task_workflow_v1';
 const ROLE_OPTIONS = [
   { value: '', label: 'عام' },
@@ -48,6 +48,7 @@ export default function TasksPage() {
   const [toast, setToast] = useState(null);
   const [workflowMap, setWorkflowMap] = useState(loadWorkflowMap);
   const [reassigningId, setReassigningId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const assignableUsers = useMemo(
     () =>
@@ -124,7 +125,9 @@ export default function TasksPage() {
   );
 
   const createTask = async event => {
-    event.preventDefault();
+    event?.preventDefault?.();
+    if (submitting) return;
+    setSubmitting(true);
     try {
       await api('/api/tasks', { method: 'POST', body: JSON.stringify(form) });
       setOpen(false);
@@ -134,6 +137,8 @@ export default function TasksPage() {
       setToast({ message: 'تم إنشاء المهمة بنجاح.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -337,7 +342,7 @@ export default function TasksPage() {
       </Card>
 
       <Modal open={open} onClose={() => setOpen(false)} title="إضافة مهمة جديدة" subtitle="يمكن إسناد المهمة إلى موظف محدد أو إبقاؤها عامة">
-        <form className="stack-form" onSubmit={createTask}>
+        <form className="stack-form" autoComplete="off" noValidate onSubmit={event => event.preventDefault()}>
           <Field label="عنوان المهمة">
             <input required value={form.title} onChange={event => setForm({ ...form, title: event.target.value })} />
           </Field>
@@ -373,7 +378,7 @@ export default function TasksPage() {
           )}
           <div className="form-actions">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>إلغاء</Button>
-            <Button type="submit">حفظ المهمة</Button>
+            <Button type="button" disabled={submitting} onClick={createTask}>{submitting ? 'جارٍ الحفظ...' : 'حفظ المهمة'}</Button>
           </div>
         </form>
       </Modal>
