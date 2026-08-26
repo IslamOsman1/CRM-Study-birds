@@ -806,10 +806,10 @@ export default function Consultancy() {
       </Modal>
 
       <Modal open={open} onClose={() => setOpen(false)} title="إضافة عميل استشارات جديد" subtitle="سيظهر مباشرة داخل مسار الاستشارات." size="lg">
-        <form className="form-grid" onSubmit={create}>
-          <Field label="اسم الطالب"><input required value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></Field>
-          <Field label="رقم الهاتف"><input required value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} /></Field>
-          <Field label="البريد الإلكتروني"><input type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} /></Field>
+        <form className="form-grid" autoComplete="off" onSubmit={create}>
+          <Field label="اسم الطالب"><input required autoComplete="off" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></Field>
+          <Field label="رقم الهاتف"><input required autoComplete="off" value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} /></Field>
+          <Field label="البريد الإلكتروني"><input type="email" autoComplete="off" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} /></Field>
           <Field label="الدولة المستهدفة">
             <select value={form.targetCountry} onChange={event => setForm({ ...form, targetCountry: event.target.value, country: event.target.value })}>
               <option value="">اختر الدولة</option>

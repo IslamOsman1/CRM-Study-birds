@@ -724,10 +724,10 @@ export default function HR() {
       </Modal>
 
       <Modal open={employeeOpen} onClose={() => setEmployeeOpen(false)} title="إضافة موظف جديد" subtitle="إنشاء سجل موظف جديد داخل النظام" size="lg">
-        <form className="form-grid" onSubmit={createEmployee}>
-          <Field label="الاسم"><input required value={employeeForm.name} onChange={event => setEmployeeForm({ ...employeeForm, name: event.target.value })} /></Field>
-          <Field label="البريد الإلكتروني"><input type="email" value={employeeForm.email} onChange={event => setEmployeeForm({ ...employeeForm, email: event.target.value })} /></Field>
-          <Field label="رقم الهاتف"><input value={employeeForm.phone} onChange={event => setEmployeeForm({ ...employeeForm, phone: event.target.value })} /></Field>
+        <form className="form-grid" autoComplete="off" onSubmit={createEmployee}>
+          <Field label="الاسم"><input required autoComplete="off" value={employeeForm.name} onChange={event => setEmployeeForm({ ...employeeForm, name: event.target.value })} /></Field>
+          <Field label="البريد الإلكتروني"><input required type="email" autoComplete="off" value={employeeForm.email} onChange={event => setEmployeeForm({ ...employeeForm, email: event.target.value })} /></Field>
+          <Field label="رقم الهاتف"><input autoComplete="off" value={employeeForm.phone} onChange={event => setEmployeeForm({ ...employeeForm, phone: event.target.value })} /></Field>
           <Field label="الدور">
             <select value={employeeForm.role} onChange={event => setEmployeeForm({ ...employeeForm, role: event.target.value })}>
               <option value="management">الإدارة</option>
@@ -743,9 +743,9 @@ export default function HR() {
               {['Consultancy', 'Admissions', 'Reception', 'Human Resources', 'Finance'].map(option => <option key={option} value={option}>{tr(option)}</option>)}
             </select>
           </Field>
-          <Field label="المسمى الوظيفي"><input required value={employeeForm.title} onChange={event => setEmployeeForm({ ...employeeForm, title: event.target.value })} /></Field>
-          <Field label="الفرع"><input value={employeeForm.branch} onChange={event => setEmployeeForm({ ...employeeForm, branch: event.target.value })} /></Field>
-          <Field label="كلمة المرور"><input required minLength="6" type="password" value={employeeForm.password} onChange={event => setEmployeeForm({ ...employeeForm, password: event.target.value })} /></Field>
+          <Field label="المسمى الوظيفي"><input required autoComplete="off" value={employeeForm.title} onChange={event => setEmployeeForm({ ...employeeForm, title: event.target.value })} /></Field>
+          <Field label="الفرع"><input autoComplete="off" value={employeeForm.branch} onChange={event => setEmployeeForm({ ...employeeForm, branch: event.target.value })} /></Field>
+          <Field label="كلمة المرور"><input required minLength="6" type="password" autoComplete="new-password" value={employeeForm.password} onChange={event => setEmployeeForm({ ...employeeForm, password: event.target.value })} /></Field>
           <Field label="تاريخ الانضمام"><input type="date" value={employeeForm.joinDate} onChange={event => setEmployeeForm({ ...employeeForm, joinDate: event.target.value })} /></Field>
           <Field label="الراتب الأساسي"><input min="0" type="number" value={employeeForm.basicSalary} onChange={event => setEmployeeForm({ ...employeeForm, basicSalary: event.target.value })} /></Field>
           <Field label="التارجت الشهري"><input min="0" type="number" value={employeeForm.monthlyTarget} onChange={event => setEmployeeForm({ ...employeeForm, monthlyTarget: event.target.value })} /></Field>

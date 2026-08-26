@@ -1490,7 +1490,11 @@ function sameDay(dateA, dateB = now()) {
 function findUserByEmployee(db, employeeId, companyId) {
   const employee = findScoped(db.employees, companyId, item => item.id === employeeId);
   if (!employee) return null;
-  return findScoped(db.users, companyId, item => item.email?.toLowerCase() === employee.email?.toLowerCase()) || null;
+  return findScoped(
+    db.users,
+    companyId,
+    item => item.id === employee.linkedUserId || item.email?.toLowerCase() === employee.email?.toLowerCase()
+  ) || null;
 }
 
 function syncEmployeeRecordForUser(db, user) {
@@ -3836,7 +3840,9 @@ app.post('/api/users', allowRoles('admin', 'management'), async (req, res) => {
   }
 
   const result = await mutateDb(async db => {
-    if (db.users.some(user => user.email.toLowerCase() === email)) {
+    const duplicate = getScopedItems(db.users || [], req.user.companyId)
+      .some(user => String(user.email || '').trim().toLowerCase() === email);
+    if (duplicate) {
       throw Object.assign(new Error('هذا البريد مستخدم مسبقًا'), { status: 409 });
     }
 
@@ -3871,7 +3877,8 @@ app.patch('/api/users/:id', allowRoles('admin', 'management'), async (req, res) 
 
     if (payload.email) {
       const nextEmail = String(payload.email).trim().toLowerCase();
-      const duplicate = db.users.find(item => item.id !== user.id && item.email.toLowerCase() === nextEmail);
+      const duplicate = getScopedItems(db.users || [], req.user.companyId)
+        .find(item => item.id !== user.id && String(item.email || '').trim().toLowerCase() === nextEmail);
       if (duplicate) throw Object.assign(new Error('هذا البريد مستخدم مسبقًا'), { status: 409 });
       user.email = nextEmail;
     }
@@ -5112,9 +5119,22 @@ app.delete('/api/hr/employees/:id', allowRoles('admin', 'management', 'hr'), asy
     const employeeIndex = db.employees.findIndex(item => item.id === req.params.id && item.companyId === companyId);
     if (employeeIndex === -1) throw Object.assign(new Error('الموظف غير موجود'), { status: 404 });
 
+    const employeeBeforeDelete = db.employees[employeeIndex];
+    const linkedUserIds = new Set(
+      getScopedItems(db.users || [], companyId)
+        .filter(
+          item =>
+            item.role !== 'admin' &&
+            (
+              item.id === employeeBeforeDelete.linkedUserId ||
+              item.email?.toLowerCase() === employeeBeforeDelete.email?.toLowerCase()
+            )
+        )
+        .map(item => item.id)
+    );
     const [employee] = db.employees.splice(employeeIndex, 1);
     db.users = (db.users || []).filter(
-      item => !(item.companyId === companyId && item.role !== 'admin' && (item.id === employee.linkedUserId || item.email?.toLowerCase() === employee.email?.toLowerCase()))
+      item => !(item.companyId === companyId && linkedUserIds.has(item.id))
     );
 
     for (const document of employee.documents || []) {

@@ -173,7 +173,7 @@ export default function Reception() {
             </div>
           </div>
 
-          <form className="form-grid" onSubmit={submit}>
+          <form className="form-grid" autoComplete="off" onSubmit={submit}>
             <Field label="نوع التفاعل">
               <select value={form.type} onChange={event => setForm({ ...form, type: event.target.value })}>
                 <option value="Walk-in">زيارة مباشرة</option>
@@ -183,9 +183,9 @@ export default function Reception() {
                 <option value="Social Media">وسائل التواصل</option>
               </select>
             </Field>
-            <Field label="اسم الطالب"><input required value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></Field>
-            <Field label="رقم الهاتف"><input required value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} /></Field>
-            <Field label="البريد الإلكتروني"><input type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} /></Field>
+            <Field label="اسم الطالب"><input required autoComplete="off" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></Field>
+            <Field label="رقم الهاتف"><input required autoComplete="off" value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} /></Field>
+            <Field label="البريد الإلكتروني"><input type="email" autoComplete="off" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} /></Field>
             <Field label="اهتمام الدراسة">
               <select value={form.interest} onChange={event => setForm({ ...form, interest: event.target.value })} required>
                 <option value="">اختر البرنامج</option>

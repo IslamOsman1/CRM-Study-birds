@@ -816,9 +816,9 @@ export default function SettingsPage() {
       </form>
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="إضافة أدمن جديد" subtitle="إنشاء حساب إداري داخلي للنظام" size="lg">
-        <form className="form-grid" onSubmit={createUser}>
-          <Field label="الاسم"><input required value={userForm.name} onChange={event => setUserForm({ ...userForm, name: event.target.value })} /></Field>
-          <Field label="البريد الإلكتروني"><input required type="email" value={userForm.email} onChange={event => setUserForm({ ...userForm, email: event.target.value })} /></Field>
+        <form className="form-grid" autoComplete="off" onSubmit={createUser}>
+          <Field label="الاسم"><input required autoComplete="off" value={userForm.name} onChange={event => setUserForm({ ...userForm, name: event.target.value })} /></Field>
+          <Field label="البريد الإلكتروني"><input required type="email" autoComplete="off" value={userForm.email} onChange={event => setUserForm({ ...userForm, email: event.target.value })} /></Field>
           <Field label="الدور">
             <select value="admin" disabled>
               <option value="admin">مسؤول النظام</option>
@@ -829,7 +829,7 @@ export default function SettingsPage() {
               <option value="admin-department">مسؤول</option>
             </select>
           </Field>
-          <Field label="كلمة المرور" className="field-full"><input required minLength="6" type="password" value={userForm.password} onChange={event => setUserForm({ ...userForm, password: event.target.value })} /></Field>
+          <Field label="كلمة المرور" className="field-full"><input required minLength="6" type="password" autoComplete="new-password" value={userForm.password} onChange={event => setUserForm({ ...userForm, password: event.target.value })} /></Field>
           <label className="required-toggle field-full">
             <input type="checkbox" checked={userForm.isActive} onChange={event => setUserForm({ ...userForm, isActive: event.target.checked })} />
             <span>الحساب مفعل ويمكنه تسجيل الدخول</span>
