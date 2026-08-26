@@ -964,7 +964,7 @@ export default function Consultancy() {
                 <span>رفع وحفظ المستندات الأولية داخل بطاقة العميل مباشرة.</span>
               </div>
             </div>
-            <form className="lead-document-upload" onSubmit={uploadLeadDocument}>
+            <div className="lead-document-upload">
               <div className="lead-document-upload-grid">
                 <Field label="نوع المستند">
                   <select value={leadDocumentType} onChange={event => setLeadDocumentType(event.target.value)}>
@@ -976,9 +976,9 @@ export default function Consultancy() {
                 </Field>
               </div>
               <div className="form-actions">
-                <Button type="submit" disabled={!leadDocumentFile}><FileUp /> رفع المستند</Button>
+                <Button type="button" onClick={uploadLeadDocument} disabled={!leadDocumentFile}><FileUp /> رفع المستند</Button>
               </div>
-            </form>
+            </div>
             <div className="lead-document-checklist">
               {leadDocumentOptions.map(option => {
                 const uploadedDocument = leadDocumentsByType.get(option.name);
