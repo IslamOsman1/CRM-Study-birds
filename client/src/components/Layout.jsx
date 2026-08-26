@@ -28,6 +28,7 @@ import {
 import { api, formatDate } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { tr } from '../i18n.js';
+import { canOpenModule } from '../permissions.js';
 import studyBirdsLogo from '../assets/logo.jpeg';
 
 const REFRESH_MS = 10_000;
@@ -81,17 +82,9 @@ const titles = {
   '/settings': ['الإعدادات', 'إدارة بيانات الشركة والمراحل والحالات والمستندات والمستخدمين.']
 };
 
-function getRoleModules(role) {
-  if (role === 'reception') {
-    return ['/reception', '/inbox', '/tasks', '/reminders', '/calls', '/scripts', '/daily-report', '/leave'];
-  }
-  if (role === 'finance') {
-    return ['/finance', '/reports', '/tasks', '/reminders', '/daily-report', '/leave'];
-  }
-  if (role === 'hr') {
-    return ['/hr', '/tasks', '/reminders', '/daily-report', '/leave'];
-  }
-  return null;
+function routeToModuleKey(route) {
+  if (route === '/') return null;
+  return route.slice(1).replace(/-([a-z])/g, (_, char) => char.toUpperCase());
 }
 
 export default function Layout() {
@@ -113,13 +106,11 @@ export default function Layout() {
   const seenNotificationIdsRef = useRef(new Set());
   const globalSearchRef = useRef(null);
 
-  const allowed = useMemo(() => {
-    const roleModules = getRoleModules(user.role);
-    if (roleModules) {
-      return modules.filter(item => roleModules.includes(item.to));
-    }
-    return modules.filter(item => item.roles.includes(user.role));
-  }, [user.role]);
+  const allowed = useMemo(
+    () =>
+      modules.filter(item => item.to === '/' || canOpenModule(user.role, routeToModuleKey(item.to))),
+    [user.role]
+  );
 
   const [title, subtitle] = titles[location.pathname] || titles['/'];
   const today = new Intl.DateTimeFormat('ar-EG', {

@@ -1,9 +1,9 @@
 export const modulePermissions = {
-  consultancy: ['admin', 'management', 'consultant', 'admissions'],
-  students: ['admin', 'management', 'consultant', 'admissions'],
+  consultancy: ['admin', 'management', 'consultant', 'admissions', 'reception'],
+  students: ['admin', 'management', 'consultant', 'admissions', 'finance', 'reception'],
   admissions: ['admin', 'management', 'consultant', 'admissions'],
   inbox: ['admin', 'management', 'consultant', 'admissions', 'reception'],
-  reports: ['admin', 'management', 'finance', 'admissions'],
+  reports: ['admin', 'management', 'finance', 'hr', 'admissions'],
   tasks: ['admin', 'management', 'consultant', 'admissions', 'reception', 'hr', 'finance'],
   reminders: ['admin', 'management', 'consultant', 'admissions', 'reception', 'hr', 'finance'],
   calls: ['admin', 'management', 'consultant', 'admissions', 'reception'],
@@ -15,7 +15,7 @@ export const modulePermissions = {
   hr: ['admin', 'management', 'hr'],
   finance: ['admin', 'management', 'finance'],
   activity: ['admin', 'management'],
-  universities: ['admin', 'management'],
+  universities: ['admin', 'management', 'consultant'],
   programs: ['admin', 'management'],
   scholarships: ['admin', 'management'],
   settings: ['admin', 'management']
