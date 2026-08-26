@@ -28,7 +28,7 @@ import { canOpenModule } from './permissions.js';
 
 function Guard({ module, children }) {
   const { user } = useAuth();
-  return canOpenModule(user.role, module) ? children : <Navigate to="/" replace />;
+  return canOpenModule(user, module) ? children : <Navigate to="/" replace />;
 }
 
 export default function App() {

@@ -4,7 +4,7 @@ import { api } from '../api.js';
 import { Badge, Button, Card, Field, Modal, Spinner, Toast } from '../components/UI.jsx';
 import { useAuth } from '../auth.jsx';
 import { tr } from '../i18n.js';
-import { can } from '../permissions.js';
+import { actionLabels, can, moduleLabels } from '../permissions.js';
 
 function createDocumentType() {
   return { name: '', required: false };
@@ -94,7 +94,12 @@ const blankUser = {
   role: 'admin',
   department: 'Management',
   password: '',
-  isActive: true
+  isActive: true,
+  permissionMode: 'default',
+  permissions: {
+    modules: [],
+    actions: []
+  }
 };
 
 export default function SettingsPage() {
@@ -122,10 +127,10 @@ export default function SettingsPage() {
     users: []
   });
 
-  const canManageSettings = can(user.role, 'manageSettings');
-  const canManageUsers = can(user.role, 'manageUsers');
-  const canManageChecklists = can(user.role, 'manageDocumentChecklists');
-  const canManageWorkflows = can(user.role, 'manageApplicationWorkflows');
+  const canManageSettings = can(user, 'manageSettings');
+  const canManageUsers = can(user, 'manageUsers');
+  const canManageChecklists = can(user, 'manageDocumentChecklists');
+  const canManageWorkflows = can(user, 'manageApplicationWorkflows');
   const adminUsers = useMemo(() => form.users.filter(item => item.role === 'admin'), [form.users]);
   const teamUsers = useMemo(() => form.users.filter(item => item.role !== 'admin'), [form.users]);
 
@@ -187,6 +192,25 @@ export default function SettingsPage() {
 
   const departments = useMemo(() => ['Consultancy', 'Admissions', 'Reception', 'Human Resources', 'Finance'], []);
   const departmentLabel = (role, department) => (role === 'admin' ? 'مسؤول' : tr(department));
+  const moduleEntries = useMemo(() => Object.entries(moduleLabels), []);
+  const actionEntries = useMemo(() => Object.entries(actionLabels), []);
+
+  const togglePermission = (group, key) => {
+    setUserForm(current => {
+      const currentItems = current.permissions?.[group] || [];
+      const nextItems = currentItems.includes(key)
+        ? currentItems.filter(item => item !== key)
+        : [...currentItems, key];
+      return {
+        ...current,
+        permissions: {
+          modules: current.permissions?.modules || [],
+          actions: current.permissions?.actions || [],
+          [group]: nextItems
+        }
+      };
+    });
+  };
 
   const updateArrayValue = (key, index, value) => {
     setForm(current => ({
@@ -324,7 +348,12 @@ export default function SettingsPage() {
       role: currentUser.role,
       department: currentUser.department,
       password: '',
-      isActive: currentUser.isActive !== false
+      isActive: currentUser.isActive !== false,
+      permissionMode: currentUser.permissionMode || 'default',
+      permissions: {
+        modules: Array.isArray(currentUser.permissions?.modules) ? currentUser.permissions.modules : [],
+        actions: Array.isArray(currentUser.permissions?.actions) ? currentUser.permissions.actions : []
+      }
     });
     setEditOpen(true);
   };
@@ -870,6 +899,87 @@ export default function SettingsPage() {
           <Field label="كلمة مرور جديدة" className="field-full" hint="اتركها فارغة إذا لم ترد تغيير كلمة المرور">
             <input type="password" value={userForm.password} onChange={event => setUserForm({ ...userForm, password: event.target.value })} />
           </Field>
+          <Field label="نمط الصلاحيات" className="field-full">
+            <select
+              value={userForm.role === 'admin' ? 'default' : userForm.permissionMode}
+              disabled={userForm.role === 'admin'}
+              onChange={event => setUserForm({
+                ...userForm,
+                permissionMode: event.target.value,
+                permissions: event.target.value === 'default'
+                  ? { modules: [], actions: [] }
+                  : userForm.permissions
+              })}
+            >
+              <option value="default">افتراضي حسب الدور</option>
+              <option value="custom">مخصص من الإعدادات</option>
+            </select>
+          </Field>
+          {userForm.role !== 'admin' && userForm.permissionMode === 'custom' && (
+            <div className="field-full">
+              <Card className="settings-card">
+                <div className="section-head">
+                  <div>
+                    <p className="eyebrow">صلاحيات مخصصة</p>
+                    <h2>الصفحات والإجراءات المتاحة</h2>
+                  </div>
+                  <ShieldCheck />
+                </div>
+
+                <div className="settings-user-sections">
+                  <div className="settings-user-group">
+                    <div className="settings-user-group-head">
+                      <div>
+                        <strong>الصفحات</strong>
+                        <span>حدد الصفحات التي يمكن للمستخدم فتحها.</span>
+                      </div>
+                      <Badge tone="blue">{userForm.permissions.modules.length}</Badge>
+                    </div>
+                    <div className="settings-list">
+                      {moduleEntries.map(([key, label]) => (
+                        <label className="check-row" key={key}>
+                          <input
+                            type="checkbox"
+                            checked={userForm.permissions.modules.includes(key)}
+                            onChange={() => togglePermission('modules', key)}
+                          />
+                          <div>
+                            <strong>{label}</strong>
+                            <small>{key}</small>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="settings-user-group">
+                    <div className="settings-user-group-head">
+                      <div>
+                        <strong>الإجراءات</strong>
+                        <span>حدد ما يستطيع المستخدم تنفيذه داخل النظام.</span>
+                      </div>
+                      <Badge tone="purple">{userForm.permissions.actions.length}</Badge>
+                    </div>
+                    <div className="settings-list">
+                      {actionEntries.map(([key, label]) => (
+                        <label className="check-row" key={key}>
+                          <input
+                            type="checkbox"
+                            checked={userForm.permissions.actions.includes(key)}
+                            onChange={() => togglePermission('actions', key)}
+                          />
+                          <div>
+                            <strong>{label}</strong>
+                            <small>{key}</small>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
           <label className="required-toggle field-full">
             <input type="checkbox" checked={userForm.isActive} onChange={event => setUserForm({ ...userForm, isActive: event.target.checked })} />
             <span>الحساب مفعل ويمكنه تسجيل الدخول</span>

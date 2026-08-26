@@ -83,12 +83,12 @@ export default function Admissions() {
   const [toast, setToast] = useState(null);
   const universitiesMenuRef = useRef(null);
 
-  const canCreateApplication = can(user.role, 'createApplication');
-  const canUpdateStatus = can(user.role, 'updateApplicationStatus');
-  const canUploadDocument = can(user.role, 'uploadDocument');
-  const canReviewDocument = can(user.role, 'reviewDocument');
-  const canDeleteDocument = can(user.role, 'deleteDocument');
-  const canManageFollowUp = can(user.role, 'manageApplicationFollowUp');
+  const canCreateApplication = can(user, 'createApplication');
+  const canUpdateStatus = can(user, 'updateApplicationStatus');
+  const canUploadDocument = can(user, 'uploadDocument');
+  const canReviewDocument = can(user, 'reviewDocument');
+  const canDeleteDocument = can(user, 'deleteDocument');
+  const canManageFollowUp = can(user, 'manageApplicationFollowUp');
 
   const applySelection = applications => {
     const nextSelected = selected ? applications.find(item => item.id === selected.id) || applications[0] || null : applications[0] || null;

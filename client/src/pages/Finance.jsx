@@ -331,9 +331,9 @@ export default function Finance() {
   const [payment, setPayment] = useState(paymentBlank);
   const [toast, setToast] = useState(null);
 
-  const canCreateInvoice = can(user.role, 'createInvoice');
-  const canRecordPayment = can(user.role, 'recordPayment');
-  const canDeleteInvoice = can(user.role, 'deleteInvoice');
+  const canCreateInvoice = can(user, 'createInvoice');
+  const canRecordPayment = can(user, 'recordPayment');
+  const canDeleteInvoice = can(user, 'deleteInvoice');
 
   const load = () =>
     Promise.all([api('/api/invoices'), api('/api/students')])

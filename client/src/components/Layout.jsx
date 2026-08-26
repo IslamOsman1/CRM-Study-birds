@@ -108,7 +108,7 @@ export default function Layout() {
 
   const allowed = useMemo(
     () =>
-      modules.filter(item => item.to === '/' || canOpenModule(user.role, routeToModuleKey(item.to))),
+      modules.filter(item => item.to === '/' || canOpenModule(user, routeToModuleKey(item.to))),
     [user.role]
   );
 

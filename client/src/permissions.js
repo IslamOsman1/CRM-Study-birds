@@ -21,6 +21,29 @@ export const modulePermissions = {
   settings: ['admin', 'management']
 };
 
+export const moduleLabels = {
+  consultancy: 'الاستشارات',
+  students: 'الطلاب',
+  admissions: 'القبول والتسجيل',
+  inbox: 'الصندوق الموحد',
+  reports: 'التقارير',
+  tasks: 'المهام',
+  reminders: 'تذكيراتي',
+  calls: 'جدول المكالمات',
+  scripts: 'الاسكربتات',
+  dailyReport: 'التقرير اليومي',
+  leave: 'الإجازات',
+  sales: 'بوابة المبيعات',
+  reception: 'الاستقبال',
+  hr: 'الموارد البشرية',
+  finance: 'المالية',
+  activity: 'سجل النشاط',
+  universities: 'دليل الجامعات',
+  programs: 'البرامج',
+  scholarships: 'المنح',
+  settings: 'الإعدادات'
+};
+
 export const actionPermissions = {
   createLead: ['admin', 'management', 'consultant', 'reception'],
   editLead: ['admin', 'management', 'consultant', 'reception'],
@@ -46,10 +69,54 @@ export const actionPermissions = {
   manageUsers: ['admin', 'management']
 };
 
+export const actionLabels = {
+  createLead: 'إضافة عميل محتمل',
+  editLead: 'تعديل العملاء المحتملين',
+  deleteLead: 'حذف العملاء المحتملين',
+  moveLead: 'نقل مراحل العملاء',
+  createApplication: 'إنشاء طلب قبول',
+  updateApplicationStatus: 'تحديث حالة الطلب',
+  manageApplicationFollowUp: 'إدارة مراحل المتابعة',
+  uploadDocument: 'رفع المستندات',
+  reviewDocument: 'مراجعة المستندات',
+  deleteDocument: 'حذف المستندات',
+  manageDocumentChecklists: 'إدارة قوالب المستندات',
+  manageApplicationWorkflows: 'إدارة قوالب المتابعة',
+  createEmployee: 'إضافة موظف',
+  logAttendance: 'تسجيل الحضور',
+  terminateEmployee: 'إنهاء/إعادة تفعيل الموظف',
+  deleteEmployee: 'حذف الموظف',
+  createInvoice: 'إنشاء فاتورة',
+  recordPayment: 'تسجيل دفعة',
+  deleteInvoice: 'حذف فاتورة',
+  manageTasks: 'إدارة المهام',
+  manageSettings: 'تعديل إعدادات النظام',
+  manageUsers: 'إدارة المستخدمين'
+};
+
+function normalizeSubject(subject) {
+  if (subject && typeof subject === 'object') return subject;
+  return { role: subject };
+}
+
+function normalizeCustomList(value) {
+  return Array.isArray(value) ? value.map(item => String(item || '').trim()).filter(Boolean) : [];
+}
+
 export function can(role, action) {
-  return (actionPermissions[action] || []).includes(role);
+  const subject = normalizeSubject(role);
+  if (subject.role === 'admin') return true;
+  if (subject.permissionMode === 'custom') {
+    return normalizeCustomList(subject.permissions?.actions).includes(action);
+  }
+  return (actionPermissions[action] || []).includes(subject.role);
 }
 
 export function canOpenModule(role, module) {
-  return (modulePermissions[module] || []).includes(role);
+  const subject = normalizeSubject(role);
+  if (subject.role === 'admin') return true;
+  if (subject.permissionMode === 'custom') {
+    return normalizeCustomList(subject.permissions?.modules).includes(module);
+  }
+  return (modulePermissions[module] || []).includes(subject.role);
 }

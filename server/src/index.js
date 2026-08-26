@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { GridFSBucket, ObjectId } from 'mongodb';
 import { readDb, mutateDb, getMongoDbHandle, isMongoDbEnabled } from './db.js';
-import { signToken, requireAuth, allowRoles } from './auth.js';
+import { signToken, requireAuth, allowRoles, allowAction, allowAnyModule, allowModule } from './auth.js';
 import { buildMetaOauthUrl, consumeMetaOauthState, createMetaOauthState } from './integrations/meta/metaOAuth.service.js';
 import { discoverMetaAssets } from './integrations/meta/metaAssetDiscovery.service.js';
 import { decryptSecret, encryptSecret, maskSecret } from './integrations/meta/integrationEncryption.service.js';
@@ -2968,7 +2968,12 @@ app.post('/api/auth/login', async (req, res) => {
     role: user.role,
     department: user.department,
     avatar: user.avatar,
-    companyId: user.companyId
+    companyId: user.companyId,
+    permissionMode: user.permissionMode || 'default',
+    permissions: {
+      modules: Array.isArray(user.permissions?.modules) ? user.permissions.modules : [],
+      actions: Array.isArray(user.permissions?.actions) ? user.permissions.actions : []
+    }
   };
 
   res.json({ token: signToken(user), user: safeUser });
@@ -3683,13 +3688,20 @@ app.get('/api/settings', async (_req, res) => {
   res.json({
     ...db.settings,
     catalogLinks,
-    users: users.map(({ passwordHash, ...user }) => user),
+    users: users.map(({ passwordHash, ...user }) => ({
+      ...user,
+      permissionMode: user.permissionMode || 'default',
+      permissions: {
+        modules: Array.isArray(user.permissions?.modules) ? user.permissions.modules : [],
+        actions: Array.isArray(user.permissions?.actions) ? user.permissions.actions : []
+      }
+    })),
     employees: hrEmployees,
     company: db.companies.find(item => item.id === companyId) || null
   });
 });
 
-app.get('/api/education-catalog', allowRoles('admin', 'management'), async (_req, res) => {
+app.get('/api/education-catalog', allowAnyModule('universities', 'programs', 'scholarships'), async (_req, res) => {
   const db = await readDb();
   const catalog = db.educationCatalog || {};
   const catalogLinks = buildEducationCatalogLinks(catalog);
@@ -3711,7 +3723,7 @@ app.get('/api/education-catalog', allowRoles('admin', 'management'), async (_req
   });
 });
 
-app.post('/api/education-catalog/quote-pdf', allowRoles('admin', 'management'), async (req, res, next) => {
+app.post('/api/education-catalog/quote-pdf', allowModule('universities'), async (req, res, next) => {
   try {
     const payload = req.body || {};
     const student = payload.student || {};
@@ -3765,7 +3777,7 @@ app.post('/api/education-catalog/quote-pdf', allowRoles('admin', 'management'), 
   }
 });
 
-app.patch('/api/settings', allowRoles('admin', 'management'), async (req, res) => {
+app.patch('/api/settings', allowAction('manageSettings'), async (req, res) => {
   const payload = req.body || {};
 
   const result = await mutateDb(db => {
@@ -3830,10 +3842,15 @@ app.patch('/api/settings', allowRoles('admin', 'management'), async (req, res) =
   res.json(result);
 });
 
-app.post('/api/users', allowRoles('admin', 'management'), async (req, res) => {
+app.post('/api/users', allowAction('manageUsers'), async (req, res) => {
   const payload = req.body || {};
   const email = String(payload.email || '').trim().toLowerCase();
   const password = String(payload.password || '');
+  const permissionMode = payload.permissionMode === 'custom' ? 'custom' : 'default';
+  const permissions = {
+    modules: Array.isArray(payload.permissions?.modules) ? payload.permissions.modules.map(item => String(item || '').trim()).filter(Boolean) : [],
+    actions: Array.isArray(payload.permissions?.actions) ? payload.permissions.actions.map(item => String(item || '').trim()).filter(Boolean) : []
+  };
 
   if (!payload.name || !email || !payload.role || !payload.department || password.length < 6) {
     return res.status(400).json({ message: 'الاسم والبريد والدور والقسم وكلمة مرور من 6 أحرف مطلوبة' });
@@ -3855,6 +3872,8 @@ app.post('/api/users', allowRoles('admin', 'management'), async (req, res) => {
       department: payload.department,
       avatar: payload.avatar || initials(payload.name),
       isActive: payload.isActive !== false,
+      permissionMode,
+      permissions,
       passwordHash: await bcrypt.hash(password, 10)
     };
 
@@ -3868,7 +3887,7 @@ app.post('/api/users', allowRoles('admin', 'management'), async (req, res) => {
   res.status(201).json(result);
 });
 
-app.patch('/api/users/:id', allowRoles('admin', 'management'), async (req, res) => {
+app.patch('/api/users/:id', allowAction('manageUsers'), async (req, res) => {
   const payload = req.body || {};
 
   const result = await mutateDb(async db => {
@@ -3891,6 +3910,15 @@ app.patch('/api/users/:id', allowRoles('admin', 'management'), async (req, res) 
     if (payload.role) user.role = payload.role;
     if (payload.department) user.department = payload.department;
     if (typeof payload.isActive === 'boolean') user.isActive = payload.isActive;
+    if (payload.permissionMode === 'default' || payload.permissionMode === 'custom') {
+      user.permissionMode = payload.permissionMode;
+    }
+    if (payload.permissions) {
+      user.permissions = {
+        modules: Array.isArray(payload.permissions.modules) ? payload.permissions.modules.map(item => String(item || '').trim()).filter(Boolean) : [],
+        actions: Array.isArray(payload.permissions.actions) ? payload.permissions.actions.map(item => String(item || '').trim()).filter(Boolean) : []
+      };
+    }
     if (payload.password) user.passwordHash = await bcrypt.hash(String(payload.password), 10);
     const linkedEmployee = syncEmployeeRecordForUser(db, user);
 
@@ -4324,7 +4352,7 @@ app.get('/api/leads', async (req, res) => {
   res.json(leads);
 });
 
-app.post('/api/leads', allowRoles('admin', 'management', 'consultant', 'reception'), async (req, res) => {
+app.post('/api/leads', allowAction('createLead'), async (req, res) => {
   const payload = req.body || {};
   if (!payload.name || !payload.phone) return res.status(400).json({ message: 'الاسم ورقم الهاتف مطلوبان' });
 
@@ -4365,7 +4393,7 @@ app.post('/api/leads', allowRoles('admin', 'management', 'consultant', 'receptio
   res.status(201).json(result);
 });
 
-app.patch('/api/leads/:id', allowRoles('admin', 'management', 'consultant', 'reception'), async (req, res) => {
+app.patch('/api/leads/:id', allowAction('editLead'), async (req, res) => {
   const result = await mutateDb(db => {
     const lead = db.leads.find(item => item.id === req.params.id && item.companyId === req.user.companyId);
     if (!lead) throw Object.assign(new Error('العميل المحتمل غير موجود'), { status: 404 });
@@ -4382,7 +4410,7 @@ app.patch('/api/leads/:id', allowRoles('admin', 'management', 'consultant', 'rec
   res.json(result);
 });
 
-app.post('/api/leads/:id/move', allowRoles('admin', 'management', 'consultant'), async (req, res) => {
+app.post('/api/leads/:id/move', allowAction('moveLead'), async (req, res) => {
   const result = await mutateDb(db => {
     const lead = db.leads.find(item => item.id === req.params.id && item.companyId === req.user.companyId);
     if (!lead) throw Object.assign(new Error('العميل المحتمل غير موجود'), { status: 404 });
@@ -4437,7 +4465,7 @@ app.post('/api/leads/:id/move', allowRoles('admin', 'management', 'consultant'),
   res.json(result);
 });
 
-app.delete('/api/leads/:id', allowRoles('admin', 'management'), async (req, res) => {
+app.delete('/api/leads/:id', allowAction('deleteLead'), async (req, res) => {
   await mutateDb(db => {
     const index = db.leads.findIndex(item => item.id === req.params.id && item.companyId === req.user.companyId);
     if (index < 0) throw Object.assign(new Error('العميل المحتمل غير موجود'), { status: 404 });
@@ -4448,7 +4476,7 @@ app.delete('/api/leads/:id', allowRoles('admin', 'management'), async (req, res)
   res.status(204).end();
 });
 
-app.post('/api/leads/:id/documents', allowRoles('admin', 'management', 'consultant', 'reception'), upload.single('file'), async (req, res) => {
+app.post('/api/leads/:id/documents', allowAction('uploadDocument'), upload.single('file'), async (req, res) => {
   const storedFile = req.file ? await storeUploadedFile(req.file, { folder: 'leads' }) : null;
   if (!req.file) return res.status(400).json({ message: 'الملف مطلوب' });
 
@@ -4478,7 +4506,7 @@ app.post('/api/leads/:id/documents', allowRoles('admin', 'management', 'consulta
   res.status(201).json(result);
 });
 
-app.delete('/api/leads/:leadId/documents/:docId', allowRoles('admin', 'management', 'consultant', 'reception'), async (req, res) => {
+app.delete('/api/leads/:leadId/documents/:docId', allowAction('deleteDocument'), async (req, res) => {
   await mutateDb(async db => {
     const lead = db.leads.find(item => item.id === req.params.leadId && item.companyId === req.user.companyId);
     if (!lead) throw Object.assign(new Error('العميل المحتمل غير موجود'), { status: 404 });
@@ -4495,7 +4523,7 @@ app.delete('/api/leads/:leadId/documents/:docId', allowRoles('admin', 'managemen
   res.status(204).end();
 });
 
-app.get('/api/students', allowRoles('admin', 'management', 'consultant', 'admissions', 'finance'), async (req, res) => {
+app.get('/api/students', allowModule('students'), async (req, res) => {
   const db = await readDb();
   const students = getScopedItems(db.students, req.user.companyId);
   const applications = getScopedItems(db.applications, req.user.companyId);
@@ -4526,7 +4554,7 @@ app.get('/api/applications', async (req, res) => {
   );
 });
 
-app.post('/api/applications', allowRoles('admin', 'management', 'admissions', 'consultant'), async (req, res) => {
+app.post('/api/applications', allowAction('createApplication'), async (req, res) => {
   const result = await mutateDb(db => {
     let student = db.students.find(item => item.id === req.body.studentId && item.companyId === req.user.companyId);
     if (!student && req.user.role === 'admissions') {
@@ -4581,7 +4609,7 @@ app.post('/api/applications', allowRoles('admin', 'management', 'admissions', 'c
   res.status(201).json(result);
 });
 
-app.patch('/api/applications/:id', allowRoles('admin', 'management', 'admissions'), async (req, res) => {
+app.patch('/api/applications/:id', allowAction('updateApplicationStatus'), async (req, res) => {
   const result = await mutateDb(db => {
     const application = db.applications.find(item => item.id === req.params.id);
     if (!application) throw Object.assign(new Error('طلب القبول غير موجود'), { status: 404 });
@@ -4617,7 +4645,7 @@ app.patch('/api/applications/:id', allowRoles('admin', 'management', 'admissions
   res.json(result);
 });
 
-app.patch('/api/applications/:id/follow-up/:stageId', allowRoles('admin', 'management', 'admissions', 'consultant'), async (req, res) => {
+app.patch('/api/applications/:id/follow-up/:stageId', allowAction('manageApplicationFollowUp'), async (req, res) => {
   const result = await mutateDb(db => {
     const application = db.applications.find(item => item.id === req.params.id);
     if (!application) throw Object.assign(new Error('طلب القبول غير موجود'), { status: 404 });
@@ -4660,7 +4688,7 @@ app.patch('/api/applications/:id/follow-up/:stageId', allowRoles('admin', 'manag
   res.json(result);
 });
 
-app.post('/api/applications/:id/documents', allowRoles('admin', 'management', 'admissions', 'consultant'), upload.single('file'), async (req, res) => {
+app.post('/api/applications/:id/documents', allowAction('uploadDocument'), upload.single('file'), async (req, res) => {
   const storedFile = req.file ? await storeUploadedFile(req.file, { folder: 'applications' }) : null;
   if (!req.file) return res.status(400).json({ message: 'الملف مطلوب' });
 
@@ -4712,7 +4740,7 @@ app.post('/api/applications/:id/documents', allowRoles('admin', 'management', 'a
   res.status(201).json(result);
 });
 
-app.patch('/api/applications/:appId/documents/:docId', allowRoles('admin', 'management', 'admissions'), async (req, res) => {
+app.patch('/api/applications/:appId/documents/:docId', allowAction('reviewDocument'), async (req, res) => {
   const result = await mutateDb(db => {
     const application = db.applications.find(item => item.id === req.params.appId);
     if (!application) throw Object.assign(new Error('طلب القبول غير موجود'), { status: 404 });
@@ -4737,7 +4765,7 @@ app.patch('/api/applications/:appId/documents/:docId', allowRoles('admin', 'mana
   res.json(result);
 });
 
-app.delete('/api/applications/:appId/documents/:docId', allowRoles('admin', 'management'), async (req, res) => {
+app.delete('/api/applications/:appId/documents/:docId', allowAction('deleteDocument'), async (req, res) => {
   await mutateDb(db => {
     const application = db.applications.find(item => item.id === req.params.appId);
     if (!application) throw Object.assign(new Error('طلب القبول غير موجود'), { status: 404 });
@@ -4756,7 +4784,7 @@ app.delete('/api/applications/:appId/documents/:docId', allowRoles('admin', 'man
   res.status(204).end();
 });
 
-app.get('/api/reception', allowRoles('admin', 'management', 'reception'), async (req, res) => {
+app.get('/api/reception', allowModule('reception'), async (req, res) => {
   const db = await readDb();
   const companyId = req.user.companyId;
   const logs = getScopedItems(db.receptionLogs, companyId);
@@ -4768,7 +4796,7 @@ app.get('/api/reception', allowRoles('admin', 'management', 'reception'), async 
   res.json({ logs, consultants, queue });
 });
 
-app.get('/api/reception/duplicate-check', allowRoles('admin', 'management', 'reception'), async (req, res) => {
+app.get('/api/reception/duplicate-check', allowModule('reception'), async (req, res) => {
   const db = await readDb();
   const companyId = req.user.companyId;
   const normalizedPhone = normalizePhone(req.query.phone);
@@ -4779,14 +4807,14 @@ app.get('/api/reception/duplicate-check', allowRoles('admin', 'management', 'rec
   res.json({ duplicate: true, leadId: duplicate.id, consultantName: consultant?.name || 'غير مسند', stage: duplicate.stage });
 });
 
-app.get('/api/reception/student-lookup', allowRoles('admin', 'management', 'reception'), async (req, res) => {
+app.get('/api/reception/student-lookup', allowModule('reception'), async (req, res) => {
   const db = await readDb();
   const result = buildReceptionStudentLookup(db, req.user.companyId, req.query.q);
   if (!result) return res.status(404).json({ message: 'لم يتم العثور على الطالب' });
   res.json(result);
 });
 
-app.post('/api/reception', allowRoles('admin', 'management', 'reception'), async (req, res) => {
+app.post('/api/reception', allowAction('createLead'), async (req, res) => {
   const result = await mutateDb(db => {
     const payload = req.body || {};
     if (!payload.name || !payload.phone) throw Object.assign(new Error('الاسم ورقم الهاتف مطلوبان'), { status: 400 });
@@ -4912,7 +4940,7 @@ app.get('/api/employees', async (_req, res) => {
   res.json(db.employees.map(employee => ({ ...employee, attendance: db.attendance.filter(item => item.employeeId === employee.id).slice(0, 10) })));
 });
 
-app.post('/api/employees', allowRoles('admin', 'management', 'hr'), async (req, res) => {
+app.post('/api/employees', allowAction('createEmployee'), async (req, res) => {
   const result = await mutateDb(db => {
     const employee = {
       id: randomUUID(),
@@ -4938,7 +4966,7 @@ app.post('/api/employees', allowRoles('admin', 'management', 'hr'), async (req, 
   res.status(201).json(result);
 });
 
-app.post('/api/attendance', allowRoles('admin', 'management', 'hr'), async (req, res) => {
+app.post('/api/attendance', allowAction('logAttendance'), async (req, res) => {
   const result = await mutateDb(db => {
     const employee = db.employees.find(item => item.id === req.body.employeeId);
     if (!employee) throw Object.assign(new Error('الموظف غير موجود'), { status: 404 });
@@ -4967,7 +4995,7 @@ app.get('/api/attendance', async (_req, res) => {
   res.json(db.attendance.map(item => ({ ...item, employee: db.employees.find(employee => employee.id === item.employeeId) || null })));
 });
 
-app.get('/api/hr', allowRoles('admin', 'management', 'hr'), async (req, res) => {
+app.get('/api/hr', allowModule('hr'), async (req, res) => {
   const db = await readDb();
   const companyId = req.user.companyId;
   const targetRows = buildHrTargets(db, companyId);
@@ -5079,7 +5107,7 @@ app.patch('/api/hr/employees/:id', allowRoles('admin', 'management', 'hr'), asyn
   res.json(result);
 });
 
-app.patch('/api/hr/employees/:id/lifecycle', allowRoles('admin', 'management', 'hr'), async (req, res) => {
+app.patch('/api/hr/employees/:id/lifecycle', allowAction('terminateEmployee'), async (req, res) => {
   const result = await mutateDb(db => {
     const employee = findScoped(db.employees, req.user.companyId, item => item.id === req.params.id);
     if (!employee) throw Object.assign(new Error('الموظف غير موجود'), { status: 404 });
@@ -5113,7 +5141,7 @@ app.patch('/api/hr/employees/:id/lifecycle', allowRoles('admin', 'management', '
   res.json(result);
 });
 
-app.delete('/api/hr/employees/:id', allowRoles('admin', 'management', 'hr'), async (req, res) => {
+app.delete('/api/hr/employees/:id', allowAction('deleteEmployee'), async (req, res) => {
   const result = await mutateDb(async db => {
     const companyId = req.user.companyId;
     const employeeIndex = db.employees.findIndex(item => item.id === req.params.id && item.companyId === companyId);
@@ -5190,7 +5218,7 @@ app.get('/api/invoices', async (req, res) => {
   res.json(getScopedItems(db.invoices, req.user.companyId).map(invoice => enrichInvoice(db, invoice)));
 });
 
-app.post('/api/invoices', allowRoles('admin', 'management', 'finance'), async (req, res) => {
+app.post('/api/invoices', allowAction('createInvoice'), async (req, res) => {
   const result = await mutateDb(db => {
     const student = db.students.find(item => item.id === req.body.studentId);
     if (!student) throw Object.assign(new Error('الطالب مطلوب'), { status: 400 });
@@ -5233,7 +5261,7 @@ app.post('/api/invoices', allowRoles('admin', 'management', 'finance'), async (r
   res.status(201).json(result);
 });
 
-app.post('/api/invoices/:id/payments', allowRoles('admin', 'management', 'finance'), upload.single('attachment'), async (req, res) => {
+app.post('/api/invoices/:id/payments', allowAction('recordPayment'), upload.single('attachment'), async (req, res) => {
   const attachment = req.file ? await storeUploadedFile(req.file, { folder: 'receipts' }) : null;
   const result = await mutateDb(db => {
     const invoice = db.invoices.find(item => item.id === req.params.id);
@@ -5325,7 +5353,7 @@ app.post('/api/invoices/:id/payments', allowRoles('admin', 'management', 'financ
   res.status(201).json(result);
 });
 
-app.delete('/api/invoices/:id', allowRoles('admin', 'management', 'finance'), async (req, res) => {
+app.delete('/api/invoices/:id', allowAction('deleteInvoice'), async (req, res) => {
   const result = await mutateDb(async db => {
     const invoiceIndex = db.invoices.findIndex(item => item.id === req.params.id && item.companyId === req.user.companyId);
     if (invoiceIndex === -1) throw Object.assign(new Error('الفاتورة غير موجودة'), { status: 404 });

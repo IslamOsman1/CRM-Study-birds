@@ -177,10 +177,10 @@ export default function Consultancy() {
   const formUniversitiesMenuRef = useRef(null);
   const editUniversitiesMenuRef = useRef(null);
 
-  const canCreateLead = can(user.role, 'createLead');
-  const canEditLead = can(user.role, 'editLead');
-  const canDeleteLead = can(user.role, 'deleteLead');
-  const canMoveLead = can(user.role, 'moveLead');
+  const canCreateLead = can(user, 'createLead');
+  const canEditLead = can(user, 'editLead');
+  const canDeleteLead = can(user, 'deleteLead');
+  const canMoveLead = can(user, 'moveLead');
 
   const load = async () => {
     try {

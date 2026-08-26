@@ -259,7 +259,7 @@ export default function TasksPage() {
               <button className={`crm-tab ${scope === 'today' ? 'active' : ''}`} onClick={() => setScope('today')} type="button">Today</button>
               <button className={`crm-tab ${scope === 'all' ? 'active' : ''}`} onClick={() => setScope('all')} type="button">All</button>
             </div>
-            {can(user.role, 'manageTasks') && (
+            {can(user, 'manageTasks') && (
               <Button onClick={() => setOpen(true)} type="button"><Plus /> إضافة مهمة</Button>
             )}
           </div>

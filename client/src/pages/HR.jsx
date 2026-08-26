@@ -117,10 +117,10 @@ export default function HR() {
   const [submittingLeave, setSubmittingLeave] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const canCreateEmployee = can(user.role, 'createEmployee');
-  const canLogAttendance = can(user.role, 'logAttendance');
-  const canTerminateEmployee = can(user.role, 'terminateEmployee');
-  const canDeleteEmployee = can(user.role, 'deleteEmployee');
+  const canCreateEmployee = can(user, 'createEmployee');
+  const canLogAttendance = can(user, 'logAttendance');
+  const canTerminateEmployee = can(user, 'terminateEmployee');
+  const canDeleteEmployee = can(user, 'deleteEmployee');
 
   const load = () =>
     api('/api/hr')
