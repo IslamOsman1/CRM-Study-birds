@@ -23,18 +23,26 @@ import { useAuth } from '../auth.jsx';
 import { tr } from '../i18n.js';
 import { can } from '../permissions.js';
 
-const today = '2026-07-22';
+const getToday = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
-const attendanceBlank = {
+const today = getToday();
+
+const createAttendanceBlank = () => ({
   employeeId: '',
   date: today,
   checkIn: '09:00',
   checkOut: '17:00',
   status: 'Present',
   notes: ''
-};
+});
 
-const employeeBlank = {
+const createEmployeeBlank = () => ({
   name: '',
   email: '',
   phone: '',
@@ -50,15 +58,15 @@ const employeeBlank = {
   monthlyTarget: '8',
   commissionPerContract: '500',
   annualLeaveBalance: '21'
-};
+});
 
-const leaveBlank = {
+const createLeaveBlank = () => ({
   employeeId: '',
   leaveType: 'Annual Leave',
   startDate: today,
   endDate: today,
   reason: ''
-};
+});
 
 const documentTypes = ['Employment Contract', 'National ID', 'University Degree', 'Military Status'];
 const statusFilters = [
@@ -98,9 +106,9 @@ export default function HR() {
   const [employeeOpen, setEmployeeOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
-  const [attendanceForm, setAttendanceForm] = useState(attendanceBlank);
-  const [employeeForm, setEmployeeForm] = useState(employeeBlank);
-  const [leaveForm, setLeaveForm] = useState(leaveBlank);
+  const [attendanceForm, setAttendanceForm] = useState(() => createAttendanceBlank());
+  const [employeeForm, setEmployeeForm] = useState(() => createEmployeeBlank());
+  const [leaveForm, setLeaveForm] = useState(() => createLeaveBlank());
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
   const [documentType, setDocumentType] = useState(documentTypes[0]);
   const [documentFile, setDocumentFile] = useState(null);
@@ -170,13 +178,11 @@ export default function HR() {
     try {
       await api('/api/attendance', { method: 'POST', body: JSON.stringify(attendanceForm) });
       setAttendanceOpen(false);
-      setAttendanceForm(attendanceBlank);
+      setAttendanceForm(createAttendanceBlank());
       await load();
       setToast({ message: 'تم حفظ سجل الحضور.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
-    } finally {
-      setSubmittingLeave(false);
     }
   };
 
@@ -206,13 +212,11 @@ export default function HR() {
         });
       }
       setEmployeeOpen(false);
-      setEmployeeForm(employeeBlank);
+      setEmployeeForm(createEmployeeBlank());
       await load();
       setToast({ message: 'تم إنشاء الحساب وسجل الموارد البشرية بنجاح.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
-    } finally {
-      setSubmittingLeave(false);
     }
   };
 
@@ -233,11 +237,13 @@ export default function HR() {
     try {
       await api('/api/hr/leave-requests', { method: 'POST', body: JSON.stringify(leaveForm) });
       setLeaveOpen(false);
-      setLeaveForm(leaveBlank);
+      setLeaveForm(createLeaveBlank());
       await load();
       setToast({ message: 'تم تقديم طلب الإجازة.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
+    } finally {
+      setSubmittingLeave(false);
     }
   };
 
@@ -280,13 +286,13 @@ export default function HR() {
   };
 
   const openEmployeeModal = () => {
-    setEmployeeForm(employeeBlank);
+    setEmployeeForm(createEmployeeBlank());
     setEmployeeOpen(true);
   };
 
   const closeEmployeeModal = () => {
     setEmployeeOpen(false);
-    setEmployeeForm(employeeBlank);
+    setEmployeeForm(createEmployeeBlank());
   };
 
   const closePendingAction = () => {

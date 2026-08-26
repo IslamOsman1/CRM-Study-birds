@@ -8,7 +8,15 @@ import { tr } from '../i18n.js';
 import { can } from '../permissions.js';
 import studyBirdsLogo from '../assets/logo.jpeg';
 
-const today = '2026-07-22';
+const getToday = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const today = getToday();
 const paymentMethods = ['Cash', 'Bank Transfer', 'Card', 'InstaPay', 'Vodafone Cash'];
 const currencies = ['EGP', 'USD', 'EUR', 'GBP'];
 
