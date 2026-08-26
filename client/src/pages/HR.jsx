@@ -211,6 +211,8 @@ export default function HR() {
       setToast({ message: 'تم إنشاء الحساب وسجل الموارد البشرية بنجاح.' });
     } catch (error) {
       setToast({ type: 'error', message: error.message });
+    } finally {
+      setSubmittingLeave(false);
     }
   };
 
@@ -769,7 +771,7 @@ export default function HR() {
       </Modal>
 
       <Modal open={leaveOpen} onClose={() => setLeaveOpen(false)} title="طلب إجازة / استئذان">
-        <form className="form-grid" onSubmit={submitLeave}>
+        <form className="form-grid" autoComplete="off" noValidate onSubmit={event => event.preventDefault()}>
           <Field label="الموظف" className="field-full">
             <select required value={leaveForm.employeeId} onChange={event => setLeaveForm({ ...leaveForm, employeeId: event.target.value })}>
               <option value="">اختر الموظف</option>
@@ -788,7 +790,7 @@ export default function HR() {
           <Field label="السبب" className="field-full"><textarea value={leaveForm.reason} onChange={event => setLeaveForm({ ...leaveForm, reason: event.target.value })} /></Field>
           <div className="form-actions field-full">
             <Button type="button" variant="secondary" onClick={() => setLeaveOpen(false)}>إلغاء</Button>
-            <Button type="submit">إرسال الطلب</Button>
+            <Button type="button" disabled={submittingLeave} onClick={submitLeave}>{submittingLeave ? 'جارٍ الإرسال...' : 'إرسال الطلب'}</Button>
           </div>
         </form>
       </Modal>
