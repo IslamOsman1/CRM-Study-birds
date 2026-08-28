@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Banknote, CircleDollarSign, CreditCard, Eye, FilePlus2, FileText, Plus, ReceiptText, Search, Send, Trash2, WalletCards } from 'lucide-react';
-import { api, formatDate, formatMoney } from '../api.js';
+import { api, formatDate, formatMoney, resolveFileUrl } from '../api.js';
 import { Badge, Button, Card, Field, Modal, Spinner, Toast } from '../components/UI.jsx';
 import { useAuth } from '../auth.jsx';
 import { tr } from '../i18n.js';
@@ -787,7 +787,7 @@ export default function Finance() {
                   <strong>{item.receiptNumber}</strong>
                   <span>{formatMoney(item.amount, item.currency || selected.currency)} · {tr(item.method)} · {formatDateTime(item.createdAt || item.date)}</span>
                   <small>{item.statement || selected.paymentStatement || selected.description}</small>
-                  {item.attachment?.url && <a href={item.attachment.url} target="_blank" rel="noreferrer">فتح المرفق</a>}
+                  {item.attachment?.url && <a href={resolveFileUrl(item.attachment)} target="_blank" rel="noreferrer">فتح المرفق</a>}
                 </div>
                 <div className="table-actions">
                   <Badge tone="green">مغلق</Badge>
