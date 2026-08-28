@@ -35,6 +35,17 @@ const reviewBlank = {
   reviewNote: ''
 };
 
+const fallbackDocumentTypes = [
+  { name: 'Passport', required: true },
+  { name: 'Transcript', required: true },
+  { name: 'Personal Photo', required: true },
+  { name: 'English Certificate', required: true },
+  { name: 'Motivation Letter', required: false },
+  { name: 'Recommendation Letter', required: false },
+  { name: 'Acceptance Letter', required: false },
+  { name: 'Other', required: false }
+];
+
 const joinIntake = (season, year) => `${season} ${year}`.trim();
 const splitIntake = intake => {
   const [season = 'Fall', year = String(currentYear)] = String(intake || '').split(' ');
@@ -161,7 +172,16 @@ export default function Admissions() {
   const admissionsEmployees = settings?.employees?.filter(employee => employee.department === 'Admissions') || [];
   const currentDocuments = selected?.currentDocuments || [];
   const archivedDocuments = (selected?.documents || []).filter(doc => doc.current === false);
-  const effectiveDocumentTypes = selected?.effectiveDocumentTypes || settings?.documentTypes || [];
+  const effectiveDocumentTypes = useMemo(
+    () => (
+      selected?.effectiveDocumentTypes?.length
+        ? selected.effectiveDocumentTypes
+        : settings?.documentTypes?.length
+          ? settings.documentTypes
+          : fallbackDocumentTypes
+    ),
+    [selected?.effectiveDocumentTypes, settings?.documentTypes]
+  );
   const effectiveFollowUpStages = selected?.effectiveFollowUpStages || [];
   const applicationStatuses = settings?.applicationStatuses || [];
   const catalogLinks = settings?.catalogLinks || {};
@@ -234,7 +254,7 @@ export default function Admissions() {
   }, [createForm.universities]);
   const uploadOptions = useMemo(() => {
     const map = new Map();
-    [...effectiveDocumentTypes, ...(settings?.documentTypes || [])].forEach(item => {
+    [...effectiveDocumentTypes, ...(settings?.documentTypes || []), ...fallbackDocumentTypes].forEach(item => {
       if (item?.name && !map.has(item.name)) map.set(item.name, item);
     });
     return [...map.values()];

@@ -1041,7 +1041,7 @@ function buildUniversityQuoteHtml({ companyName, preparedBy, student, items, log
 
           <div class="note-box">
             <strong>Consultant Note</strong>
-            <p>This quotation is generated from ${escapeHtml(companyName || 'EduGlobal CRM')} on ${escapeHtml(quoteDate.verbose)} and should be confirmed against the latest university availability before final submission.</p>
+            <p>This quotation is generated from ${escapeHtml(companyName || 'Study Birds CRM')} on ${escapeHtml(quoteDate.verbose)} and should be confirmed against the latest university availability before final submission.</p>
           </div>
 
           <div class="footer-mark">${escapeHtml(quoteLocation || quoteCountry || '')}</div>
@@ -1172,7 +1172,7 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
     .font(regularFont || 'Helvetica')
     .fillColor(mutedColor)
     .fontSize(10)
-    .text(companyName || 'EduGlobal CRM', 0, 68, { align: 'right' })
+    .text(companyName || 'Study Birds CRM', 0, 68, { align: 'right' })
     .text(`Prepared on ${quoteDate.verbose}`, 0, 84, { align: 'right' })
     .text(`Prepared by ${safePdfText(preparedBy, 'CRM Team')}`, 0, 100, { align: 'right' });
 
@@ -1487,12 +1487,11 @@ async function storeUploadedFile(file, options = {}) {
   if (useCloudinaryStorage) {
     const timestamp = Math.floor(Date.now() / 1000);
     const folder = `study-birds-crm/${safeCloudinaryFolder(options.folder)}`;
-    const publicId = `${folder}/${fileName}`;
+    const publicId = fileName;
     const resourceType = String(file.mimetype || '').startsWith('image/') ? 'image' : 'raw';
     const signature = cloudinarySignature({
       folder,
       public_id: publicId,
-      resource_type: resourceType,
       timestamp
     });
     const body = new FormData();
@@ -1509,7 +1508,9 @@ async function storeUploadedFile(file, options = {}) {
     });
 
     if (!uploadResponse.ok) {
-      throw Object.assign(new Error('فشل رفع الملف إلى Cloudinary'), { status: 500 });
+      const errorPayload = await uploadResponse.json().catch(() => null);
+      const providerMessage = String(errorPayload?.error?.message || '').trim();
+      throw Object.assign(new Error(providerMessage ? `فشل رفع الملف إلى Cloudinary: ${providerMessage}` : 'فشل رفع الملف إلى Cloudinary'), { status: 500 });
     }
 
     const payload = await uploadResponse.json();
@@ -1596,7 +1597,7 @@ async function removeUploadedFile(document) {
 }
 
 function companyNameFromSettings(db) {
-  return String(db.settings?.companyName || 'EduGlobal CRM').trim() || 'EduGlobal CRM';
+  return String(db.settings?.companyName || 'Study Birds CRM').trim() || 'Study Birds CRM';
 }
 
 function ensureCompanyOwnership(items, companyId) {
@@ -3027,7 +3028,7 @@ async function prepareDb() {
     db.receptionState ||= {};
     db.educationCatalog = sanitizeEducationCatalog(db.educationCatalog || {});
     db.settings ||= {
-      companyName: 'EduGlobal CRM',
+      companyName: 'Study Birds CRM',
       workspace: 'Global Hub',
       currency: 'USD',
       pipelineStages: [],
@@ -4142,7 +4143,7 @@ app.post('/api/education-catalog/quote-pdf', allowModule('universities'), async 
     const company = findScoped(db.companies || [], companyId, item => item.id === companyId);
     const settings = db.settings || {};
     const pdfBuffer = await generateUniversityQuotePdfChrome({
-      companyName: company?.name || settings.companyName || 'EduGlobal CRM',
+      companyName: company?.name || settings.companyName || 'Study Birds CRM',
       preparedBy: req.user.name,
       student: {
         studentName: String(student.studentName || '').trim(),
@@ -5867,7 +5868,7 @@ if (fs.existsSync(clientDist)) {
 }
 
 if (!isVercelRuntime) {
-  app.listen(port, () => console.log(`EduGlobal CRM API running on http://localhost:${port}`));
+  app.listen(port, () => console.log(`Study Birds CRM API running on http://localhost:${port}`));
 }
 
 export default app;
