@@ -421,13 +421,22 @@ export default function Finance() {
   const savePayment = async event => {
     event.preventDefault();
     if (!selected) return;
-    if (selectedInstallment && numberValue(payment.amount) > numberValue(selectedInstallment.balance ?? selectedInstallment.amount)) {
+    const effectiveAmount = selectedInstallment
+      ? numberValue(selectedInstallment.balance ?? selectedInstallment.amount)
+      : numberValue(payment.amount);
+
+    if (selectedInstallment && numberValue(payment.amount) > effectiveAmount) {
       setToast({ type: 'error', message: 'مبلغ الدفعة أكبر من رصيد القسط المحدد.' });
       return;
     }
+    if (effectiveAmount <= 0) {
+      setToast({ type: 'error', message: 'مبلغ الدفعة يجب أن يكون أكبر من صفر.' });
+      return;
+    }
+
     try {
       const body = new FormData();
-      body.append('amount', payment.amount);
+      body.append('amount', String(effectiveAmount));
       body.append('currency', payment.currency);
       body.append('exchangeRate', payment.exchangeRate);
       body.append('method', payment.method);
@@ -752,7 +761,15 @@ export default function Finance() {
       <Modal open={paymentOpen} onClose={() => setPaymentOpen(false)} title={`تسجيل دفعة · ${selected?.number || ''}`} size="lg">
         <form className="form-grid" onSubmit={savePayment}>
           <Field label="المبلغ">
-            <input required min="1" max={selected?.balance} type="number" value={payment.amount} onChange={event => setPayment({ ...payment, amount: event.target.value })} />
+            <input
+              required
+              min="1"
+              max={selectedInstallment ? numberValue(selectedInstallment.balance ?? selectedInstallment.amount) : selected?.balance}
+              type="number"
+              value={selectedInstallment ? String(numberValue(selectedInstallment.balance ?? selectedInstallment.amount)) : payment.amount}
+              onChange={event => setPayment({ ...payment, amount: event.target.value })}
+              readOnly={!!selectedInstallment}
+            />
           </Field>
           <Field label="العملة">
             <select value={payment.currency} onChange={event => setPayment({ ...payment, currency: event.target.value })}>
