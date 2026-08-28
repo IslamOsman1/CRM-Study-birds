@@ -17,7 +17,7 @@ import {
   UserX2,
   UsersRound
 } from 'lucide-react';
-import { api, formatDate, formatMoney, initials } from '../api.js';
+import { api, formatDate, formatMoney, initials, resolveFileUrl } from '../api.js';
 import { Badge, Button, Card, Field, Modal, Progress, Spinner, Toast } from '../components/UI.jsx';
 import { useAuth } from '../auth.jsx';
 import { tr } from '../i18n.js';
@@ -669,7 +669,7 @@ export default function HR() {
                       <small>{formatDate(doc.uploadedAt)} · {doc.uploadedBy}</small>
                     </div>
                     <div className="document-actions">
-                      <a target="_blank" rel="noreferrer" href={doc.url}>فتح</a>
+                      <a target="_blank" rel="noreferrer" href={resolveFileUrl(doc)}>فتح</a>
                     </div>
                   </article>
                 ))}

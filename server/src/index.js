@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
+import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { GridFSBucket, ObjectId } from 'mongodb';
@@ -85,6 +86,41 @@ app.get('/api/files/:fileId', async (req, res, next) => {
     bucket.openDownloadStream(fileId)
       .on('error', next)
       .pipe(res);
+  } catch (error) {
+    next(error);
+  }
+});
+app.get('/api/cloudinary-file', async (req, res, next) => {
+  try {
+    if (!useCloudinaryStorage) return res.status(404).json({ message: 'Cloudinary storage is not configured' });
+
+    const targetUrl = String(req.query.url || '').trim();
+    if (!targetUrl) return res.status(400).json({ message: 'رابط الملف مطلوب' });
+
+    const parsedUrl = new URL(targetUrl);
+    const allowedHosts = new Set(['res.cloudinary.com', `res-${cloudinaryCloudName}.cloudinary.com`]);
+    if (!allowedHosts.has(parsedUrl.hostname) && parsedUrl.hostname !== 'res.cloudinary.com') {
+      return res.status(400).json({ message: 'رابط الملف غير مدعوم' });
+    }
+
+    if (!parsedUrl.pathname.includes(`/${cloudinaryCloudName}/`)) {
+      return res.status(400).json({ message: 'الملف لا يتبع حساب Cloudinary الحالي' });
+    }
+
+    const response = await fetch(parsedUrl.toString());
+    if (!response.ok || !response.body) {
+      return res.status(response.status || 502).json({ message: 'تعذر تحميل الملف من Cloudinary' });
+    }
+
+    const fileName = String(req.query.filename || path.basename(parsedUrl.pathname) || 'file').trim() || 'file';
+    const contentType = response.headers.get('content-type') || (fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream');
+    const contentLength = response.headers.get('content-length');
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
+    if (contentLength) res.setHeader('Content-Length', contentLength);
+
+    Readable.fromWeb(response.body).pipe(res);
   } catch (error) {
     next(error);
   }

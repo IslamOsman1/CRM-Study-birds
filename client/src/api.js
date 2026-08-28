@@ -83,6 +83,23 @@ export async function apiDownload(path, options = {}) {
   return response.blob();
 }
 
+export function resolveFileUrl(file) {
+  if (!file?.url) return '';
+
+  const rawUrl = String(file.url).trim();
+  if (!rawUrl) return '';
+
+  if (file.storageProvider === 'cloudinary') {
+    const proxyUrl = new URL(`${API_BASE || window.location.origin}/api/cloudinary-file`, window.location.origin);
+    proxyUrl.searchParams.set('url', rawUrl);
+    proxyUrl.searchParams.set('filename', file.originalName || file.fileName || 'file');
+    return proxyUrl.toString();
+  }
+
+  if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
+  return `${API_BASE}${rawUrl}`;
+}
+
 export const formatMoney = (value, currency = 'USD') =>
   new Intl.NumberFormat('ar-EG', {
     style: 'currency',

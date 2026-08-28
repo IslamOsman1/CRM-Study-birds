@@ -16,7 +16,7 @@ import {
   Trash2,
   Wallet
 } from 'lucide-react';
-import { api, formatDate, initials } from '../api.js';
+import { api, formatDate, initials, resolveFileUrl } from '../api.js';
 import { Badge, Button, Field, Modal, Spinner, Toast } from '../components/UI.jsx';
 import { useAuth } from '../auth.jsx';
 import { formatArabicTime, tr } from '../i18n.js';
@@ -1012,7 +1012,7 @@ export default function Consultancy() {
                     </div>
                   </div>
                   <div className="lead-document-actions">
-                    {document.url ? <a href={document.url} target="_blank" rel="noreferrer">فتح</a> : null}
+                    {document.url ? <a href={resolveFileUrl(document)} target="_blank" rel="noreferrer">فتح</a> : null}
                     <button className="icon-btn small danger" onClick={() => deleteLeadDocument(document)} type="button" title="حذف">
                       <Trash2 size={14} />
                     </button>

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, ChevronDown, CircleDot, Clock3, Eye, EyeOff, File, FilePlus2, FileUp, GraduationCap, History, KeyRound, Link as LinkIcon, Save, Search, ShieldCheck, Trash2, UploadCloud, WalletCards } from 'lucide-react';
-import { api, formatDate, initials } from '../api.js';
+import { api, formatDate, initials, resolveFileUrl } from '../api.js';
 import { Badge, Button, Card, Field, Modal, Progress, Spinner, Toast } from '../components/UI.jsx';
 import { useAuth } from '../auth.jsx';
 import { tr } from '../i18n.js';
@@ -759,7 +759,7 @@ export default function Admissions() {
                       {doc.reviewNote && <p className="document-note">{doc.reviewNote}</p>}
                     </div>
                     <div className="document-actions">
-                      {doc.url ? <a target="_blank" rel="noreferrer" href={doc.url}>فتح</a> : <Badge tone="neutral">بدون ملف</Badge>}
+                      {doc.url ? <a target="_blank" rel="noreferrer" href={resolveFileUrl(doc)}>فتح</a> : <Badge tone="neutral">بدون ملف</Badge>}
                       {canReviewDocument && <button className="icon-btn small" onClick={() => openReview(doc)} type="button"><ShieldCheck size={14} /></button>}
                       {canDeleteDocument && <button className="icon-btn small danger" onClick={() => deleteDocument(doc)} type="button"><Trash2 size={14} /></button>}
                     </div>
@@ -793,7 +793,7 @@ export default function Admissions() {
                           <small>{formatDate(doc.uploadedAt)} · {doc.uploadedBy}</small>
                         </div>
                         <div className="document-actions">
-                          {doc.url ? <a target="_blank" rel="noreferrer" href={doc.url}>فتح</a> : <Badge tone="neutral">بدون ملف</Badge>}
+                          {doc.url ? <a target="_blank" rel="noreferrer" href={resolveFileUrl(doc)}>فتح</a> : <Badge tone="neutral">بدون ملف</Badge>}
                         </div>
                       </article>
                     ))}
