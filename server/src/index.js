@@ -1519,19 +1519,21 @@ async function getMongoUploadsBucket() {
 
 async function storeUploadedFile(file, options = {}) {
   const fileName = safeUploadName(file.originalname);
+  const mimeType = String(file.mimetype || 'application/octet-stream').trim() || 'application/octet-stream';
+  const canUseCloudinary = useCloudinaryStorage && mimeType.startsWith('image/');
 
-  if (useCloudinaryStorage) {
+  if (canUseCloudinary) {
     const timestamp = Math.floor(Date.now() / 1000);
     const folder = `study-birds-crm/${safeCloudinaryFolder(options.folder)}`;
     const publicId = fileName;
-    const resourceType = String(file.mimetype || '').startsWith('image/') ? 'image' : 'raw';
+    const resourceType = 'image';
     const signature = cloudinarySignature({
       folder,
       public_id: publicId,
       timestamp
     });
     const body = new FormData();
-    body.append('file', new Blob([file.buffer], { type: file.mimetype || 'application/octet-stream' }), file.originalname);
+    body.append('file', new Blob([file.buffer], { type: mimeType }), file.originalname);
     body.append('api_key', cloudinaryApiKey);
     body.append('timestamp', String(timestamp));
     body.append('folder', folder);
@@ -1563,7 +1565,7 @@ async function storeUploadedFile(file, options = {}) {
   if (useMongoStorage) {
     const bucket = await getMongoUploadsBucket();
     const uploadStream = bucket.openUploadStream(fileName, {
-      contentType: file.mimetype || 'application/octet-stream',
+      contentType: mimeType,
       metadata: {
         originalName: file.originalname,
         size: file.size
