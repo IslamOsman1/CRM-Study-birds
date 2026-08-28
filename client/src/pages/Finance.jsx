@@ -385,6 +385,14 @@ export default function Finance() {
 
   const invoicePreviewTotal = numberValue(form.serviceFee) + numberValue(form.universityFee) + numberValue(form.visaFee) + numberValue(form.tax);
   const installmentTotal = form.installments.reduce((sum, item) => sum + numberValue(item.amount), 0);
+  const availableInstallments = useMemo(
+    () => (selected?.installments || []).filter(item => item.status !== 'Paid'),
+    [selected?.installments]
+  );
+  const selectedInstallment = useMemo(
+    () => availableInstallments.find(item => item.id === payment.installmentId) || null,
+    [availableInstallments, payment.installmentId]
+  );
 
   const createInvoice = async event => {
     event.preventDefault();
@@ -413,6 +421,10 @@ export default function Finance() {
   const savePayment = async event => {
     event.preventDefault();
     if (!selected) return;
+    if (selectedInstallment && numberValue(payment.amount) > numberValue(selectedInstallment.balance ?? selectedInstallment.amount)) {
+      setToast({ type: 'error', message: 'مبلغ الدفعة أكبر من رصيد القسط المحدد.' });
+      return;
+    }
     try {
       const body = new FormData();
       body.append('amount', payment.amount);
@@ -449,6 +461,26 @@ export default function Finance() {
     });
     setPaymentOpen(true);
   };
+
+  useEffect(() => {
+    if (!paymentOpen || !selected) return;
+
+    setPayment(current => {
+      if (!current.installmentId) return current;
+
+      const installment = availableInstallments.find(item => item.id === current.installmentId);
+      if (!installment) {
+        return { ...current, installmentId: '', amount: String(selected.balance) };
+      }
+
+      const installmentBalance = numberValue(installment.balance ?? installment.amount);
+      if (numberValue(current.amount) > installmentBalance || !current.amount) {
+        return { ...current, amount: String(installmentBalance) };
+      }
+
+      return current;
+    });
+  }, [availableInstallments, paymentOpen, selected]);
 
   const openHistoryModal = invoice => {
     setSelected(invoice);
@@ -742,9 +774,22 @@ export default function Finance() {
             <input type="date" value={payment.date} onChange={event => setPayment({ ...payment, date: event.target.value })} />
           </Field>
           <Field label="ربط بقسط محدد">
-            <select value={payment.installmentId} onChange={event => setPayment({ ...payment, installmentId: event.target.value })}>
+            <select
+              value={payment.installmentId}
+              onChange={event => {
+                const installmentId = event.target.value;
+                const installment = availableInstallments.find(item => item.id === installmentId);
+                setPayment(current => ({
+                  ...current,
+                  installmentId,
+                  amount: installmentId
+                    ? String(numberValue(installment?.balance ?? installment?.amount))
+                    : String(selected?.balance || current.amount || '')
+                }));
+              }}
+            >
               <option value="">بدون ربط مباشر</option>
-              {(selected?.installments || []).filter(item => item.status !== 'Paid').map(item => (
+              {availableInstallments.map(item => (
                 <option value={item.id} key={item.id}>{item.label} - {formatMoney(item.balance || item.amount, selected.currency)}</option>
               ))}
             </select>
