@@ -34,7 +34,16 @@ function Guard({ module, children }) {
 
 export default function App() {
   const { user } = useAuth();
-  if (!user) return <Login />;
+
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
   const homeElement = user.role === 'reception'
     ? <Navigate to="/reception" replace />
     : user.role === 'finance'
@@ -45,6 +54,7 @@ export default function App() {
 
   return (
     <Routes>
+      <Route path="/login" element={<Navigate to="/" replace />} />
       <Route element={<Layout />}>
         <Route index element={homeElement} />
         <Route path="consultancy" element={<Guard module="consultancy"><Consultancy /></Guard>} />

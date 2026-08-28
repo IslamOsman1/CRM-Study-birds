@@ -915,20 +915,29 @@ function buildUniversityQuoteHtml({ companyName, preparedBy, student, items, log
             padding: 6px 12px;
           }
           .info-line {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: 92px minmax(0, 1fr);
+            align-items: start;
+            column-gap: 12px;
             font-size: 13px;
             margin-bottom: 9px;
             direction: ltr;
           }
-          .info-line strong { color: #31425d; }
+          .info-line strong {
+            color: #31425d;
+            line-height: 1.45;
+          }
           .info-line span {
             color: #182131;
             font-weight: 700;
             text-align: right;
             direction: rtl;
             flex: 1;
+            min-width: 0;
+            line-height: 1.45;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: break-word;
           }
           .fees-cell {
             direction: ltr;
@@ -1023,8 +1032,8 @@ function buildUniversityQuoteHtml({ companyName, preparedBy, student, items, log
               <tr>
                 <th style="width:25%">Program</th>
                 <th style="width:27%">University</th>
-                <th style="width:26%">Information</th>
-                <th style="width:22%">Fees</th>
+                <th style="width:30%">Information</th>
+                <th style="width:18%">Fees</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
@@ -1132,9 +1141,17 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
       .fontSize(8.5)
       .text(preparePdfDisplayText(value), x + labelWidth + 8, y, {
         width: valueWidth,
-        align: containsArabic(value) ? 'right' : 'left',
-        lineBreak: false
+        align: containsArabic(value) ? 'right' : 'left'
       });
+  };
+
+  const measureTextHeight = (text, width, options = {}) => {
+    const preparedText = preparePdfDisplayText(text);
+    return doc.heightOfString(preparedText, {
+      width,
+      align: options.align || (containsArabic(text) ? 'right' : 'left'),
+      lineGap: options.lineGap || 0
+    });
   };
 
   doc.on('data', chunk => chunks.push(chunk));
@@ -1204,9 +1221,9 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
   doc.y += 14;
 
   const tableX = doc.page.margins.left;
-  const columnWidths = [170, 115, 110, pageWidth - 170 - 115 - 110];
+  const columnWidths = [160, 115, 135, pageWidth - 160 - 115 - 135];
   const headerHeight = 30;
-  const rowHeight = 100;
+  const minRowHeight = 100;
   const tableHeaders = ['PROGRAM', 'UNIVERSITY', 'INFORMATION', 'FEES'];
   const headerY = doc.y;
 
@@ -1227,6 +1244,30 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
   doc.y = headerY + headerHeight;
 
   items.forEach((item, index) => {
+    const infoLines = [
+      ['Degree', item.degree],
+      ['Language', item.language],
+      ['Deposit Fee', safePdfMoney(item.depositAmount, item.currency)],
+      ['Prep School', safePdfMoney(item.prepFee, item.currency)]
+    ];
+    const infoLabelWidth = 58;
+    const infoValueWidth = columnWidths[2] - 76;
+    const infoHeights = infoLines.map(([, value]) => Math.max(12, measureTextHeight(value, infoValueWidth)));
+    const infoBlockHeight = infoHeights.reduce((sum, height) => sum + height, 0) + ((infoLines.length - 1) * 8);
+    const programTitleHeight = measureTextHeight(item.major || 'Program', columnWidths[0] - 20);
+    const universityTitleHeight = measureTextHeight(item.university, columnWidths[1] - 20);
+    const locationHeight = measureTextHeight(
+      [safePdfText(item.country, ''), safePdfText(item.city, '')].filter(Boolean).join(' / ') || '-',
+      columnWidths[1] - 20
+    );
+    const contentHeight = Math.max(
+      58 + programTitleHeight,
+      26 + universityTitleHeight + locationHeight,
+      12 + infoBlockHeight,
+      82
+    );
+    const rowHeight = Math.max(minRowHeight, contentHeight + 18);
+
     ensureSpace(rowHeight + 2);
 
     const rowY = doc.y;
@@ -1248,17 +1289,16 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
       .fontSize(10)
       .text(preparePdfDisplayText(item.major || 'Program'), programX + 10, rowY + 18, {
         width: columnWidths[0] - 20,
-        align: containsArabic(item.major) ? 'right' : 'left',
-        lineBreak: false
+        align: containsArabic(item.major) ? 'right' : 'left'
       });
     doc
-      .roundedRect(programX + 10, rowY + 54, 60, 18, 8)
+      .roundedRect(programX + 10, rowY + 22 + programTitleHeight + 12, 60, 18, 8)
       .fillAndStroke('#ecfdf3', '#b8e7cf');
     doc
       .font(boldFont || 'Helvetica-Bold')
       .fillColor('#10a46f')
       .fontSize(7)
-      .text((item.availability || 'Available').toUpperCase(), programX + 14, rowY + 60, {
+      .text((item.availability || 'Available').toUpperCase(), programX + 14, rowY + 28 + programTitleHeight + 12, {
         width: 52,
         align: 'center'
       });
@@ -1269,27 +1309,21 @@ function generateUniversityQuotePdf({ companyName, preparedBy, student, items })
       .fontSize(9)
       .text(preparePdfDisplayText(item.university), universityX + 10, rowY + 18, {
         width: columnWidths[1] - 20,
-        align: containsArabic(item.university) ? 'right' : 'left',
-        lineBreak: false
+        align: containsArabic(item.university) ? 'right' : 'left'
       });
     doc
       .font(regularFont || 'Helvetica')
       .fillColor('#2f6fde')
       .fontSize(8)
-      .text(preparePdfDisplayText([safePdfText(item.country, ''), safePdfText(item.city, '')].filter(Boolean).join(' / ') || '-'), universityX + 10, rowY + 40, {
+      .text(preparePdfDisplayText([safePdfText(item.country, ''), safePdfText(item.city, '')].filter(Boolean).join(' / ') || '-'), universityX + 10, rowY + 24 + universityTitleHeight, {
         width: columnWidths[1] - 20,
-        align: containsArabic(item.country) || containsArabic(item.city) ? 'right' : 'left',
-        lineBreak: false
+        align: containsArabic(item.country) || containsArabic(item.city) ? 'right' : 'left'
       });
 
-    const infoLines = [
-      ['Degree', item.degree],
-      ['Language', item.language],
-      ['Deposit Fee', safePdfMoney(item.depositAmount, item.currency)],
-      ['Prep School', safePdfMoney(item.prepFee, item.currency)]
-    ];
+    let infoCursorY = rowY + 12;
     infoLines.forEach(([label, value], infoIndex) => {
-      drawKeyValueLine(label, value, infoX + 10, rowY + 12 + (infoIndex * 20), 58, columnWidths[2] - 76);
+      drawKeyValueLine(label, value, infoX + 10, infoCursorY, infoLabelWidth, infoValueWidth);
+      infoCursorY += infoHeights[infoIndex] + 8;
     });
 
     doc

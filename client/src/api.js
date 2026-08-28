@@ -1,35 +1,82 @@
 const API_BASE = import.meta.env.VITE_API_URL || '';
+export const AUTH_EXPIRED_EVENT = 'eduglobal:auth-expired';
 
-export async function api(path, options = {}) {
-  const token = localStorage.getItem('eduglobal_token');
-  const headers = new Headers(options.headers || {});
+function parseTokenExpiry(token) {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
 
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '=');
+    const decoded = atob(padded);
+    const { exp } = JSON.parse(decoded);
+    return typeof exp === 'number' ? exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+function notifySessionExpired(message) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT, { detail: { message } }));
+}
+
+function ensureActiveSession(token) {
+  if (!token) return;
+
+  const expiresAt = parseTokenExpiry(token);
+  if (expiresAt && Date.now() >= expiresAt) {
+    notifySessionExpired('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
+    throw new Error('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
+  }
+}
+
+function applyAuthHeader(headers, token) {
   if (token) headers.set('Authorization', `Bearer ${token}`);
+}
+
+function applyJsonHeader(headers, options) {
   if (!(options.body instanceof FormData) && options.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
+}
+
+export async function api(path, options = {}) {
+  const token = localStorage.getItem('eduglobal_token');
+  ensureActiveSession(token);
+
+  const headers = new Headers(options.headers || {});
+  applyAuthHeader(headers, token);
+  applyJsonHeader(headers, options);
 
   const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (response.status === 204) return null;
 
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.message || 'فشل تنفيذ الطلب');
+  if (!response.ok) {
+    if (response.status === 401) {
+      notifySessionExpired(data.message || 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
+    }
+    throw new Error(data.message || 'فشل تنفيذ الطلب');
+  }
 
   return data;
 }
 
 export async function apiDownload(path, options = {}) {
   const token = localStorage.getItem('eduglobal_token');
-  const headers = new Headers(options.headers || {});
+  ensureActiveSession(token);
 
-  if (token) headers.set('Authorization', `Bearer ${token}`);
-  if (!(options.body instanceof FormData) && options.body && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
-  }
+  const headers = new Headers(options.headers || {});
+  applyAuthHeader(headers, token);
+  applyJsonHeader(headers, options);
 
   const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      notifySessionExpired(data.message || 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
+    }
     throw new Error(data.message || 'فشل تنزيل الملف');
   }
 
