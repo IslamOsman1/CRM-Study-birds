@@ -17,6 +17,9 @@ if (!mongoUri) {
 let queue = Promise.resolve();
 let mongoClient;
 let mongoCollectionPromise;
+let dbCache;
+let dbCacheExpiresAt = 0;
+const dbCacheTtlMs = Math.max(1_000, Number(process.env.DB_CACHE_TTL_MS || 30_000));
 const readModelCollections = new Set([
   'leads',
   'students',
@@ -187,6 +190,8 @@ export async function getReadModelCollection(name) {
 }
 
 async function readMongoDb() {
+  if (dbCache && Date.now() < dbCacheExpiresAt) return dbCache;
+
   const collection = await getMongoCollection();
   const record = await collection.findOne({ _id: mongoDocumentId });
 
@@ -200,7 +205,9 @@ async function readMongoDb() {
         payload.educationCatalog ||= { universities: [], programs: [], scholarships: [] };
       }
     }
-    return payload;
+    dbCache = payload;
+    dbCacheExpiresAt = Date.now() + dbCacheTtlMs;
+    return dbCache;
   }
 
   const empty = createEmptyDb();
@@ -229,6 +236,9 @@ async function writeMongoDb(data) {
 
   // Keep the high-traffic entities queryable without changing legacy writers at once.
   await syncChangedReadModels(data);
+
+  dbCache = data;
+  dbCacheExpiresAt = Date.now() + dbCacheTtlMs;
 
   return data;
 }
