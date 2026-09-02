@@ -4,7 +4,6 @@ import { useAuth } from '../auth.jsx';
 import studyBirdsLogo from '../assets/logo.jpeg';
 
 const accounts = [
-  ['admin@eduglobal.local', 'مسؤول النظام'],
   ['manager@eduglobal.local', 'الإدارة'],
   ['consultant@eduglobal.local', 'المستشار'],
   ['admissions@eduglobal.local', 'القبول'],
@@ -15,8 +14,8 @@ const accounts = [
 
 export default function Login() {
   const { login, loading } = useAuth();
-  const [email, setEmail] = useState('admin@eduglobal.local');
-  const [password, setPassword] = useState('Demo123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
   const [error, setError] = useState('');
 

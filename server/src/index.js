@@ -160,7 +160,6 @@ const supportedCurrencies = ['EGP', 'USD', 'EUR', 'GBP'];
 const supportedPaymentMethods = ['Cash', 'Bank Transfer', 'Card', 'InstaPay', 'Vodafone Cash'];
 const hrManagedDepartments = ['Consultancy', 'Admissions', 'Reception', 'Human Resources', 'Finance'];
 const demoUsersSeed = [
-  { id: 'demo-admin', name: 'System Admin', email: 'admin@eduglobal.local', role: 'admin', department: 'Management' },
   { id: 'demo-management', name: 'Operations Manager', email: 'manager@eduglobal.local', role: 'management', department: 'Consultancy' },
   { id: 'demo-consultant', name: 'Lead Consultant', email: 'consultant@eduglobal.local', role: 'consultant', department: 'Consultancy' },
   { id: 'demo-admissions', name: 'Admissions Officer', email: 'admissions@eduglobal.local', role: 'admissions', department: 'Admissions' },
@@ -3146,6 +3145,13 @@ async function prepareDb() {
         updatedAt: now(),
         passwordHash: await bcrypt.hash('Demo123!', 10)
       });
+    }
+
+    const hasReplacementAdmin = db.users.some(user =>
+      user.email !== 'admin@eduglobal.local' && user.role === 'admin' && user.isActive !== false
+    );
+    if (hasReplacementAdmin) {
+      db.users = db.users.filter(user => user.email !== 'admin@eduglobal.local');
     }
 
     if (!db.responseScripts.length) {
