@@ -16,7 +16,7 @@ import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { GridFSBucket, ObjectId } from 'mongodb';
-import { readDb, mutateDb, getMongoDbHandle, getReadModelCollection, isMongoDbEnabled } from './db.js';
+import { readDb, mutateDb, getMongoDbHandle, getReadModelCollection, isMongoDbEnabled, warmDbCache } from './db.js';
 import { signToken, requireAuth, allowRoles, allowAction, allowAnyModule, allowModule } from './auth.js';
 import { buildMetaOauthUrl, consumeMetaOauthState, createMetaOauthState } from './integrations/meta/metaOAuth.service.js';
 import { discoverMetaAssets } from './integrations/meta/metaAssetDiscovery.service.js';
@@ -5996,6 +5996,8 @@ if (fs.existsSync(clientDist)) {
 }
 
 if (!isVercelRuntime) {
+  // Warm the shared state while the service starts, before the first login request arrives.
+  warmDbCache().catch(error => console.error('Database cache warm-up failed:', error.message));
   app.listen(port, () => console.log(`Study Birds CRM API running on http://localhost:${port}`));
 }
 

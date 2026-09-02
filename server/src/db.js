@@ -19,7 +19,8 @@ let mongoClient;
 let mongoCollectionPromise;
 let dbCache;
 let dbCacheExpiresAt = 0;
-const dbCacheTtlMs = Math.max(1_000, Number(process.env.DB_CACHE_TTL_MS || 30_000));
+let dbCachePromise;
+const dbCacheTtlMs = Math.max(1_000, Number(process.env.DB_CACHE_TTL_MS || 300_000));
 const readModelCollections = new Set([
   'leads',
   'students',
@@ -189,8 +190,7 @@ export async function getReadModelCollection(name) {
   return (await getMongoDbHandle()).collection(`read_${name}`);
 }
 
-async function readMongoDb() {
-  if (dbCache && Date.now() < dbCacheExpiresAt) return dbCache;
+async function readMongoDbUncached() {
 
   const collection = await getMongoCollection();
   const record = await collection.findOne({ _id: mongoDocumentId });
@@ -220,6 +220,18 @@ async function readMongoDb() {
   return empty;
 }
 
+async function readMongoDb() {
+  if (dbCache && Date.now() < dbCacheExpiresAt) return dbCache;
+  if (dbCachePromise) return dbCachePromise;
+
+  dbCachePromise = readMongoDbUncached();
+  try {
+    return await dbCachePromise;
+  } finally {
+    dbCachePromise = undefined;
+  }
+}
+
 async function writeMongoDb(data) {
   const collection = await getMongoCollection();
 
@@ -245,6 +257,10 @@ async function writeMongoDb(data) {
 
 export async function readDb() {
   return readMongoDb();
+}
+
+export async function warmDbCache() {
+  await readMongoDb();
 }
 
 export async function writeDb(data) {
