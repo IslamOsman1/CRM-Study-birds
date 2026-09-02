@@ -383,11 +383,17 @@ export default function Consultancy() {
   };
 
   const move = async (id, stage) => {
+    const originalLead = leads.find(lead => lead.id === id);
+    if (!originalLead || originalLead.stage === stage) return;
+
+    // Keep drag-and-drop responsive while the change is persisted in the background.
+    setLeads(current => current.map(lead => lead.id === id ? { ...lead, stage } : lead));
     try {
-      await api(`/api/leads/${id}/move`, { method: 'POST', body: JSON.stringify({ stage }) });
-      await load();
+      const savedLead = await api(`/api/leads/${id}/move`, { method: 'POST', body: JSON.stringify({ stage }) });
+      setLeads(current => current.map(lead => lead.id === id ? { ...lead, ...savedLead } : lead));
       setToast({ message: `تم نقل العميل المحتمل إلى مرحلة ${tr(stage)}` });
     } catch (error) {
+      setLeads(current => current.map(lead => lead.id === id ? originalLead : lead));
       setToast({ type: 'error', message: error.message });
     }
   };
@@ -620,8 +626,6 @@ export default function Consultancy() {
 
               <div
                 className="kanban-stack"
-                onDragOver={event => event.preventDefault()}
-                onDrop={event => canMoveLead && move(event.dataTransfer.getData('text/plain'), stage)}
               >
                 {visibleLeads.map(lead => {
                   const consultant = consultants.find(item => item.id === lead.consultantId);
