@@ -159,14 +159,15 @@ const receptionInterestOptions = ['Bachelor', 'Master', 'Foundation Year', 'Lang
 const supportedCurrencies = ['EGP', 'USD', 'EUR', 'GBP'];
 const supportedPaymentMethods = ['Cash', 'Bank Transfer', 'Card', 'InstaPay', 'Vodafone Cash'];
 const hrManagedDepartments = ['Consultancy', 'Admissions', 'Reception', 'Human Resources', 'Finance'];
-const demoUsersSeed = [
-  { id: 'demo-management', name: 'Operations Manager', email: 'manager@eduglobal.local', role: 'management', department: 'Consultancy' },
-  { id: 'demo-consultant', name: 'Lead Consultant', email: 'consultant@eduglobal.local', role: 'consultant', department: 'Consultancy' },
-  { id: 'demo-admissions', name: 'Admissions Officer', email: 'admissions@eduglobal.local', role: 'admissions', department: 'Admissions' },
-  { id: 'demo-reception', name: 'Reception Desk', email: 'reception@eduglobal.local', role: 'reception', department: 'Reception' },
-  { id: 'demo-hr', name: 'HR Officer', email: 'hr@eduglobal.local', role: 'hr', department: 'Human Resources' },
-  { id: 'demo-finance', name: 'Finance Officer', email: 'finance@eduglobal.local', role: 'finance', department: 'Finance' }
-];
+const retiredDemoUserEmails = new Set([
+  'admin@eduglobal.local',
+  'manager@eduglobal.local',
+  'consultant@eduglobal.local',
+  'admissions@eduglobal.local',
+  'reception@eduglobal.local',
+  'hr@eduglobal.local',
+  'finance@eduglobal.local'
+]);
 
 function sanitizeCurrency(value, fallback = 'USD') {
   return supportedCurrencies.includes(value) ? value : fallback;
@@ -3130,29 +3131,7 @@ async function prepareDb() {
     ensureCompanyOwnership(db.leaveRequests, fallbackCompanyId);
     ensureExecutiveSeedData(db, fallbackCompanyId);
 
-    for (const seedUser of demoUsersSeed) {
-      const existing = db.users.find(item => String(item.email || '').toLowerCase() === seedUser.email.toLowerCase());
-      if (existing) continue;
-      db.users.push({
-        id: seedUser.id,
-        companyId: fallbackCompanyId,
-        name: seedUser.name,
-        email: seedUser.email,
-        role: seedUser.role,
-        department: seedUser.department,
-        isActive: true,
-        createdAt: now(),
-        updatedAt: now(),
-        passwordHash: await bcrypt.hash('Demo123!', 10)
-      });
-    }
-
-    const hasReplacementAdmin = db.users.some(user =>
-      user.email !== 'admin@eduglobal.local' && user.role === 'admin' && user.isActive !== false
-    );
-    if (hasReplacementAdmin) {
-      db.users = db.users.filter(user => user.email !== 'admin@eduglobal.local');
-    }
+    db.users = db.users.filter(user => !retiredDemoUserEmails.has(String(user.email || '').toLowerCase()));
 
     if (!db.responseScripts.length) {
       db.responseScripts = defaultResponseScripts().map(item => ({
@@ -3543,7 +3522,23 @@ app.get('/api/integrations/meta/oauth/callback', async (req, res) => {
   }
 });
 
-app.use('/api', requireAuth);
+app.use('/api', requireAuth, async (req, res, next) => {
+  const db = await readDb();
+  const user = db.users.find(item => item.id === req.user.sub && item.companyId === req.user.companyId);
+  if (!user || user.isActive === false) {
+    return res.status(401).json({ message: 'الحساب لم يعد نشطاً، يرجى تسجيل الدخول بحساب صالح.' });
+  }
+
+  req.user = {
+    ...req.user,
+    role: user.role,
+    name: user.name,
+    email: user.email,
+    permissionMode: user.permissionMode || 'default',
+    permissions: user.permissions || { modules: [], actions: [] }
+  };
+  next();
+});
 
 app.get('/api/me', async (req, res) => {
   const db = await readDb();

@@ -3,14 +3,7 @@ import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, Sparkles, UserCircle2 } from
 import { useAuth } from '../auth.jsx';
 import studyBirdsLogo from '../assets/logo.jpeg';
 
-const accounts = [
-  ['manager@eduglobal.local', 'الإدارة'],
-  ['consultant@eduglobal.local', 'المستشار'],
-  ['admissions@eduglobal.local', 'القبول'],
-  ['reception@eduglobal.local', 'الاستقبال'],
-  ['hr@eduglobal.local', 'الموارد البشرية'],
-  ['finance@eduglobal.local', 'المالية']
-];
+const accounts = [];
 
 export default function Login() {
   const { login, loading } = useAuth();
