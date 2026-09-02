@@ -184,8 +184,8 @@ export default function Consultancy() {
 
   const load = async () => {
     try {
-      const [leadData, settingData] = await Promise.all([api('/api/leads'), api('/api/settings')]);
-      setLeads(leadData);
+      const [leadData, settingData] = await Promise.all([api('/api/leads?page=1&limit=200'), api('/api/settings')]);
+      setLeads(leadData.items || []);
       setSettings(settingData);
     } catch (error) {
       setToast({ type: 'error', message: error.message });

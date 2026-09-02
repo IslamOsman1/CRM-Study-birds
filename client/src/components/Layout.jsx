@@ -207,21 +207,8 @@ export default function Layout() {
 
         if (allowed.some(item => item.to === '/students')) {
           requests.push(
-            api('/api/students').then(items =>
-              items
-                .filter(student =>
-                  [
-                    student.name,
-                    student.phone,
-                    student.email,
-                    ...(student.applications || []).flatMap(application => [
-                      application.program,
-                      application.university,
-                      application.country
-                    ])
-                  ].some(value => String(value || '').toLowerCase().includes(trimmed.toLowerCase()))
-                )
-                .slice(0, 4)
+            api(`/api/students?page=1&limit=4&q=${encodeURIComponent(trimmed)}`).then(response =>
+              (response.items || [])
                 .map(student => ({
                   id: `student-${student.id}`,
                   title: student.name,
@@ -235,13 +222,8 @@ export default function Layout() {
 
         if (allowed.some(item => item.to === '/consultancy')) {
           requests.push(
-            api('/api/leads').then(items =>
-              items
-                .filter(lead =>
-                  [lead.name, lead.phone, lead.email, lead.targetCountry, lead.targetMajor]
-                    .some(value => String(value || '').toLowerCase().includes(trimmed.toLowerCase()))
-                )
-                .slice(0, 4)
+            api(`/api/leads?page=1&limit=4&q=${encodeURIComponent(trimmed)}`).then(response =>
+              (response.items || [])
                 .map(lead => ({
                   id: `lead-${lead.id}`,
                   title: lead.name,

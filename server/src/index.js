@@ -16,7 +16,7 @@ import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { GridFSBucket, ObjectId } from 'mongodb';
-import { readDb, mutateDb, getMongoDbHandle, isMongoDbEnabled } from './db.js';
+import { readDb, mutateDb, getMongoDbHandle, getReadModelCollection, isMongoDbEnabled } from './db.js';
 import { signToken, requireAuth, allowRoles, allowAction, allowAnyModule, allowModule } from './auth.js';
 import { buildMetaOauthUrl, consumeMetaOauthState, createMetaOauthState } from './integrations/meta/metaOAuth.service.js';
 import { discoverMetaAssets } from './integrations/meta/metaAssetDiscovery.service.js';
@@ -1646,6 +1646,28 @@ function ensureCompanyOwnership(items, companyId) {
 
 function getScopedItems(items, companyId) {
   return (items || []).filter(item => item.companyId === companyId);
+}
+
+function escapeMongoRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function getPagination(query) {
+  const requested = query.page !== undefined || query.limit !== undefined;
+  const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
+  const limit = Math.min(200, Math.max(1, Number.parseInt(query.limit, 10) || 50));
+  return { requested, page, limit: requested ? limit : 0, skip: requested ? (page - 1) * limit : 0 };
+}
+
+function paginatedResponse(items, total, pagination) {
+  if (!pagination.requested) return items;
+  return {
+    items,
+    page: pagination.page,
+    limit: pagination.limit,
+    total,
+    totalPages: Math.max(1, Math.ceil(total / pagination.limit))
+  };
 }
 
 function uniqueBy(items, key) {
@@ -3719,37 +3741,73 @@ app.post('/api/integrations/meta/whatsapp/templates/sync', allowRoles('admin', '
 });
 
 app.get('/api/conversations', async (req, res) => {
-  const db = await readDb();
-  initMetaCollections(db);
-  let conversations = getScopedItems(db.conversations, req.user.companyId);
   const q = String(req.query.q || '').trim().toLowerCase();
   const channelType = String(req.query.channelType || '');
   const status = String(req.query.status || '');
   const assignedUserId = String(req.query.assignedUserId || '');
   const priority = String(req.query.priority || '');
+  const pagination = getPagination(req.query);
+  const filter = { companyId: req.user.companyId };
 
-  if (channelType) conversations = conversations.filter(item => item.channelType === channelType);
-  if (status) conversations = conversations.filter(item => item.status === status);
-  if (assignedUserId) conversations = conversations.filter(item => item.assignedUserId === assignedUserId);
-  if (priority) conversations = conversations.filter(item => String(item.priority || 'medium') === priority);
+  if (channelType) filter.channelType = channelType;
+  if (status) filter.status = status;
+  if (assignedUserId) filter.assignedUserId = assignedUserId;
+  if (priority) filter.priority = priority;
   if (q) {
-    conversations = conversations.filter(item =>
-      [item.externalUserName, item.externalUserId, item.metadata?.displayPhoneNumber]
-        .some(value => String(value || '').toLowerCase().includes(q))
-    );
+    const pattern = escapeMongoRegex(q);
+    filter.$or = [
+      { externalUserName: { $regex: pattern, $options: 'i' } },
+      { externalUserId: { $regex: pattern, $options: 'i' } },
+      { 'metadata.displayPhoneNumber': { $regex: pattern, $options: 'i' } }
+    ];
   }
 
-  const channels = getScopedItems(db.connectedChannels, req.user.companyId);
-  const messages = getScopedItems(db.messages, req.user.companyId);
+  const conversationsCollection = await getReadModelCollection('conversations');
+  const [conversations, total] = await Promise.all([
+    conversationsCollection.aggregate([
+      { $match: filter },
+      { $sort: { lastMessageAt: -1 } },
+      { $skip: pagination.skip },
+      ...(pagination.requested ? [{ $limit: pagination.limit }] : []),
+      {
+        $lookup: {
+          from: 'read_connectedChannels',
+          let: { channelId: '$channelId', companyId: '$companyId' },
+          pipeline: [{ $match: { $expr: { $and: [{ $eq: ['$id', '$$channelId'] }, { $eq: ['$companyId', '$$companyId'] }] } } }],
+          as: 'channel'
+        }
+      },
+      {
+        $lookup: {
+          from: 'read_messages',
+          let: { conversationId: '$id', companyId: '$companyId' },
+          pipeline: [
+            { $match: { $expr: { $and: [{ $eq: ['$conversationId', '$$conversationId'] }, { $eq: ['$companyId', '$$companyId'] }] } } },
+            { $sort: { createdAt: -1 } },
+            { $limit: 1 }
+          ],
+          as: 'lastMessage'
+        }
+      },
+      { $set: { channel: { $arrayElemAt: ['$channel', 0] }, lastMessage: { $arrayElemAt: ['$lastMessage', 0] } } }
+    ]).toArray(),
+    conversationsCollection.countDocuments(filter)
+  ]);
 
-  res.json(conversations
-    .sort((a, b) => String(b.lastMessageAt || '').localeCompare(String(a.lastMessageAt || '')))
-    .map(conversation => ({
-      ...conversation,
-      channel: channels.find(item => item.id === conversation.channelId) || null,
-      lastMessage: messages.find(item => item.conversationId === conversation.id) || null,
-      contact: getContactSummary(db, req.user.companyId, conversation.contactId, conversation.contactType)
-    })));
+  const leadIds = conversations.filter(item => item.contactType === 'lead').map(item => item.contactId).filter(Boolean);
+  const studentIds = conversations.filter(item => item.contactType === 'student').map(item => item.contactId).filter(Boolean);
+  const [leadsCollection, studentsCollection] = await Promise.all([getReadModelCollection('leads'), getReadModelCollection('students')]);
+  const [leads, students] = await Promise.all([
+    leadIds.length ? leadsCollection.find({ companyId: req.user.companyId, id: { $in: leadIds } }).toArray() : [],
+    studentIds.length ? studentsCollection.find({ companyId: req.user.companyId, id: { $in: studentIds } }).toArray() : []
+  ]);
+  const contacts = new Map([...leads, ...students].map(contact => [contact.id, contact]));
+
+  const items = conversations.map(conversation => ({
+    ...conversation,
+    contact: contacts.get(conversation.contactId) || null
+  }));
+  res.json(paginatedResponse(items, total, pagination));
 });
 
 app.post('/api/conversations/bulk', async (req, res) => {
@@ -4813,11 +4871,21 @@ app.delete('/api/tasks/:id', async (req, res) => {
 });
 
 app.get('/api/leads', async (req, res) => {
-  const db = await readDb();
-  let leads = getScopedItems(db.leads, req.user.companyId);
   const q = String(req.query.q || '').trim().toLowerCase();
-  if (q) leads = leads.filter(lead => [lead.name, lead.phone, lead.email, lead.country, lead.program, lead.source, lead.targetCountry, lead.targetMajor, lead.budget, lead.currentLevel, lead.lostReason].some(value => String(value || '').toLowerCase().includes(q)));
-  res.json(leads);
+  const pagination = getPagination(req.query);
+  const filter = { companyId: req.user.companyId };
+  if (q) {
+    const pattern = escapeMongoRegex(q);
+    filter.$or = ['name', 'phone', 'email', 'country', 'program', 'source', 'targetCountry', 'targetMajor', 'budget', 'currentLevel', 'lostReason']
+      .map(field => ({ [field]: { $regex: pattern, $options: 'i' } }));
+  }
+
+  const leads = await getReadModelCollection('leads');
+  const [items, total] = await Promise.all([
+    leads.find(filter).sort({ updatedAt: -1, createdAt: -1 }).skip(pagination.skip).limit(pagination.limit).toArray(),
+    leads.countDocuments(filter)
+  ]);
+  res.json(paginatedResponse(items, total, pagination));
 });
 
 app.post('/api/leads', allowAction('createLead'), async (req, res) => {
@@ -4992,23 +5060,45 @@ app.delete('/api/leads/:leadId/documents/:docId', allowAction('deleteDocument'),
 });
 
 app.get('/api/students', allowModule('students'), async (req, res) => {
-  const db = await readDb();
-  const students = getScopedItems(db.students, req.user.companyId);
-  const applications = getScopedItems(db.applications, req.user.companyId);
-  const invoices = getScopedItems(db.invoices, req.user.companyId);
-  res.json(students.map(student => {
-    const paymentStatus = computeApplicationFeeStatus(db, req.user.companyId, student.id);
+  const pagination = getPagination(req.query);
+  const q = String(req.query.q || '').trim();
+  const filter = { companyId: req.user.companyId };
+  if (q) {
+    const pattern = escapeMongoRegex(q);
+    filter.$or = ['name', 'phone', 'email', 'nationality'].map(field => ({ [field]: { $regex: pattern, $options: 'i' } }));
+  }
+
+  const studentsCollection = await getReadModelCollection('students');
+  const [students, total] = await Promise.all([
+    studentsCollection.find(filter).sort({ createdAt: -1 }).skip(pagination.skip).limit(pagination.limit).toArray(),
+    studentsCollection.countDocuments(filter)
+  ]);
+  const studentIds = students.map(student => student.id);
+  const [applicationsCollection, invoicesCollection, paymentsCollection] = await Promise.all([
+    getReadModelCollection('applications'),
+    getReadModelCollection('invoices'),
+    getReadModelCollection('payments')
+  ]);
+  const [applications, invoices] = await Promise.all([
+    applicationsCollection.find({ companyId: req.user.companyId, studentId: { $in: studentIds } }).toArray(),
+    invoicesCollection.find({ companyId: req.user.companyId, studentId: { $in: studentIds } }).toArray()
+  ]);
+  const invoiceIds = invoices.map(invoice => invoice.id);
+  const payments = invoiceIds.length
+    ? await paymentsCollection.find({ companyId: req.user.companyId, invoiceId: { $in: invoiceIds }, amount: { $gt: 0 } }).toArray()
+    : [];
+  const paidInvoiceIds = new Set(payments.map(payment => payment.invoiceId));
+
+  const items = students.map(student => {
+    const studentInvoices = invoices.filter(invoice => invoice.studentId === student.id);
+    const paymentStatus = studentInvoices.some(invoice => paidInvoiceIds.has(invoice.id)) ? 'Paid' : 'Unpaid';
     return {
       ...student,
-      applications: applications.filter(item => item.studentId === student.id).map(item => ({
-        ...buildApplicationState(item, db.settings),
-        applicationFeeStatus: paymentStatus
-      })),
-      invoices: req.user.role === 'admissions'
-        ? invoices.filter(item => item.studentId === student.id).map(() => ({ paymentStatus }))
-        : invoices.filter(item => item.studentId === student.id)
+      applications: applications.filter(application => application.studentId === student.id).map(application => ({ ...application, applicationFeeStatus: paymentStatus })),
+      invoices: req.user.role === 'admissions' ? studentInvoices.map(() => ({ paymentStatus })) : studentInvoices
     };
-  }));
+  });
+  res.json(paginatedResponse(items, total, pagination));
 });
 
 app.get('/api/applications', async (req, res) => {

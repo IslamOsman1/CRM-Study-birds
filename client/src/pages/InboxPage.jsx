@@ -83,26 +83,29 @@ export default function InboxPage() {
       if (statusFilter) params.set('status', statusFilter);
       const queryString = params.toString();
 
+      const conversationPath = `/api/conversations?${queryString ? `${queryString}&` : ''}page=1&limit=100`;
+      const allConversationsRequest = api('/api/conversations?page=1&limit=100');
       const [allConversationItems, conversationItems, metaStatus, settings, leadItems, studentItems] = await Promise.all([
-        api('/api/conversations'),
-        api(`/api/conversations${queryString ? `?${queryString}` : ''}`),
+        allConversationsRequest,
+        queryString ? api(conversationPath) : allConversationsRequest,
         api('/api/integrations/meta/status'),
         api('/api/settings'),
-        api('/api/leads'),
-        api('/api/students')
+        api('/api/leads?page=1&limit=100'),
+        api('/api/students?page=1&limit=100')
       ]);
 
-      setAllConversations(allConversationItems || []);
-      setConversations(conversationItems || []);
+      setAllConversations(allConversationItems.items || []);
+      setConversations(conversationItems.items || []);
       setChannels(metaStatus.channels || []);
       setUsers(settings.users || []);
-      setLeads(leadItems || []);
-      setStudents(studentItems || []);
+      setLeads(leadItems.items || []);
+      setStudents(studentItems.items || []);
 
       setSelectedId(currentSelectedId => {
-        if (!conversationItems?.length) return '';
-        if (currentSelectedId && conversationItems.some(item => item.id === currentSelectedId)) return currentSelectedId;
-        return conversationItems[0].id;
+        const items = conversationItems.items || [];
+        if (!items.length) return '';
+        if (currentSelectedId && items.some(item => item.id === currentSelectedId)) return currentSelectedId;
+        return items[0].id;
       });
     } catch (error) {
       setToast({ type: 'error', message: error.message });

@@ -16,10 +16,11 @@ export default function StudentsPage() {
   const [selectedId, setSelectedId] = useState(null);
 
   useEffect(() => {
-    api('/api/students')
+    api('/api/students?page=1&limit=200')
       .then(data => {
-        setStudents(data);
-        if (data[0]) setSelectedId(data[0].id);
+        const items = data.items || [];
+        setStudents(items);
+        if (items[0]) setSelectedId(items[0].id);
       })
       .finally(() => setLoading(false));
   }, []);

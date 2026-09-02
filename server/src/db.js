@@ -17,6 +17,18 @@ if (!mongoUri) {
 let queue = Promise.resolve();
 let mongoClient;
 let mongoCollectionPromise;
+const readModelCollections = new Set([
+  'leads',
+  'students',
+  'conversations',
+  'applications',
+  'invoices',
+  'payments',
+  'messages',
+  'connectedChannels'
+]);
+let readModelsReady = false;
+let readModelSnapshots = new Map();
 
 function createEmptyDb() {
   return {
@@ -106,6 +118,75 @@ export async function getMongoDbHandle() {
   return mongoClient.db(mongoDbName);
 }
 
+async function syncReadModel(db, name, rows) {
+  const collection = db.collection(`read_${name}`);
+  const normalizedRows = Array.isArray(rows) ? rows : [];
+  const ids = normalizedRows.map(row => row.id).filter(Boolean);
+
+  if (ids.length) {
+    await collection.bulkWrite(normalizedRows.map(row => ({
+      replaceOne: {
+        filter: { id: row.id },
+        replacement: row,
+        upsert: true
+      }
+    })), { ordered: false });
+    await collection.deleteMany({ id: { $nin: ids } });
+  } else {
+    await collection.deleteMany({});
+  }
+
+  readModelSnapshots.set(name, JSON.stringify(normalizedRows));
+}
+
+async function ensureReadModels(data) {
+  const db = await getMongoDbHandle();
+
+  for (const name of readModelCollections) {
+    const collection = db.collection(`read_${name}`);
+    await collection.createIndex({ companyId: 1, updatedAt: -1 });
+    await collection.createIndex({ companyId: 1, createdAt: -1 });
+    await collection.createIndex({ companyId: 1, id: 1 }, { unique: true });
+  }
+
+  await db.collection('read_conversations').createIndex({ companyId: 1, lastMessageAt: -1 });
+  await db.collection('read_conversations').createIndex({ companyId: 1, status: 1, assignedUserId: 1, priority: 1, lastMessageAt: -1 });
+  await db.collection('read_students').createIndex({ companyId: 1, name: 1 });
+  await db.collection('read_leads').createIndex({ companyId: 1, name: 1 });
+  await db.collection('read_applications').createIndex({ companyId: 1, studentId: 1 });
+  await db.collection('read_invoices').createIndex({ companyId: 1, studentId: 1 });
+  await db.collection('read_payments').createIndex({ companyId: 1, invoiceId: 1 });
+  await db.collection('read_messages').createIndex({ companyId: 1, conversationId: 1, createdAt: -1 });
+  await db.collection('read_connectedChannels').createIndex({ companyId: 1, id: 1 });
+
+  for (const name of readModelCollections) {
+    await syncReadModel(db, name, data[name]);
+  }
+  readModelsReady = true;
+}
+
+async function syncChangedReadModels(data) {
+  if (!readModelsReady) return ensureReadModels(data);
+
+  const db = await getMongoDbHandle();
+  for (const name of readModelCollections) {
+    const rows = Array.isArray(data[name]) ? data[name] : [];
+    const snapshot = JSON.stringify(rows);
+    if (snapshot !== readModelSnapshots.get(name)) {
+      await syncReadModel(db, name, rows);
+    }
+  }
+}
+
+export async function getReadModelCollection(name) {
+  if (!readModelCollections.has(name)) throw new Error(`Unsupported read model: ${name}`);
+  if (!readModelsReady) {
+    const data = await readMongoDb();
+    await ensureReadModels(data);
+  }
+  return (await getMongoDbHandle()).collection(`read_${name}`);
+}
+
 async function readMongoDb() {
   const collection = await getMongoCollection();
   const record = await collection.findOne({ _id: mongoDocumentId });
@@ -146,6 +227,9 @@ async function writeMongoDb(data) {
     },
     { upsert: true }
   );
+
+  // Keep the high-traffic entities queryable without changing legacy writers at once.
+  await syncChangedReadModels(data);
 
   return data;
 }
