@@ -157,7 +157,6 @@ async function ensureReadModels(data) {
   await db.collection('read_invoices').createIndex({ companyId: 1, studentId: 1 });
   await db.collection('read_payments').createIndex({ companyId: 1, invoiceId: 1 });
   await db.collection('read_messages').createIndex({ companyId: 1, conversationId: 1, createdAt: -1 });
-  await db.collection('read_connectedChannels').createIndex({ companyId: 1, id: 1 });
 
   for (const name of readModelCollections) {
     await syncReadModel(db, name, data[name]);
