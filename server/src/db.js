@@ -21,6 +21,9 @@ let dbCache;
 let dbCacheExpiresAt = 0;
 let dbCachePromise;
 const dbCacheTtlMs = Math.max(1_000, Number(process.env.DB_CACHE_TTL_MS || 300_000));
+const emptyEducationCatalog = () => ({ universities: [], programs: [], scholarships: [] });
+let educationCatalogCache;
+let educationCatalogSnapshot = '';
 const readModelCollections = new Set([
   'leads',
   'students',
@@ -107,6 +110,14 @@ async function readUnifiedCatalogImport() {
   };
 }
 
+function normalizeEducationCatalog(value) {
+  return {
+    universities: Array.isArray(value?.universities) ? value.universities : [],
+    programs: Array.isArray(value?.programs) ? value.programs : [],
+    scholarships: Array.isArray(value?.scholarships) ? value.scholarships : []
+  };
+}
+
 async function getMongoCollection() {
   if (!mongoCollectionPromise) {
     mongoClient = new MongoClient(mongoUri);
@@ -120,6 +131,44 @@ async function getMongoCollection() {
 export async function getMongoDbHandle() {
   if (!mongoClient) await getMongoCollection();
   return mongoClient.db(mongoDbName);
+}
+
+async function getEducationCatalog(legacyCatalog) {
+  if (educationCatalogCache) return educationCatalogCache;
+
+  const collection = (await getMongoDbHandle()).collection('education_catalog');
+  const record = await collection.findOne({ _id: mongoDocumentId });
+  let catalog = record?.catalog;
+
+  if (!hasEducationCatalogEntries(catalog)) {
+    catalog = hasEducationCatalogEntries(legacyCatalog)
+      ? legacyCatalog
+      : await readUnifiedCatalogImport().catch(() => emptyEducationCatalog());
+    catalog = normalizeEducationCatalog(catalog);
+    await collection.updateOne(
+      { _id: mongoDocumentId },
+      { $set: { catalog, updatedAt: new Date().toISOString() } },
+      { upsert: true }
+    );
+  }
+
+  educationCatalogCache = normalizeEducationCatalog(catalog);
+  educationCatalogSnapshot = JSON.stringify(educationCatalogCache);
+  return educationCatalogCache;
+}
+
+async function syncEducationCatalog(catalog) {
+  const normalized = normalizeEducationCatalog(catalog);
+  const snapshot = JSON.stringify(normalized);
+  if (snapshot === educationCatalogSnapshot) return;
+
+  await (await getMongoDbHandle()).collection('education_catalog').updateOne(
+    { _id: mongoDocumentId },
+    { $set: { catalog: normalized, updatedAt: new Date().toISOString() } },
+    { upsert: true }
+  );
+  educationCatalogCache = normalized;
+  educationCatalogSnapshot = snapshot;
 }
 
 async function syncReadModel(db, name, rows) {
@@ -197,13 +246,11 @@ async function readMongoDbUncached() {
 
   if (isValidAppDbShape(record?.payload)) {
     const payload = record.payload;
-    if (!hasEducationCatalogEntries(payload.educationCatalog)) {
-      try {
-        payload.educationCatalog = await readUnifiedCatalogImport();
-        await writeMongoDb(payload);
-      } catch {
-        payload.educationCatalog ||= { universities: [], programs: [], scholarships: [] };
-      }
+    const legacyCatalog = payload.educationCatalog;
+    payload.educationCatalog = await getEducationCatalog(legacyCatalog);
+    if (hasEducationCatalogEntries(legacyCatalog)) {
+      // Migrate the large, immutable catalog out of app_state on the first startup.
+      await writeMongoDb(payload);
     }
     dbCache = payload;
     dbCacheExpiresAt = Date.now() + dbCacheTtlMs;
@@ -234,12 +281,14 @@ async function readMongoDb() {
 
 async function writeMongoDb(data) {
   const collection = await getMongoCollection();
+  await syncEducationCatalog(data.educationCatalog);
+  const storagePayload = { ...data, educationCatalog: emptyEducationCatalog() };
 
   await collection.updateOne(
     { _id: mongoDocumentId },
     {
       $set: {
-        payload: data,
+        payload: storagePayload,
         updatedAt: new Date().toISOString()
       }
     },
