@@ -29,7 +29,7 @@ export async function discoverMetaAssets(accessToken) {
     }).catch(() => ({ data: [] }));
 
     for (const account of wabaResponse.data || []) {
-      for (const phone of account.phone_numbers || []) {
+      for (const phone of account.phone_numbers?.data || []) {
         whatsappAssets.push({
           channelType: 'whatsapp',
           externalBusinessId: business.id,

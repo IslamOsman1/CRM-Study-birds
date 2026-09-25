@@ -20,6 +20,7 @@ import { readDb, mutateDb, getMongoDbHandle, getReadModelCollection, isMongoDbEn
 import { signToken, requireAuth, allowRoles, allowAction, allowAnyModule, allowModule } from './auth.js';
 import { buildMetaOauthUrl, consumeMetaOauthState, createMetaOauthState } from './integrations/meta/metaOAuth.service.js';
 import { discoverMetaAssets } from './integrations/meta/metaAssetDiscovery.service.js';
+import { subscribeMetaAssets } from './integrations/meta/metaWebhookSubscription.service.js';
 import { decryptSecret, encryptSecret, maskSecret } from './integrations/meta/integrationEncryption.service.js';
 import { assertMetaConfigured, getMetaConfig } from './integrations/meta/metaConfig.service.js';
 import { exchangeMetaCodeForToken, metaGraphRequest } from './integrations/meta/metaGraphClient.service.js';
@@ -3586,12 +3587,14 @@ app.post('/api/integrations/meta/assets/connect', allowRoles('admin', 'managemen
     return res.status(400).json({ message: 'يجب اختيار أصل واحد على الأقل للربط' });
   }
 
-  const result = await mutateDb(db => {
+  const result = await mutateDb(async db => {
     initMetaCollections(db);
     const session = resolveMetaSession(db, req.user.companyId, req.user.sub, String(sessionId));
     const selectedAssets = session.discoveredAssets.filter(item => assetIds.includes(item.id));
     if (!selectedAssets.length) throw Object.assign(new Error('لم يتم العثور على الأصول المختارة'), { status: 404 });
 
+    // Do not report a channel as connected until Meta accepts its subscription.
+    await subscribeMetaAssets(selectedAssets, session.accessToken);
     const integration = upsertMetaIntegration(db, req.user, session, selectedAssets);
 
     for (const asset of selectedAssets) {
