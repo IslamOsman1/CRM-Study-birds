@@ -19,7 +19,7 @@ import { GridFSBucket, ObjectId } from 'mongodb';
 import { readDb, mutateDb, getMongoDbHandle, getReadModelCollection, isMongoDbEnabled, warmDbCache } from './db.js';
 import { signToken, requireAuth, allowRoles, allowAction, allowAnyModule, allowModule } from './auth.js';
 import { buildMetaOauthUrl, consumeMetaOauthState, createMetaOauthState } from './integrations/meta/metaOAuth.service.js';
-import { discoverMetaAssets } from './integrations/meta/metaAssetDiscovery.service.js';
+import { assertWhatsAppPermissions, discoverMetaAssets } from './integrations/meta/metaAssetDiscovery.service.js';
 import { subscribeMetaAssets } from './integrations/meta/metaWebhookSubscription.service.js';
 import { decryptSecret, encryptSecret, maskSecret } from './integrations/meta/integrationEncryption.service.js';
 import { assertMetaConfigured, getMetaConfig } from './integrations/meta/metaConfig.service.js';
@@ -2323,6 +2323,8 @@ function sanitizeDiscoveredAssets(session) {
     id: session.id,
     user: session.user,
     expiresAt: session.expiresAt,
+    warnings: session.discoveryWarnings || [],
+    missingPermissions: session.missingPermissions || [],
     channels: (session.discoveredAssets || []).map(asset => ({
       id: asset.id,
       channelType: asset.channelType,
@@ -2331,6 +2333,9 @@ function sanitizeDiscoveredAssets(session) {
       instagramAccountId: asset.instagramAccountId || '',
       instagramUsername: asset.instagramUsername || '',
       whatsappBusinessAccountId: asset.whatsappBusinessAccountId || '',
+      waba_id: asset.whatsappBusinessAccountId || '',
+      phone_number_id: asset.phoneNumberId || '',
+      display_phone_number: asset.displayPhoneNumber || '',
       phoneNumberId: asset.phoneNumberId || '',
       displayPhoneNumber: asset.displayPhoneNumber || '',
       verifiedName: asset.verifiedName || '',
@@ -2350,7 +2355,9 @@ function createMetaPendingSession(db, user, tokenData, assetPayload) {
     accessToken: tokenData.access_token,
     tokenType: tokenData.token_type || 'bearer',
     expiresIn: Number(tokenData.expires_in || 0),
-    grantedScopes: tokenData.granular_scopes || tokenData.scope || [],
+    grantedScopes: assetPayload.scopes || [],
+    discoveryWarnings: assetPayload.warnings || [],
+    missingPermissions: assetPayload.missingPermissions || [],
     user: assetPayload.user || null,
     discoveredAssets: [
       ...(assetPayload.pages || []).map(item => ({ ...item, id: randomUUID(), pageAccessToken: item.pageAccessToken || '' })),
@@ -2383,6 +2390,9 @@ function resolveMetaSession(db, companyId, userId, sessionId) {
 
 function upsertMetaIntegration(db, reqUser, session, selectedAssets) {
   let integration = getMetaIntegrationForCompany(db, reqUser.companyId);
+  // A WhatsApp-only addition uses its own channel token. Preserve credentials
+  // used by other numbers and Pages already attached to this integration.
+  if (integration?.status === 'connected' && selectedAssets.every(asset => asset.channelType === 'whatsapp')) return integration;
   const expiresAt = session.expiresIn ? new Date(Date.now() + session.expiresIn * 1000).toISOString() : '';
   if (!integration) {
     integration = {
@@ -2691,7 +2701,8 @@ function updateMessageStatus(db, companyId, normalizedStatus) {
 }
 
 async function sendOutboundMetaMessage({ integration, channel, conversation, payload }) {
-  const accessToken = integration.encryptedAccessToken ? decryptSecret(integration.encryptedAccessToken) : '';
+  const encryptedToken = channel.encryptedChannelToken || integration.encryptedAccessToken;
+  const accessToken = encryptedToken ? decryptSecret(encryptedToken) : '';
 
   if (channel.channelType === 'whatsapp') {
     const body = payload.templateName
@@ -3503,7 +3514,7 @@ app.get('/api/integrations/meta/oauth/callback', async (req, res) => {
       initMetaCollections(db);
       const oauthState = consumeMetaOauthState(db, String(state));
       const tokenData = await exchangeMetaCodeForToken(String(code));
-      const assetPayload = await discoverMetaAssets(tokenData.access_token);
+      const assetPayload = await discoverMetaAssets(tokenData.access_token, { wabaId: oauthState.wabaId });
       const session = createMetaPendingSession(
         db,
         { companyId: oauthState.companyId, sub: oauthState.userId },
@@ -3565,7 +3576,7 @@ app.post('/api/integrations/meta/connect', allowRoles('admin', 'management'), as
   assertMetaConfigured();
   const result = await mutateDb(db => {
     initMetaCollections(db);
-    const state = createMetaOauthState(db, req.user, req.body?.targets || ['whatsapp', 'facebook', 'instagram']);
+    const state = createMetaOauthState(db, req.user, req.body?.targets || ['whatsapp', 'facebook', 'instagram'], req.body?.wabaId);
     logIntegrationAudit(db, req.user, 'meta.connect.started', 'meta', 'oauth', { targets: req.body?.targets || [] });
     return { authUrl: buildMetaOauthUrl(state) };
   });
@@ -3594,6 +3605,7 @@ app.post('/api/integrations/meta/assets/connect', allowRoles('admin', 'managemen
     if (!selectedAssets.length) throw Object.assign(new Error('لم يتم العثور على الأصول المختارة'), { status: 404 });
 
     // Do not report a channel as connected until Meta accepts its subscription.
+    if (selectedAssets.some(asset => asset.channelType === 'whatsapp')) assertWhatsAppPermissions(session.grantedScopes);
     await subscribeMetaAssets(selectedAssets, session.accessToken);
     const integration = upsertMetaIntegration(db, req.user, session, selectedAssets);
 
@@ -3604,9 +3616,16 @@ app.post('/api/integrations/meta/assets/connect', allowRoles('admin', 'managemen
         (asset.pageId && item.pageId === asset.pageId && item.channelType === asset.channelType)
       ));
 
-      const pageToken = asset.pageAccessToken ? encryptSecret(asset.pageAccessToken) : '';
+      const channelToken = asset.channelType === 'whatsapp' ? session.accessToken : asset.pageAccessToken;
+      const pageToken = channelToken ? encryptSecret(channelToken) : '';
+      const whatsappFields = asset.channelType === 'whatsapp' ? {
+        waba_id: asset.whatsappBusinessAccountId,
+        phone_number_id: asset.phoneNumberId,
+        display_phone_number: asset.displayPhoneNumber || ''
+      } : {};
       if (existing) {
         Object.assign(existing, {
+          ...whatsappFields,
           metaIntegrationId: integration.id,
           channelType: asset.channelType,
           externalAccountId: asset.externalAccountId || existing.externalAccountId || '',
@@ -3630,6 +3649,7 @@ app.post('/api/integrations/meta/assets/connect', allowRoles('admin', 'managemen
         });
       } else {
         db.connectedChannels.unshift({
+          ...whatsappFields,
           id: randomUUID(),
           companyId: req.user.companyId,
           metaIntegrationId: integration.id,
@@ -3671,7 +3691,7 @@ app.post('/api/integrations/meta/reconnect', allowRoles('admin', 'management'), 
   assertMetaConfigured();
   const result = await mutateDb(db => {
     initMetaCollections(db);
-    const state = createMetaOauthState(db, req.user, ['whatsapp', 'facebook', 'instagram']);
+    const state = createMetaOauthState(db, req.user, ['whatsapp', 'facebook', 'instagram'], req.body?.wabaId);
     return { authUrl: buildMetaOauthUrl(state) };
   });
   res.json(result);
@@ -3720,7 +3740,7 @@ app.post('/api/integrations/meta/whatsapp/templates/sync', allowRoles('admin', '
     if (!channel?.whatsappBusinessAccountId) throw Object.assign(new Error('قناة واتساب غير صالحة للمزامنة'), { status: 400 });
 
     const response = await metaGraphRequest(`/${channel.whatsappBusinessAccountId}/message_templates`, {
-      accessToken: decryptSecret(integration.encryptedAccessToken)
+      accessToken: decryptSecret(channel.encryptedChannelToken || integration.encryptedAccessToken)
     });
 
     db.whatsAppTemplates = db.whatsAppTemplates.filter(item => !(item.companyId === req.user.companyId && item.channelId === channel.id));

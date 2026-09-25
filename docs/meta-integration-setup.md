@@ -69,6 +69,21 @@ Use:
 
 ## Security notes
 
+## WhatsApp discovery and Coexistence troubleshooting
+
+- Discovery reads all pages of owned and client/shared WABAs, plus WABA IDs granted through token granular scopes. Phone numbers are fetched through `/{waba-id}/phone_numbers`, including subsequent pages. No platform-type or Business App filter is applied.
+- If automatic discovery misses a known WABA, enter its ID in the optional WABA field before reconnecting. The hint is bound to the authenticated company's OAuth state, and the new token must be able to read that WABA and its phone numbers. No phone is fabricated from a configured ID.
+- `GET /api/integrations/meta/assets?sessionId=...` returns discovered channels, `warnings`, and `missingPermissions`. Both WhatsApp permissions must be verified via token inspection before saving a WhatsApp channel.
+- Select only the desired number and save. Saving subscribes its WABA via `POST /{waba-id}/subscribed_apps` and stores `waba_id`, `phone_number_id`, `display_phone_number`, and CRM status `connected`, alongside existing camelCase fields. This status confirms CRM connection/subscription, not a separate provider health check.
+- A WhatsApp-only addition to a connected integration stores its own encrypted channel token and leaves existing integration credentials and unselected channels unchanged. It does not disconnect, register/deregister phone numbers, or change Page ownership.
+- API failures log path, status, code, subcode, message and trace ID without tokens. Discovery warnings also appear in Settings instead of silently hiding failures.
+
+### Acceptance check for the requested number
+
+After deployment, enter WABA `1009302038569191`, click Reconnect, and select only `+201034426659` (Phone Number ID `1235463112988868`). Leave the number ending in `6650` unselected. If Meta grants access, the assets response should include the target; saving it should produce one WhatsApp channel when starting from zero. Send an inbound message from another phone, then reply in the CRM. The automated tests use mocked Meta responses; live permissions, delivery, and sending still require this authenticated check.
+
+## Token storage
+
 - Tokens are encrypted at rest using AES-256-GCM.
 - Raw Meta tokens are never returned to the browser.
 - OAuth state is single-use and time-limited.

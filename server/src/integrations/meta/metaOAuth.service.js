@@ -5,7 +5,9 @@ function stateHash(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
-export function createMetaOauthState(db, user, providerTargets = ['whatsapp', 'facebook', 'instagram']) {
+export function createMetaOauthState(db, user, providerTargets = ['whatsapp', 'facebook', 'instagram'], wabaId = '') {
+  wabaId = String(wabaId || '').trim();
+  if (wabaId && !/^\d+$/.test(wabaId)) throw Object.assign(new Error('WABA ID must contain digits only'), { status: 400 });
   const state = randomBytes(24).toString('hex');
   db.oauthStates ||= [];
   db.oauthStates.push({
@@ -15,6 +17,7 @@ export function createMetaOauthState(db, user, providerTargets = ['whatsapp', 'f
     provider: 'meta',
     stateHash: stateHash(state),
     targets: providerTargets,
+    wabaId,
     expiresAt: Date.now() + 10 * 60 * 1000,
     usedAt: 0,
     createdAt: new Date().toISOString()

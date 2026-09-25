@@ -167,6 +167,7 @@ export default function SettingsPage() {
   const [userForm, setUserForm] = useState(blankUser);
   const [metaStatus, setMetaStatus] = useState({ integration: null, channels: [], configured: false, health: 'disconnected' });
   const [metaSession, setMetaSession] = useState(null);
+  const [metaWabaId, setMetaWabaId] = useState('');
   const [selectedAssetIds, setSelectedAssetIds] = useState([]);
   const [catalogLinks, setCatalogLinks] = useState({});
   const [catalogTab, setCatalogTab] = useState('countries');
@@ -270,7 +271,7 @@ export default function SettingsPage() {
     api(`/api/integrations/meta/assets?sessionId=${sessionId}`)
       .then(session => {
         setMetaSession(session);
-        setSelectedAssetIds(session.channels.map(item => item.id));
+        setSelectedAssetIds([]);
       })
       .catch(error => setToast({ type: 'error', message: error.message }));
   }, []);
@@ -500,7 +501,7 @@ export default function SettingsPage() {
     try {
       const result = await api('/api/integrations/meta/connect', {
         method: 'POST',
-        body: JSON.stringify({ targets: ['whatsapp', 'facebook', 'instagram'] })
+        body: JSON.stringify({ targets: ['whatsapp', 'facebook', 'instagram'], wabaId: metaWabaId.trim() })
       });
       window.location.href = result.authUrl;
     } catch (error) {
@@ -523,7 +524,9 @@ export default function SettingsPage() {
 
   const reconnectMeta = async () => {
     try {
-      const result = await api('/api/integrations/meta/reconnect', { method: 'POST' });
+      const result = await api('/api/integrations/meta/reconnect', {
+        method: 'POST', body: JSON.stringify({ wabaId: metaWabaId.trim() })
+      });
       window.location.href = result.authUrl;
     } catch (error) {
       setToast({ type: 'error', message: error.message });
@@ -657,6 +660,10 @@ export default function SettingsPage() {
             <p>ابدأ الربط الرسمي عبر Meta OAuth، ثم اختر صفحات فيسبوك وحسابات إنستغرام وأرقام واتساب التي تريد ربطها بالشركة الحالية فقط.</p>
           </div>
 
+          <label className="field">
+            <span>معرّف حساب واتساب WABA (اختياري إذا لم يظهر الرقم)</span>
+            <input value={metaWabaId} onChange={event => setMetaWabaId(event.target.value)} inputMode="numeric" dir="ltr" placeholder="WABA ID" />
+          </label>
           <div className="form-actions">
             <Button type="button" onClick={startMetaConnect}>بدء الربط الرسمي</Button>
             {!!metaStatus.integration && <Button type="button" variant="secondary" onClick={reconnectMeta}>إعادة الربط</Button>}
@@ -689,6 +696,9 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
+                {metaSession.warnings?.map((warning, index) => (
+                  <p className="form-error" key={`${warning.operation}-${index}`} role="status">{warning.operation}: {warning.message}</p>
+                ))}
                 <div className="settings-list">
                   {metaSession.channels.map(asset => (
                     <label className="check-row" key={asset.id}>
