@@ -441,18 +441,20 @@ export default function InboxPage() {
   return (
     <>
       <div className="admissions-layout">
-        <Card className="applications-panel">
-          <div className="panel-toolbar">
+        <Card className="applications-panel inbox-panel">
+          <div className="panel-toolbar inbox-toolbar">
             <div className="search-box">
               <Search />
               <input
                 value={query}
                 onChange={event => setQuery(event.target.value)}
                 placeholder="ابحث باسم العميل أو نص الرسالة..."
+                aria-label="البحث في المحادثات"
               />
             </div>
-            <div className="toolbar-right">
+            <div className="toolbar-right inbox-filters">
               <select
+                aria-label="تصفية حسب القناة"
                 value={channelFilter}
                 onChange={event => {
                   setActiveView('custom');
@@ -465,6 +467,7 @@ export default function InboxPage() {
                 <option value="instagram">إنستغرام</option>
               </select>
               <select
+                aria-label="تصفية حسب الموظف"
                 value={assignedUserFilter}
                 onChange={event => {
                   setActiveView('custom');
@@ -477,6 +480,7 @@ export default function InboxPage() {
                 ))}
               </select>
               <select
+                aria-label="تصفية حسب الحالة"
                 value={statusFilter}
                 onChange={event => {
                   setActiveView('custom');

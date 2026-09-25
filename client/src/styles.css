@@ -441,3 +441,12 @@ th{text-align:right}
 .kanban-stack{flex:1;min-height:320px}
 .kanban-drop-zone{margin-top:auto;min-height:76px;border:1px dashed #cfd3dd;border-radius:12px;display:grid;place-items:center;color:#8f97a7;font-size:9px;background:rgba(255,255,255,.45)}
 .kanban-empty{min-height:120px}
+
+.inbox-panel{min-width:0}
+.inbox-toolbar{flex-direction:column;align-items:stretch;gap:12px}
+.inbox-toolbar .search-box{width:100%;min-width:0;height:44px}
+.inbox-toolbar .search-box input{min-width:0}
+.inbox-toolbar .search-box svg{flex-shrink:0}
+.inbox-toolbar .inbox-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr));gap:9px;min-width:0;width:100%}
+.inbox-filters select{width:100%;min-width:0;height:44px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#404859;font-size:12px;text-overflow:ellipsis}
+.inbox-filters select:focus-visible{outline:2px solid var(--purple);outline-offset:2px}
